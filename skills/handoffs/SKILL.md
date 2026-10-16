@@ -5,6 +5,11 @@ description: List or post HANDOFFS bounties, show wallet and work stats, and rec
 
 # HANDOFFS service client
 
+For an explicit JIRA-key implementation launch, use the HANDOFFS-owned
+`skills/jira-to-pr/SKILL.md` in the service checkout. PR titles must not contain
+JIRA keys; keep issue linkage in branch/body. This client does not implement
+JIRA execution or GitHub publication itself.
+
 When the native `handoffs` MCP server is connected, use its tools for board,
 selected detail, posting, stats, taking and delivery. They call the same service.
 Use the PowerShell helper below for other actions or when MCP is not available.

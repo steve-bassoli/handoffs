@@ -57,6 +57,10 @@ Try: “Show my HANDOFFS stats”, “List open HANDOFFS bounties”, or “Post
 
 This configures the local desktop host. Hosted ChatGPT plugin/tunnel deployment is a separate step; localhost alone is not proof of cloud connectivity. See [official MCP setup](https://learn.chatgpt.com/docs/extend/mcp).
 
+## JIRA to review PR
+
+The migrated [JIRA-to-PR skill](skills/jira-to-pr/SKILL.md) prepares a source-pinned disposable checkout using the packaged [iterative implementation contract](skills/iterative-implementation/SKILL.md). Its PR creation command, `python -m app.jira_pr`, removes the issue key from the title and rejects remaining JIRA-shaped keys before calling GitHub. Issue linkage stays in branch/body. This is a local execution workflow, not a new web-app button or permission to create a PR from a bounty preview. Legacy Git-packet and local XP/reward paths are retired, not copied into the service.
+
 Import legacy Git packets and an optional consistent SQLite snapshot without editing either source:
 
 ```powershell
