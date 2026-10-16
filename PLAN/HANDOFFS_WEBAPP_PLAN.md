@@ -6,12 +6,38 @@ Proposed for Steve's review. This repository contains planning only; implementat
 
 ## Goal
 
-Extract the HANDOFFS concept from `nate-viniconis/hackwatson` into an independently owned application at `steve-bassoli/handoffs`. Deliver a runnable web prototype for creating quests, assigning work, viewing a board, recording append-only status events, returning results, and showing player rewards.
+Extract the HANDOFFS concept from `nate-viniconis/hackwatson` into an independently owned application at `steve-bassoli/handoffs`. Deliver a web marketplace where users receive monthly Gold, post funded work bounties, and earn transferable Gold by delivering work using their own token allowances.
+
+## Gold economy: core product direction
+
+Steve's direction, October 16, 2026: token allowances belong to individual people and are not transferable. Gold makes access to work capacity transferable: a requester pays another user to use that user's tokens and deliver the requested PR. The worker can spend the earned Gold on their own bounties. Every user receives Gold at the beginning of each month, analogous to receiving a token allowance.
+
+Gold is the application's work currency. XP, levels, aliases, and Tavern themes remain optional presentation. Actual token balances stay with their providers; Gold coordinates who performs work and does not transfer tokens or guarantee someone is available.
+
+"Bitcoin-like" describes a transferable currency and transaction history here. A centralized SQLite ledger is the proposed prototype implementation. Blockchain, mining, fixed supply, cash exchange, and an exchange rate between Gold and tokens are not implied requirements. Monthly allocations explicitly create new Gold.
+
+### Proposed bounty cycle
+
+1. Credit each eligible user's wallet once per calendar month using a unique user/month allocation key.
+2. A requester posts a bounty and reserves its Gold in escrow. Available balance excludes reserved Gold.
+3. Another user takes the bounty and uses their own account and tokens to perform the work.
+4. The worker delivers the required PR and completion evidence.
+5. Settle the bounty once: move its reserved Gold to the worker's available balance when the posted delivery terms are met.
+6. The worker can immediately use those earnings to fund another bounty.
+
+Settlement pays from the requester's reserved balance; it does not mint an additional completion reward. Monthly issuance, escrow, settlement, and refunds have explicit ledger entries and execute atomically with the corresponding bounty transition. Repeated requests cannot double-credit or double-pay; concurrent requests cannot spend the same Gold twice.
+
+### Economic decisions still open
+
+- Monthly allocation amount, eligibility, calendar timezone, and whether unused Gold rolls over. Proposed default: a configurable equal allocation, calendar months in America/New_York, and balances that roll over.
+- Payout trigger: Steve described delivering a PR. Proposed default: payment on verified delivery meeting the posted bounty terms; PR review and merge remain separate. Decide whether requester acceptance is required before payment.
+- Cancellation, abandonment, and disputes: define when escrow is refunded or reassigned, including what happens after work has begun.
+- Legacy balances: old cosmetic awards are historical data. Do not silently turn them into spendable currency; choose an explicit opening-balance policy.
 
 ## Prototype principles
 
 - Prefer the smallest understandable stack over production architecture.
-- Keep task truth, identity, and authorization separate from cosmetic game presentation.
+- Treat funded bounties and transferable Gold as core domain behavior; keep XP and game presentation optional.
 - Preserve append-only event history and immutable completion evidence.
 - Treat imported Hackwatson packets as untrusted historical input.
 - Keep the old repository unchanged during extraction.
@@ -81,32 +107,36 @@ Use SQLite as the prototype's authoritative application store.
 - `results`: immutable result content referenced by terminal events.
 - `task_relations`: links between replacement, review, source, and follow-up tasks.
 - `player_profiles`: alias and optional theme preferences, separate from authorization identity.
-- `reward_events`: idempotent gold and XP awards tied to proof.
-- `gold_spend_events`: idempotent approved spending records.
+- `wallets`: user-owned Gold accounts with available and reserved balances derived from the ledger.
+- `gold_transactions` and `gold_entries`: append-only, balanced transfers for monthly issuance, escrow, payout, and refunds, with unique operation keys and explicit issuance/escrow accounts.
+- `monthly_allocations`: unique user/month issuance records and the allocation policy used.
+- `bounties`: posted terms, requester, funded amount, claimant, escrow reference, delivery proof, and settlement state.
+- `xp_events`: optional idempotent experience awards, separate from spendable Gold.
 - `capacity_readings`: optional time-bounded quota snapshots.
 - `external_links`: source issue, pull request, repository, revision, and evidence fingerprints.
 
-Task status is derived from ordered valid events rather than updated destructively. Cosmetic aliases and rewards never establish task ownership or permissions.
+Task status is derived from ordered valid events rather than updated destructively. Wallet ownership and task actions require application identity; aliases, XP, and Gold balances do not grant repository permissions. Gold transfers and bounty changes commit in one database transaction.
 
 ## Core prototype workflows
 
-1. Create a targeted or open quest.
-2. List open quests and a user's current tasks.
-3. Preview one quest without claiming it.
-4. Assign or claim an open quest.
-5. Record working, blocked, or completed status with an immutable result.
-6. Acknowledge and explicitly accept or reject returned evidence.
-7. Award an idempotent reward only from accepted or otherwise verified proof.
-8. Search task metadata and history.
-9. Show a plain board by default, with Tavern presentation as an optional view.
-10. Import legacy Hackwatson packets and events with provenance and validation warnings.
+1. Receive the monthly Gold allocation and view available/reserved balances and transaction history.
+2. Create a funded targeted or open quest by reserving Gold.
+3. List open bounties and a user's current tasks.
+4. Preview a quest's scope, Gold payment, and delivery terms.
+5. Take an open bounty and perform it using the worker's own tokens.
+6. Record working, blocked, or completed status with immutable evidence and the delivered PR.
+7. Verify the delivery under the posted terms and settle escrow into the worker's wallet once.
+8. Spend earned Gold on another bounty; support refunds under the agreed cancellation policy.
+9. Acknowledge and explicitly accept or reject evidence separately from PR review or merge.
+10. Search task metadata and history; show a plain board with optional Tavern presentation.
+11. Import legacy Hackwatson packets and events with provenance and validation warnings.
 
 ## Migration approach
 
 ### What moves
 
 - Domain behavior encoded in the HANDOFFS skills and PowerShell helpers.
-- SQLite profile, search, capacity, relationship, and reward behavior.
+- SQLite profile, search, capacity, and relationship behavior; redesign old cosmetic Gold awards as a funded currency ledger.
 - Focused tests that define packet, event, identity, and reward invariants.
 - Tavern presentation assets and copy that remain useful.
 
@@ -132,22 +162,23 @@ Create a read-only importer that accepts an explicit Hackwatson path or Git revi
 
 - Add the FastAPI application, configuration, SQLite migrations, and local start command.
 - Implement task creation, append-only events, derived status, results, and identity checks.
-- Add focused tests for event ordering, immutable results, open assignment, and authorization boundaries.
+- Implement wallets, monthly issuance, funded bounties, escrow, settlement, and refunds under the agreed policies.
+- Add focused tests for event ordering, immutable results, authorization, duplicate issuance/payment, and concurrent spending.
 
-Gate: Steve can run the app locally and the API proves the task lifecycle without legacy integration.
+Gate: Steve can run the app locally and the API proves the monthly allocation -> funded bounty -> delivered PR -> payment -> new bounty cycle.
 
 ### Phase 2: useful web board
 
 - Add plain open/current task views, task preview, task creation, status updates, and result entry.
 - Add player profiles and optional Tavern presentation.
-- Add rewards only after accepted or verified proof.
+- Add wallet balances, transaction history, bounty funding, PR delivery, and payment state to the browser workflow.
 
 Gate: the end-to-end lifecycle works through the browser using only the new repository.
 
 ### Phase 3: legacy extraction
 
 - Implement the read-only Hackwatson importer.
-- Reconcile imported counts, event histories, results, relationships, profiles, and rewards.
+- Reconcile imported counts, event histories, results, relationships, profiles, and historical rewards; apply only explicitly approved opening balances.
 - Add compatibility skill adapters that call the new API.
 
 Gate: representative existing quests appear correctly without modifying Hackwatson.
@@ -166,7 +197,11 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 - Every state change produces an immutable, ordered event with actor and timestamp.
 - Completion evidence remains immutable and acceptance remains a separate explicit event.
 - Open and user-current task lists agree with derived event state.
-- Rewards are idempotent and cannot be earned from selection, claiming, blocking, or unaccepted completion alone.
+- Monthly allocations occur once per eligible user/month, including after an app restart or a missed first-of-month run.
+- Bounty posting reserves real wallet Gold; insufficient balance prevents funding.
+- A delivered PR meeting the agreed payment terms transfers escrow once to the worker, who can spend it on another bounty.
+- Ordinary bounty settlement creates no new Gold; only explicit issuance changes total supply.
+- Concurrent funding and settlement cannot overspend wallets or duplicate payouts; cancellation follows the agreed refund policy.
 - Cosmetic identity cannot authorize a task action.
 - The legacy importer is read-only, repeatable, provenance-preserving, and reports malformed or incomplete source data.
 - The default UI is plain and usable; Tavern mode is optional.
@@ -186,6 +221,7 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 2. Prototype authority: make SQLite authoritative in the new app; use Git only for source/version control and legacy import evidence.
 3. Initial stack: FastAPI plus browser-native JavaScript, with no Node framework or build step.
 4. Cutover policy: leave Hackwatson unchanged and perform a read-only, one-way import after the new lifecycle works.
-5. Scope order: build the plain task lifecycle first; add Tavern presentation second; defer JIRA, Outlook, quota, and PR automation.
+5. Scope order: build the Gold economy and bounty lifecycle first; add Tavern presentation second; defer JIRA, Outlook, quota, and automated PR creation. PR delivery evidence and verification belong in the core bounty lifecycle.
+6. Resolve the economic decisions above before implementing issuance and settlement policy.
 
 Approval of this plan authorizes implementation only after Steve explicitly says to proceed. Requested changes should be incorporated into this plan before code is added.
