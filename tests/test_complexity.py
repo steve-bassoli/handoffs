@@ -20,7 +20,7 @@ def test_medium_has_three_low_leaves_and_low_is_canonical():
     assert validate_plan([step()])[1][0]['complexity'] == 'LOW'
 
 
-@pytest.mark.parametrize('count', [2, 3, 4])
+@pytest.mark.parametrize('count', [3])
 def test_high_can_split_into_multiple_highs_that_eventually_reach_low(count):
     plan = [step('parent', 'HIGH', [tree(f'branch{i}')[0] for i in range(count)])]
     normalized, leaves = validate_plan(plan)
@@ -36,6 +36,8 @@ def test_high_can_split_into_multiple_highs_that_eventually_reach_low(count):
     [step('root', 'LOW', [step('child')])], [step('same'), step('same')],
     [step(files=['../outside'])], [step(complexity='easy')],
     [step(complexity='SMALL')], [step(complexity='LARGE')], [step('root', 'HIGH', [tree('child')[0]])],
+    [step('root', 'HIGH', [tree(f'h{i}')[0] for i in range(2)])],
+    [step('root', 'HIGH', [tree(f'h{i}')[0] for i in range(4)])],
     [step('root', 'HIGH', [tree('h')[0], step('medium', 'MEDIUM', [step('l1'), step('l2'), step('l3')])])],
 ])
 def test_invalid_plans_fail_closed(bad):
@@ -60,3 +62,40 @@ def test_only_selected_low_leaf_can_commit_its_declared_staged_files(tmp_path):
     assert 'Complexity: LOW' in message and 'Plan-step: one' in message
     assert git('diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD') == 'one.txt'
     assert (repo / 'two.txt').read_text() == 'two'
+
+
+def test_same_leaf_cannot_commit_twice_even_with_new_staged_content(tmp_path):
+    repo, _, git = fixture_repository(tmp_path)
+    plan = [step('fix', files=['one.txt'])]
+    (repo / 'one.txt').write_text('first', encoding='utf-8')
+    git('add', 'one.txt')
+    commit(repo, plan, 'fix', 'One bounded implementation')
+    before = git('rev-parse', 'HEAD')
+    (repo / 'one.txt').write_text('second', encoding='utf-8')
+    git('add', 'one.txt')
+    with pytest.raises(ValueError, match='already has its one commit'):
+        commit(repo, plan, 'fix', 'Must not repeat')
+    assert git('rev-parse', 'HEAD') == before
+    assert git('diff', '--cached', '--name-only') == 'one.txt'
+    assert not (repo / '.git/handoffs-commit.lock').exists()
+
+
+def test_verification_leaf_cannot_commit_or_declare_commit_files(tmp_path):
+    repo, _, _ = fixture_repository(tmp_path)
+    leaf = {**step('evidence'), 'work_type': 'verification'}
+    assert validate_plan([leaf])[1][0]['work_type'] == 'verification'
+    with pytest.raises(ValueError, match='implementation LOW'):
+        commit(repo, [leaf], 'evidence', 'No forced commit')
+    with pytest.raises(ValueError, match='verification leaves'):
+        validate_plan([{**leaf, 'files': ['report.md']}])
+
+
+def test_managed_commit_lock_fails_closed(tmp_path):
+    repo, _, git = fixture_repository(tmp_path)
+    lock = repo / '.git/handoffs-commit.lock'
+    lock.write_text('other worker', encoding='utf-8')
+    before = git('rev-parse', 'HEAD')
+    with pytest.raises(ValueError, match='lock needs inspection'):
+        commit(repo, [step(files=['one.txt'])], 'leaf', 'No race')
+    assert git('rev-parse', 'HEAD') == before
+    assert lock.read_text() == 'other worker'

@@ -8,12 +8,12 @@ import subprocess
 
 
 def validate_bounty_split(parent, levels):
-    if parent == 'HIGH' and ((len(levels) > 1 and all(level == 'HIGH' for level in levels)) or
-                             (len(levels) == 3 and all(level == 'MEDIUM' for level in levels))):
+    if parent == 'HIGH' and len(levels) == 3 and (all(level == 'HIGH' for level in levels) or
+                                                all(level == 'MEDIUM' for level in levels)):
         return levels[0]
     if parent == 'MEDIUM' and len(levels) == 3 and all(level == 'LOW' for level in levels):
         return 'LOW'
-    raise ValueError('HIGH needs 2+ HIGHs or exactly 3 MEDIUMs; MEDIUM needs exactly 3 LOWs; LOW cannot decompose')
+    raise ValueError('HIGH needs exactly 3 HIGHs or 3 MEDIUMs; MEDIUM needs exactly 3 LOWs; LOW cannot decompose')
 
 
 def validate_plan(steps):
@@ -44,6 +44,9 @@ def validate_plan(steps):
         if level == 'LOW':
             if children:
                 raise ValueError('LOW is a leaf and cannot have children')
+            kind = step.get('work_type', 'implementation')
+            if kind not in ('implementation', 'verification') or (kind == 'verification' and files):
+                raise ValueError('A LOW is implementation or verification; verification leaves cannot own commit files')
             leaves.append({**step, 'complexity': level})
             return {**step, 'complexity': level}
         if files:
@@ -61,16 +64,30 @@ def validate_plan(steps):
 def commit(repository, steps, step_id, message, run=subprocess.run):
     normalized, leaves = validate_plan(steps)
     leaf = next((item for item in leaves if item['id'] == step_id), None)
-    if not leaf or not leaf['files']:
-        raise ValueError('Only a LOW leaf with declared files can commit')
+    if not leaf or leaf.get('work_type', 'implementation') != 'implementation' or not leaf['files']:
+        raise ValueError('Only an implementation LOW leaf with declared files can commit')
     prefix = ['git', '-C', str(repository)]
-    staged = run(prefix + ['diff', '--cached', '--name-only', '-z'], check=True, capture_output=True).stdout.decode().split('\0')
-    paths = {path for path in staged if path}
-    if not paths or not paths <= set(leaf['files']):
-        raise ValueError('Stage only files declared by the selected LOW leaf')
     fingerprint = hashlib.sha256(json.dumps(normalized, sort_keys=True).encode()).hexdigest()
     receipt = f"Complexity: LOW\nPlan-step: {step_id}\nPlan-sha256: {fingerprint}"
-    return run(prefix + ['commit', '-m', message, '-m', receipt], check=True, capture_output=True, text=True).stdout
+    lock_path = Path(run(prefix + ['rev-parse', '--path-format=absolute', '--git-path', 'handoffs-commit.lock'],
+                         check=True, capture_output=True, text=True).stdout.strip())
+    try:
+        lock = lock_path.open('x')
+    except FileExistsError:
+        raise ValueError('A managed commit is in progress or its lock needs inspection') from None
+    try:
+        history = run(prefix + ['log', '--all', '--format=%B%x00'], check=True, capture_output=True, text=True).stdout
+        if any(f'Plan-step: {step_id}' in body.splitlines() and f'Plan-sha256: {fingerprint}' in body.splitlines()
+               for body in history.split('\0')):
+            raise ValueError('This LOW leaf already has its one commit for this plan; retain the original receipt')
+        staged = run(prefix + ['diff', '--cached', '--name-only', '-z'], check=True, capture_output=True).stdout.decode().split('\0')
+        paths = {path for path in staged if path}
+        if not paths or not paths <= set(leaf['files']):
+            raise ValueError('Stage only files declared by the selected LOW leaf')
+        return run(prefix + ['commit', '-m', message, '-m', receipt], check=True, capture_output=True, text=True).stdout
+    finally:
+        lock.close()
+        lock_path.unlink()
 
 
 def main(argv=None):
