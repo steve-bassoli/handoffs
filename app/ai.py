@@ -37,7 +37,7 @@ class Followup(OutputModel):
 class PlanStep(OutputModel):
     id: str
     title: str
-    complexity: Literal['HIGH', 'MEDIUM', 'SMALL', 'LOW']
+    complexity: Literal['HIGH', 'MEDIUM', 'LOW']
     files: list[str]
     children: list['PlanStep']
 
@@ -104,6 +104,12 @@ def strict_schema(schema):
     return schema
 
 
+def archived_plan(steps):
+    """Project the retired historical label for display/export; new plans reject it."""
+    return [{**step, 'complexity': 'LOW' if step['complexity'] == 'SMALL' else step['complexity'],
+             'children': archived_plan(step['children'])} for step in steps]
+
+
 class Luna:
     def __init__(self, transport=None):
         self.transport = transport
@@ -122,11 +128,12 @@ class Luna:
             'Ask at most the remaining question budget across the entire run. '
             'If source or a required decision is missing, ask for it; never invent source. '
             'Return deliver only when you can provide the complete changed files and clear local steps. '
-            'HARD complexity rules: HIGH has exactly 3 MEDIUM children; each MEDIUM has exactly 3 SMALL children. '
-            'LOW means SMALL. SMALL is a leaf with no children. Only SMALL can result in a Git commit. '
-            'Return the hierarchy in plan with unique IDs, bounded titles, and exact commit files on SMALL leaves only. '
-            'Do not pad with fake tasks or relabel complex work as SMALL. A genuinely SMALL task may be a root leaf. '
-            'For deliver, cover every changed file in SMALL leaves. For ask or followups, plan must be empty. '
+            'HARD complexity rules: HIGH, MEDIUM, LOW only. A HIGH has either 2 or more HIGH children '
+            'or exactly 3 MEDIUM children, never a mixture. Every HIGH descendant must eventually decompose. '
+            'Every MEDIUM has exactly 3 LOW children. LOW is a leaf with no children. Only LOW can result in a Git commit. '
+            'Return the hierarchy in plan with unique IDs, bounded titles, and exact commit files on LOW leaves only. '
+            'Do not pad with fake tasks or relabel complex work as LOW. A genuinely LOW task may be a root leaf. '
+            'For deliver, cover every changed file in LOW leaves. For ask or followups, plan must be empty. '
             'If you cannot produce a fix after the answers, return followups with specific bounded tasks. '
             'Proposals are drafts: the user must confirm each new task. '
             'You cannot execute code here: verification entries must be proposed commands, never passing claims. '
@@ -215,6 +222,8 @@ class AIRuns:
         result = data.get('result')
         if result:
             result = {**result, 'files': [{'path': file['path']} for file in result['files']]}
+            if 'plan' in result:
+                result['plan'] = archived_plan(result['plan'])
         return {key: row[key] for key in ('id', 'actor', 'status', 'created_at', 'updated_at')} | {
             'model': data['model'], 'question_count': data['question_count'],
             'conversation': data['conversation'], 'result': result,
@@ -314,7 +323,7 @@ class AIRuns:
             if decision.action == 'deliver':
                 normalized, leaves = validate_plan([step.model_dump() for step in decision.plan])
                 if {path for leaf in leaves for path in leaf['files']} != {file.path for file in decision.files}:
-                    raise ValueError('Every changed file must belong to a SMALL leaf')
+                    raise ValueError('Every changed file must belong to a LOW leaf')
                 decision.plan = [PlanStep.model_validate(step) for step in normalized]
             elif decision.plan:
                 raise ValueError('Only a delivery has an executable plan')
@@ -428,8 +437,8 @@ class AIRuns:
                  'with the proposed changes already applied. Inspect changes.patch, the source, and bounty.json; '
                  'install the declared prerequisites, then perform the local verification below. '
                  'No build or tests have been run by the API agent. Report actual results before calling the fix verified.\n\n'
-                 'Only SMALL plan leaves may produce Git commits. Validate implementation-plan.json with '
-                 'python tools/complexity.py validate --plan implementation-plan.json. Then stage only one SMALL leaf\'s '
+                 'Only LOW plan leaves may produce Git commits. Validate implementation-plan.json with '
+                 'python tools/complexity.py validate --plan implementation-plan.json. Then stage only one LOW leaf\'s '
                  'declared files and use python tools/complexity.py commit --plan implementation-plan.json --step <id> '
                  '--repository <checkout> --message <message>. Never commit a HIGH or MEDIUM parent. '
                  'Legacy ZIPs without a valid plan require decomposition before any commit.\n\n'
@@ -445,7 +454,7 @@ class AIRuns:
             store('bounty.json', encode({key: task[key] for key in ('id', 'parent_id', 'title', 'goal', 'criteria', 'repository', 'context_links')} |
                 {'developer_context': row['data']['context']}))
             store('changes.patch', ''.join(patch))
-            store('implementation-plan.json', encode({'steps': result.get('plan', [])}))
+            store('implementation-plan.json', encode({'steps': archived_plan(result.get('plan', []))}))
             store('tools/complexity.py', Path(__file__).with_name('complexity.py').read_bytes())
             store('history.json', encode({'run': self.public(row), 'events': task['events']}))
             for path, content in files.items():

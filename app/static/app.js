@@ -271,7 +271,7 @@ async function aiSection(data, detail) {
     if (ai.result) box.append(element('p', ai.result.summary, 'content'));
     if (ai.result?.plan?.length) {
       const plan = element('details', undefined, 'complexity-plan'); plan.open = true;
-      plan.append(element('summary', 'Implementation plan · only SMALL leaves can commit'));
+      plan.append(element('summary', 'Implementation plan · only LOW leaves can commit'));
       const render = steps => {
         const list = element('ul');
         for (const step of steps) {
