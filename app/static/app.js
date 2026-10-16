@@ -263,8 +263,10 @@ async function aiSection(data, detail) {
   if (!data.ai_run && (!data.legacy || data.events.some(event => event.kind === 'reopened')) && ['open', 'working', 'blocked'].includes(data.status)
       && (!data.claimant || data.claimant === user) && (!data.target || data.target === user)) {
     box.append(element('p', data.complexity === 'LOW'
-      ? 'Luna investigates the supplied evidence and prepares the minimal fix. It can ask up to three questions.'
-      : `Luna researches this ${data.complexity} bounty and proposes child bounties. You must approve the complete valid set before any are created. The parent is not completed by decomposition.`));
+      ? (data.work_type === 'verification'
+        ? 'Verification-only LOW: Luna prepares evidence for human review, not source changes or a commit. It does not run checks.'
+        : 'Implementation LOW: Luna prepares one minimal change for one managed commit. Local verification is required.')
+      : `Rule of three: Luna researches this ${data.complexity} bounty and proposes exactly three criterion-covered children. You must approve the complete set. Decomposition does not complete the parent.`));
     const form = element('form');
     const label = element('label', 'Additional context'); const context = element('textarea'); label.append(context); form.append(label);
     const source = sourceInput(form);
@@ -278,6 +280,7 @@ async function aiSection(data, detail) {
     box.append(element('span', ai.status.replaceAll('_', ' '), 'pill'),
       element('p', `${ai.model} · ${ai.question_count}/3 questions · ${usage.api_calls} API calls · ${usage.input_tokens} input / ${usage.output_tokens} output tokens · ${(usage.elapsed_ms / 1000).toFixed(1)}s`));
     if (ai.result) box.append(element('p', ai.result.summary, 'content'));
+    if (ai.result?.action === 'evidence') box.append(element('p', 'Verification-only LOW · prepared evidence, no source patch or forced commit. The API agent has not executed checks. Human verification is still required.'));
     if (ai.result?.plan?.length) {
       const plan = element('details', undefined, 'complexity-plan'); plan.open = true;
       plan.append(element('summary', 'Implementation plan · only LOW leaves can commit'));
@@ -308,7 +311,7 @@ async function aiSection(data, detail) {
       box.append(form);
     }
     if (ai.download_url) {
-      const button = element('button', 'Download fix ZIP', 'primary');
+      const button = element('button', ai.result.action === 'evidence' ? 'Download evidence ZIP' : 'Download fix ZIP', 'primary');
       button.onclick = () => run(async () => {
         const response = await fetch(ai.download_url, {headers: {'X-Demo-User': user}});
         if (!response.ok) throw new Error('Could not download the fix ZIP.');
@@ -328,13 +331,21 @@ async function aiSection(data, detail) {
       box.append(element('h3', 'Proposed child bounties · awaiting your approval'),
         element('p', 'No child tickets exist yet. Approve the complete set to preserve the complexity rule. The parent remains unresolved until its acceptance criteria are verified.'));
       const form = element('form'); const choices = [];
+      const covered = new Set(ai.result.proposals.flatMap(proposal => proposal.parent_criteria || []));
+      const currentContract = ai.result.proposals.length === 3 && ai.result.why_three?.trim()
+        && data.criteria.every((_, index) => covered.has(index))
+        && ai.result.proposals.every(proposal => proposal.work_type && proposal.parent_criteria?.length);
+      if (ai.result.why_three) form.append(element('p', `Why these three: ${ai.result.why_three}`));
+      if (!currentContract) form.append(element('p', 'Preserved draft: this set needs a refreshed review with work types, parent-criterion coverage and a three-way rationale before approval. No tickets were created.'));
       ai.result.proposals.forEach((proposal, index) => {
         const card = element('div', undefined, 'evidence'); const label = element('label', `${proposal.complexity} · ${proposal.title}`);
         const choice = element('input'); choice.type = 'checkbox'; choice.value = index; label.prepend(choice); card.append(label, element('p', proposal.goal));
+        if (proposal.work_type) card.append(element('small', `${proposal.work_type} · parent criteria ${(proposal.parent_criteria || []).map(index => index + 1).join(', ')}`));
         const checks = element('ul'); proposal.criteria.forEach(text => checks.append(element('li', text))); card.append(checks); form.append(card); choices.push(choice);
       });
       if (owner) {
-        form.append(element('button', `Approve all ${ai.result.proposals.length} child bounties`, 'primary'));
+        const approve = element('button', `Approve all ${ai.result.proposals.length} child bounties`, 'primary'); approve.disabled = !currentContract;
+        form.append(approve);
         form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/ai/confirm-followups`, {indices: choices.filter(c => c.checked).map(c => Number(c.value))})); };
       } else choices.forEach(choice => { choice.disabled = true; });
       box.append(form);
@@ -381,7 +392,7 @@ $('post-form').onsubmit = e => {
     const form = new FormData(e.target);
     const lines = name => form.get(name).split('\n').map(s => s.trim()).filter(Boolean);
     const result = await mutate('/bounties', {title: form.get('title'), goal: form.get('goal'), criteria: lines('criteria'),
-      repository: form.get('repository'), context_links: lines('context_links'), complexity: form.get('complexity'), gold: Number(form.get('gold')), target: form.get('target') || null,
+      repository: form.get('repository'), context_links: lines('context_links'), complexity: form.get('complexity'), work_type: form.get('work_type'), gold: Number(form.get('gold')), target: form.get('target') || null,
       source_zip: await postSourceZip()});
     if (result) e.target.reset();
   });

@@ -102,7 +102,7 @@ criteria and run history. Drop it into a fresh Codex chat for local verification
 Use **Confirm locally verified** with evidence to close the task. Generated test
 commands are explicitly unexecuted until the developer runs them.
 
-Complexity is enforced in the engine: **HIGH → either 2+ HIGHs or exactly 3 MEDIUMs;
+Complexity is enforced in the engine: **HIGH → exactly 3 HIGHs or exactly 3 MEDIUMs;
 MEDIUM → exactly 3 LOWs**. HIGH cannot mix child levels, and its descendants must
 eventually reach LOW. Only HIGH/MEDIUM/LOW are valid labels. A LOW root is valid; filler tasks
 are not. Invalid or missing delivery plans cannot publish a fix. The hierarchy is
@@ -117,7 +117,27 @@ python app/complexity.py commit --plan implementation-plan.json --step <low-id> 
 The gate checks the full decomposition and rejects parent commits or staged files
 outside the selected leaf, then records its ID and plan fingerprint in the commit.
 This governs the engine/executor workflow, not arbitrary Git commands elsewhere;
-no global Git hook is installed. Decomposition alone never publishes new bounties.
+no global Git hook is installed. Each implementation leaf/immutable plan fingerprint
+can produce one managed commit; existing receipts are checked across local refs,
+and managed commits are serialized. Verification leaves cannot commit. Rewriting
+history or changing the approved plan to evade receipts is not permitted; this
+guard is not enforcement over arbitrary Git clients. Decomposition alone never publishes new bounties.
+
+Three is the design primitive, not a quota for filler. Every proposal set must
+explain `why_three`, give each child a `work_type` (`implementation` or `verification`)
+and zero-based `parent_criteria`, and cover all parent criteria. Review prior
+evidence and existing prerequisites before proposing work. Facts, safety, human
+decisions and the at-most-three question budget are not overridden by this rule.
+The engine checks structure and coverage; humans still review semantic boundaries.
+
+Implementation LOWs deliver exactly one executable LOW plan leaf and a minimal
+patch. Verification LOWs use the separate `evidence` outcome: report files under
+`evidence/` (.md/.txt/.json/.csv), proposed checks and review instructions, no
+patch, executable plan or forced commit. Prepared evidence is downloadable before
+human confirmation, but never means checks ran or acceptance was granted. Both
+outcomes remain ready for explicit human verification; no reward is issued by AI.
+Existing history and drafts are not rewritten. Older proposal sets lacking the
+current rationale/type/coverage contract remain inspectable but fail approval.
 
 HIGH/MEDIUM bounties cannot deliver implementations. Luna processes the original
 requirements, attached fresh-session responses, provenance, and current support

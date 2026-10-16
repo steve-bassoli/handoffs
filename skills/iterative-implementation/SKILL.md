@@ -20,16 +20,28 @@ that do not provide the narrowest evidence for a criterion.
 ## Complexity gate
 
 Use HIGH, MEDIUM, and LOW only; retired labels are invalid, not aliases.
-Every HIGH must have either 2+ HIGH children or exactly 3 MEDIUM children,
+Every HIGH must have exactly 3 HIGH children or exactly 3 MEDIUM children,
 never a mixture. HIGH descendants must eventually decompose to MEDIUM and LOW;
 do not evade decomposition through an unbounded chain of HIGHs. Every MEDIUM
 must have exactly 3 LOW children. LOW is a leaf: no children. Only LOW is
-executable and only LOW can result in a Git commit. A genuinely LOW task can be a root.
+executable. An implementation LOW owns one minimal managed commit; a
+verification LOW produces auditable evidence, not a forced commit. A genuinely
+LOW task can be a root.
 Do not pad with fake tasks or relabel work to bypass decomposition. If three
-meaningful children cannot be defined, ask the human; do not execute the parent.
+meaningful children cannot be defined, reconsider the boundary or classification.
+Ask only for genuinely missing information; do not execute the parent.
+
+Three is the development design primitive: explore three meaningful alternatives
+when a design choice is needed, then choose the smallest grounded boundary.
+Explain why the selected three responsibilities cover the parent, map each child
+to parent criterion indexes, and preserve dependencies and existing prerequisite
+task references. Do not duplicate work already satisfied by retained evidence.
+Three never overrides facts, safety, approval requirements, or the question budget.
 
 Retain a JSON plan with `steps`; each item has a unique `id`, bounded `title`,
-`complexity`, `files` (exact relative paths, LOW only), and `children`. Retain
+`complexity`, `files` (exact relative paths, implementation LOW only), and `children`.
+LOW items declare `work_type`: `implementation` or `verification`; verification
+leaves have empty commit files. Retain
 criterion mapping and implementation/validation notes on the same items. Run
 `python scripts/complexity.py validate --plan <plan-file>` before execution.
 This replaces the previous easy/medium-only and automatic HIGH-bounty rule.
@@ -54,7 +66,9 @@ included in the commit body, but it does not replace the retained artifacts.
 
 ## Execution
 
-1. Implement the earliest open LOW leaf only, retaining its parent links.
+1. Execute the earliest ready LOW leaf only, retaining its parent links and
+   respecting human-only decisions. Implement its minimal change or prepare its
+   evidence artifact according to `work_type`.
 2. Run its narrow validation and record `done`, `blocked`, or `skipped` with a
    short evidence note.
 3. Continue only as permitted by the caller:
@@ -63,13 +77,20 @@ included in the commit body, but it does not replace the retained artifacts.
      the next item without asking the parent between items.
 4. Before committing, compare every changed line with the plan and acceptance
    criteria. Remove any change that is not required.
-5. Stage only that LOW leaf's declared files. Commit only its minimal change
+5. For implementation only, stage that LOW leaf's declared files. Commit its minimal change
    and necessary focused tests through the managed gate:
    `python scripts/complexity.py commit --plan <plan-file> --step <low-id>
    --repository <checkout> --message <subject>`. Never use direct `git commit`
    to bypass this workflow. The gate rejects parents, malformed trees, and
-   staged files outside the selected leaf, and records the leaf/plan fingerprint.
-   It does not install a global Git hook or grant publication permissions.
+   staged files outside the selected leaf, verification leaves, and repeat commits
+   for the same leaf/plan fingerprint. It records that receipt and serializes
+   managed commits. Keep the approved plan immutable; changing it to evade a
+   receipt is prohibited. This is not a global Git hook or publication permission.
+
+For verification-only work, retain source locators, exact checks, observed results
+and unexecuted commands separately. An API-generated report is prepared evidence,
+not proof that tests ran or that a human accepted it. No filler commits or invented
+passes. Parent completion still requires integrated acceptance evidence.
 
 Do not add defensive behavior merely because it is easy or prudent. If a
 material decision is missing, stop with one concise question instead of
