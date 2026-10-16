@@ -112,8 +112,8 @@ class Service:
         bounty['work_type'] = next((event['data']['work_type'] for event in reversed(events)
                                    if event['data'].get('work_type') in ('implementation', 'verification')), 'implementation')
         bounty['claimant'] = next((e['actor'] for e in reversed(events) if e['kind'] == 'taken'), None)
-        bounty['completed_by'] = next((e['actor'] for e in reversed(events)
-                                      if e['kind'] in ('legacy:completed', 'locally_verified')), None)
+        bounty['completed_by'] = next((e['data'].get('worker', e['actor']) for e in reversed(events)
+                                      if e['kind'] in ('legacy:completed', 'locally_verified', 'proof_completed')), None)
         bounty['events'] = events
         bounty['profile'] = profile(events)
         bounty['depends_on'] = dependencies(events)
@@ -133,6 +133,8 @@ class Service:
             bounty['ai_run'] = ai.public(row)
         else:
             bounty['ai_run'] = None
+        if getattr(self, 'proofs', None):
+            self.proofs.project(c, bounty)
         return bounty
 
     def get(self, bounty_id):
@@ -283,6 +285,8 @@ class Service:
         if bounty['status'] not in ('working', 'blocked'):
             raise RuleError('Bounty is not in progress')
         verification = self.verifier.verify(payload['pr_url'])
+        if verification['verified']:
+            self.proofs.require(c, bounty)
         delivery_id = str(uuid4())
         c.exec_driver_sql('INSERT INTO deliveries VALUES (?,?,?,?,?,?,?)',
                           (delivery_id, bounty['id'], actor, payload['pr_url'], payload['evidence'], int(verification['simulated']), now()))
@@ -299,8 +303,9 @@ class Service:
         delivered = next(e for e in reversed(bounty['events']) if e['kind'] == 'delivered')
         if not delivered['data']['verification']['verified']:
             raise RuleError('Delivery is not verified')
+        receipt = self.proofs.require(c, bounty)
         self.transfer(c, 'escrow:' + bounty_id, 'wallet:' + bounty['claimant'], bounty['gold'], 'bounty_paid', bounty_id)
-        self.event(c, bounty_id, 'paid', actor, 'settled', {'delivery_id': delivered['data']['delivery_id']})
+        self.event(c, bounty_id, 'paid', actor, 'settled', {'delivery_id': delivered['data']['delivery_id'], **receipt})
 
     def do_settle(self, c, actor, payload):
         bounty = self.detail(c, payload['id'])
@@ -345,6 +350,18 @@ class Service:
 
     def do_ai_complete(self, c, actor, payload):
         return self.ai.complete(c, actor, payload)
+
+    def do_ai_proof_attach(self, c, actor, payload):
+        return self.proofs.attach(c, actor, payload)
+
+    def do_ai_proof_queue(self, c, actor, payload):
+        return self.proofs.queue(c, actor, payload['id'])
+
+    def do_ai_proof_human(self, c, actor, payload):
+        return self.proofs.human(c, actor, payload)
+
+    def do_ai_proof_complete(self, c, actor, payload):
+        return self.proofs.complete(c, actor, payload)
 
     def lineage(self, bounty_id):
         with self.db.engine.connect() as c:

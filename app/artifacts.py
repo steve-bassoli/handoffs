@@ -1,5 +1,6 @@
 """Read-only downloads of the information actually stored with a bounty."""
 import hashlib
+import base64
 import io
 import json
 import zipfile
@@ -15,7 +16,7 @@ def files_for(service, bounty_id):
         files = {'bounty.json': encode({key: value for key, value in task.items()
                  if key not in ('events', 'deliveries', 'legacy', 'ai_run')}),
                  'history.json': encode([{**event, 'data': {key: value for key, value in event['data'].items()
-                     if key not in ('files', 'source_files')} | {'attached_file_sha256': {
+                     if key not in ('files', 'source_files', 'content_base64')} | {'attached_file_sha256': {
                          path: hashlib.sha256(content.encode()).hexdigest()
                          for path, content in (event['data'].get('files') or event['data'].get('source_files') or {}).items()}}}
                      for event in task['events']]), 'deliveries.json': encode(task['deliveries']),
@@ -23,6 +24,9 @@ def files_for(service, bounty_id):
                      + '\n'.join('- ' + criterion for criterion in task['criteria'])}
         references = ([task['repository']] if task['repository'] else []) + task['context_links']
         for event in task['events']:
+            if event['kind'] == 'proof_attached':
+                record = event['data']
+                files[f"proofs/{record['proof_id']}/{record['filename']}"] = base64.b64decode(record['content_base64'])
             for path, content in event['data'].get('source_files', {}).items():
                 files['posted-source/' + path] = content
             if event['kind'] == 'package_attached':
@@ -70,7 +74,7 @@ def files_for(service, bounty_id):
     missing = []
     if not task['criteria']:
         missing.append('Acceptance criteria are not structured; review context.md and clarify before implementing.')
-    if not source_paths:
+    if not source_paths and task['work_type'] != 'verification':
         missing.append('No implementation/source files are attached. Referenced repositories are not embedded.')
     readiness = {'status': 'needs_context' if missing else 'review_required', 'missing': missing,
                  'source_file_count': len(source_paths), 'criteria_count': len(task['criteria']),

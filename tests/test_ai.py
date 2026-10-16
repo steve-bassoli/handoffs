@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from app.ai import Decision, Luna, archived_plan, read_source
 from app.main import create_app
 from app.services import RuleError
-from conftest import post_bounty, write
+from conftest import post_bounty, verified_proof, write
 
 
 def source_zip(files=None):
@@ -80,7 +80,8 @@ def test_questions_answers_zip_and_idempotency(tmp_path):
         assert client.get(f'/api/v1/bounties/{bounty}/ai/artifact').content == result.content
         assert client.get(f'/api/v1/bounties/{bounty}').json()['status'] == 'delivered'
         assert write(client, f'/bounties/{bounty}/ai/complete', {'evidence': 'Local checks passed'}, 'nate').status_code == 403
-        assert write(client, f'/bounties/{bounty}/ai/complete', {'evidence': 'Local checks passed'}, key='verified').json()['status'] == 'completed'
+        verified_proof(client, bounty)
+        assert write(client, f'/bounties/{bounty}/ai/complete', {'evidence': 'Local checks passed'}, key='verified').json()['phase'] == 'Closed'
         assert client.get(f'/api/v1/bounties/{bounty}/ai/artifact').status_code == 200
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as restarted:
         assert get_run(restarted, bounty)['status'] == 'completed'

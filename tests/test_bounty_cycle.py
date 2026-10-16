@@ -1,4 +1,4 @@
-from conftest import post_bounty, write
+from conftest import post_bounty, verified_proof, write
 
 from fastapi.testclient import TestClient
 from app.main import create_app
@@ -7,6 +7,7 @@ from app.main import create_app
 def test_earn_and_repost_with_no_double_payment(client):
     bounty = post_bounty(client).json()['id']
     assert write(client, f'/bounties/{bounty}/take', user='nate').status_code == 200
+    verified_proof(client, bounty, 'nate')
     payload = {'pr_url': 'https://github.com/example/source/pull/1', 'evidence': 'Criteria demonstrated'}
     result = write(client, f'/bounties/{bounty}/deliveries', payload, 'nate', 'delivery-once')
     assert result.status_code == 200
@@ -44,6 +45,7 @@ def test_cycle_survives_service_restart(tmp_path):
     with TestClient(create_app(path)) as first:
         bounty = post_bounty(first).json()['id']
         write(first, f'/bounties/{bounty}/take', user='nate')
+        verified_proof(first, bounty, 'nate')
     with TestClient(create_app(path)) as restarted:
         result = write(restarted, f'/bounties/{bounty}/deliveries',
                        {'pr_url': 'https://github.com/example/source/pull/3', 'evidence': 'After restart'}, 'nate')

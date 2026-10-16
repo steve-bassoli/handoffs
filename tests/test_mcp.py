@@ -4,12 +4,19 @@ import socket
 import subprocess
 import sys
 import time
+from pathlib import Path
 from contextlib import asynccontextmanager
 
 import httpx
 import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from conftest import FixtureProofReviewer, verified_proof
+from app.main import create_app
+
+
+def fixture_app():
+    return create_app(proof_reviewer=FixtureProofReviewer())
 
 
 @pytest.fixture
@@ -18,8 +25,9 @@ def live_api(tmp_path):
         socket_.bind(('127.0.0.1', 0))
         port = socket_.getsockname()[1]
     url = f'http://127.0.0.1:{port}'
-    environment = {**os.environ, 'HANDOFFS_DB': str(tmp_path / 'isolated.sqlite')}
-    process = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', str(port)],
+    environment = {**os.environ, 'HANDOFFS_DB': str(tmp_path / 'isolated.sqlite'),
+                   'PYTHONPATH': str(Path(__file__).parent.resolve()) + os.pathsep + os.environ.get('PYTHONPATH', '')}
+    process = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'test_mcp:fixture_app', '--factory', '--host', '127.0.0.1', '--port', str(port)],
                                cwd=tmp_path, env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _ in range(100):
@@ -68,7 +76,7 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             assert 'operation_id' in tools['post_bounty'].inputSchema['required']
             assert (await call(requester, 'get_my_stats'))['available_gold'] == 1000
             arguments = {'title': 'MCP-only fixture bounty', 'goal': 'Prove the bridge',
-                         'criteria': ['Return PR evidence'], 'gold': 150, 'operation_id': 'fund-once'}
+                         'criteria': ['Return PR evidence'], 'gold': 150, 'operation_id': 'fund-once', 'complexity': 'LOW'}
             bounty = await call(requester, 'post_bounty', arguments)
             assert (await call(requester, 'post_bounty', arguments))['id'] == bounty['id']
             assert len((await call(worker, 'list_bounties'))['items']) == 1
@@ -76,6 +84,8 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             wrong_actor = await requester.call_tool('take_bounty', {'bounty_id': bounty['id'], 'operation_id': 'self-claim'})
             assert wrong_actor.isError and '403' in wrong_actor.content[0].text
             assert (await call(worker, 'take_bounty', {'bounty_id': bounty['id'], 'operation_id': 'take-once'}))['claimant'] == 'nate'
+            with httpx.Client(base_url=live_api) as fixture_client:
+                verified_proof(fixture_client, bounty['id'], 'nate')
             delivery = {'bounty_id': bounty['id'], 'pr_url': 'https://github.com/example/source/pull/18',
                         'evidence': 'MCP fixture proof; no real PR created', 'operation_id': 'deliver-once'}
             paid = await call(worker, 'deliver_pr', delivery)

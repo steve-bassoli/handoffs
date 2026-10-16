@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.storage import one
-from conftest import write
+from conftest import verified_proof, write
 from test_ai import FakeLuna, decision, get_run, source_zip
 
 
@@ -42,7 +42,8 @@ def test_verification_low_delivers_report_without_patch_commit_or_automatic_acce
         with client.app.state.service.db.engine.connect() as c:
             assert one(c, 'SELECT COUNT(*) AS n FROM gold_transactions')['n'] == transactions
         assert write(client, f'/bounties/{bounty}/ai/complete', {'evidence': 'Unapproved'}, 'nate').status_code == 403
-        assert write(client, f'/bounties/{bounty}/ai/complete', {'evidence': 'Human reviewed the actual isolated results.'}).json()['status'] == 'completed'
+        verified_proof(client, bounty)
+        assert write(client, f'/bounties/{bounty}/ai/complete', {'evidence': 'Human reviewed the actual isolated results.'}).json()['phase'] == 'Closed'
     with TestClient(create_app(database, ai_model=model)) as client:
         assert get_run(client, bounty)['status'] == 'completed'
         assert client.get(f'/api/v1/bounties/{bounty}/ai/artifact').content != b''

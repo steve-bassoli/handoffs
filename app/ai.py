@@ -494,11 +494,7 @@ class AIRuns:
             raise RuleError('Only the AI run owner can record local verification', 403)
         if row['status'] != 'ready':
             raise RuleError('Only a ready fix can receive local verification')
-        row['status'] = 'completed'
-        self.save(c, row)
-        self.service.event(c, payload['id'], 'locally_verified', actor, 'completed',
-                           {'run_id': row['id'], 'note': payload['evidence'], 'verification_source': 'human_report'})
-        return self.service.detail(c, payload['id'])
+        return self.service.proofs.complete(c, actor, {'id': payload['id'], 'note': payload['evidence']})
 
     def artifact(self, bounty_id):
         with self.db.engine.connect() as c:

@@ -15,6 +15,9 @@ from app.storage import Database
 from app.ai import AIRuns, Luna
 from app.artifacts import download, inventory
 from app.workflow import Profile
+from app.proofs import Proofs, ProofUpload
+from app.proof_reviewer import ProofReviewer
+from app.gremlins import Comparison, compare, sabotage, witness
 
 
 class PostBounty(BaseModel):
@@ -80,7 +83,16 @@ class EvidencePackage(BaseModel):
     note: str = Field(default='', max_length=2000)
 
 
-def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=None):
+class HumanProof(BaseModel):
+    accepted: bool
+    note: str = Field(min_length=1, max_length=4000)
+
+
+class CompleteProof(BaseModel):
+    note: str = Field(min_length=1, max_length=4000)
+
+
+def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=None, proof_reviewer=None):
     @asynccontextmanager
     async def lifespan(app):
         path = database or os.environ.get('HANDOFFS_DB', str(Path('.data/handoffs.sqlite').resolve()))
@@ -89,7 +101,9 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         service = Service(db, verifier or DemoDeliveryVerifier(), clock, grant)
         service.seed()
         service.ai = AIRuns(service, ai_model or Luna())
+        service.proofs = Proofs(service, proof_reviewer or ProofReviewer())
         service.ai.recover()
+        service.proofs.recover()
         app.state.service = service
         try:
             yield
@@ -114,6 +128,13 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         from app.storage import all_rows
         with request.app.state.service.db.engine.connect() as c:
             return all_rows(c, 'SELECT * FROM users ORDER BY id')
+
+    @app.post('/api/v1/gremlins/{breed}')
+    def gremlins(breed: Literal['mimic', 'saboteur', 'witness'], payload: Comparison, user=Depends(actor)):
+        try:
+            return {'mimic': compare, 'saboteur': sabotage, 'witness': witness}[breed](payload.model_dump())
+        except ValueError:
+            raise RuleError('Use a focused synthetic comparison; Saboteur requires a passing baseline', 422) from None
 
     @app.get('/api/v1/me')
     def me(request: Request, user=Depends(actor)):
@@ -234,6 +255,40 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     @app.get('/api/v1/bounties/{bounty_id}/constellation')
     def graph(bounty_id: str, request: Request, user=Depends(actor)):
         return request.app.state.service.constellation(bounty_id)
+
+    @app.post('/api/v1/bounties/{bounty_id}/proofs')
+    def attach_proof(bounty_id: str, payload: ProofUpload, request: Request, user=Depends(actor),
+                     idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'ai_proof_attach', {'id': bounty_id, **payload.model_dump()})
+
+    @app.get('/api/v1/bounties/{bounty_id}/proofs/{proof_id}')
+    def proof_file(bounty_id: str, proof_id: str, request: Request, user=Depends(actor)):
+        task = request.app.state.service.get(bounty_id)
+        record = next((event['data'] for event in task['events'] if event['kind'] == 'proof_attached' and event['data']['proof_id'] == proof_id), None)
+        if not record:
+            raise RuleError('Proof artifact not found', 404)
+        import base64
+        return Response(base64.b64decode(record['content_base64']), media_type=record['media_type'],
+            headers={'Content-Disposition': "attachment; filename*=UTF-8''" + quote(record['filename'], safe=''),
+                     'X-Content-Type-Options': 'nosniff'})
+
+    @app.post('/api/v1/bounties/{bounty_id}/proof-review')
+    def review_proof(bounty_id: str, request: Request, background: BackgroundTasks, user=Depends(actor),
+                     idempotency_key: str = Header(min_length=1, max_length=200)):
+        service = request.app.state.service
+        result = service.execute(user, idempotency_key, 'ai_proof_queue', {'id': bounty_id})
+        background.add_task(service.proofs.run, bounty_id, result['proof']['review']['review_id'])
+        return result
+
+    @app.post('/api/v1/bounties/{bounty_id}/proof-human')
+    def verify_proof(bounty_id: str, payload: HumanProof, request: Request, user=Depends(actor),
+                     idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'ai_proof_human', {'id': bounty_id, **payload.model_dump()})
+
+    @app.post('/api/v1/bounties/{bounty_id}/complete')
+    def complete_proof(bounty_id: str, payload: CompleteProof, request: Request, user=Depends(actor),
+                       idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'ai_proof_complete', {'id': bounty_id, **payload.model_dump()})
 
     @app.post('/api/v1/bounties/{bounty_id}/profile')
     def profile(bounty_id: str, payload: Profile, request: Request, user=Depends(actor),
