@@ -1,9 +1,11 @@
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'NamedClients')]
 param(
     [Parameter(Mandatory)]
     [string]$ListenAddress,
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory, ParameterSetName = 'NamedClients')]
     [string[]]$AllowedClientAddress,
+    [Parameter(Mandatory, ParameterSetName = 'NetworkClients')]
+    [switch]$AllowNetworkClients,
     [ValidateRange(1024, 65535)]
     [int]$Port = 8000
 )
@@ -27,11 +29,18 @@ function Test-PrivateIPv4 {
 if (-not (Test-PrivateIPv4 $ListenAddress)) {
     throw 'ListenAddress must be one exact private IPv4 address on the team LAN/VPN.'
 }
-if ($AllowedClientAddress.Count -eq 0) { throw 'At least one exact client address is required.' }
-foreach ($address in $AllowedClientAddress) {
-    if (-not (Test-PrivateIPv4 $address)) {
-        throw 'AllowedClientAddress entries must be exact private IPv4 addresses; no ranges or wildcards.'
+if ($AllowNetworkClients) {
+    $remoteAddresses = @('Any')
+    Write-Warning 'All clients able to reach this private interface can impersonate demo users and spend their Gold.'
+}
+else {
+    if ($AllowedClientAddress.Count -eq 0) { throw 'At least one exact client address is required.' }
+    foreach ($address in $AllowedClientAddress) {
+        if (-not (Test-PrivateIPv4 $address)) {
+            throw 'AllowedClientAddress entries must be exact private IPv4 addresses; no ranges or wildcards.'
+        }
     }
+    $remoteAddresses = $AllowedClientAddress
 }
 
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -61,10 +70,10 @@ try {
     $env:HANDOFFS_DB = Join-Path $projectRoot '.data\handoffs.sqlite'
     New-NetFirewallRule -Name $ruleName -DisplayName 'HANDOFFS private team demo' `
         -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port `
-        -LocalAddress $ListenAddress -RemoteAddress $AllowedClientAddress `
+        -LocalAddress $ListenAddress -RemoteAddress $remoteAddresses `
         -InterfaceAlias $localAddress[0].InterfaceAlias -Profile Any | Out-Null
     $ruleCreated = $true
-    Write-Host "Team demo: http://${ListenAddress}:$Port (mock identity; selected clients only)."
+    Write-Host "Team demo: http://${ListenAddress}:$Port (mock identity; client scope: $remoteAddresses)."
     Write-Host 'Keep this terminal open. Ctrl+C stops the server and removes its firewall rule.'
     & $python -m uvicorn app.main:app --host $ListenAddress --port $Port
     if ($LASTEXITCODE -ne 0) { throw "HANDOFFS server exited with code $LASTEXITCODE." }

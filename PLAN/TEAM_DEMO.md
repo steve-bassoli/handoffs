@@ -1,6 +1,6 @@
 # Private team demo
 
-This is a temporary laptop-hosted demo, not production deployment. Mock users can impersonate one another and PR verification is simulated. Allow only trusted participants. Do not expose this service to the public Internet, create a public tunnel or change company network policy to make it reachable.
+This is a temporary laptop-hosted demo, not production deployment. Mock users can impersonate one another and PR verification is simulated. Default to named trusted participants; the owner can explicitly opt into all reachable clients on the selected private interface. Do not expose this service to the public Internet, create a public tunnel or change company network policy to make it reachable.
 
 ## Host setup
 
@@ -13,7 +13,9 @@ Set-Location C:\hackathon\handoffs
 .\scripts\start-team-demo.ps1 -ListenAddress '10.20.30.40' -AllowedClientAddress @('10.20.30.41', '10.20.30.42')
 ```
 
-The script binds only the selected address, permits only those client addresses on that interface/port and reuses this checkout's `.data/handoffs.sqlite`. The loopback server can remain running. Keep the terminal open and laptop awake. Ctrl+C runs cleanup of the named firewall rule. If the shell is forcibly terminated, inspect and remove the remaining rule with `Remove-NetFirewallRule -Name HANDOFFS-Team-Demo-8000` in an elevated terminal. Do not disable the firewall. VPN address changes require stopping and restarting with current addresses.
+To allow anyone who can reach the selected private interface, replace `-AllowedClientAddress ...` with `-AllowNetworkClients`. This explicitly removes the per-person allowlist; it does not enable Internet routing, and company VPN policy may still block peers. All reachable clients can modify demo work and impersonate users.
+
+The script binds only the selected address, scopes the firewall rule to that interface/port and reuses this checkout's `.data/handoffs.sqlite`. The loopback server can remain running. Keep the terminal open and laptop awake. Ctrl+C runs cleanup of the named firewall rule. If the shell is forcibly terminated, inspect and remove the remaining rule with `Remove-NetFirewallRule -Name HANDOFFS-Team-Demo-8000` in an elevated terminal. Do not disable the firewall. VPN address changes require stopping and restarting with current addresses.
 
 ## Nate and Will
 

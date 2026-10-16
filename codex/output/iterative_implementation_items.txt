@@ -270,9 +270,9 @@ criterion: Nate and Will can reach the same persistent HANDOFFS service from the
 objective: Activate and verify private team access.
 source: PLAN/TEAM_DEMO.md
 target: selected host listener/firewall; participant connection settings; status evidence
-implementation: Obtain participant VPN addresses, activate the scoped launcher, verify remote health and common bounty IDs, then verify an explicitly authorized two-user cycle.
+implementation: Activate the scoped launcher using named client IPs or the owner's explicit all-network-clients opt-in, verify remote health and common bounty IDs, then verify an explicitly authorized two-user cycle.
 complexity: medium
 validation: Each participant confirms remote health/board and native MCP discovery; host-only tests are insufficient.
 exclusions: No bypass of corporate VPN isolation, repository invitations or teammate messaging without authorization.
-depends_on: HF-21; participant addresses and reachable company-network route
-status: blocked
+depends_on: HF-21; administrator elevation and reachable company-network route
+status: in progress
