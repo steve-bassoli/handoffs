@@ -95,11 +95,14 @@ def post_bounty(
     repository: str = '',
     context_links: list[str] | None = None,
     target: str | None = None,
+    complexity: Literal['HIGH', 'MEDIUM', 'LOW'] = 'HIGH',
+    work_type: Literal['implementation', 'verification'] = 'implementation',
 ) -> dict[str, Any]:
     """On explicit request, post a bounty and reserve the user's Gold. Retain operation_id for an identical retry."""
     return request('POST', '/bounties', operation_id=operation_id, body={
         'title': title, 'goal': goal, 'criteria': criteria, 'gold': gold,
         'repository': repository, 'context_links': context_links or [], 'target': target,
+        'complexity': complexity, 'work_type': work_type,
     })
 
 
