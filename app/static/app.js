@@ -13,14 +13,23 @@ function message(text, error = false) { $('notice').textContent = text; $('notic
 async function run(operation) {
   try { await operation(); } catch (error) { message(error.message, true); }
 }
+function requestCacheKey(value) {
+  // Cache routing only, not an integrity hash. The server checks the full SHA-256.
+  let a = 2166136261, b = 2246822519;
+  for (let index = 0; index < value.length; index++) {
+    a = Math.imul(a ^ value.charCodeAt(index), 16777619);
+    b = Math.imul(b ^ value.charCodeAt(index), 3266489917);
+  }
+  return `handoffs-request:${value.length}:${a >>> 0}:${b >>> 0}`;
+}
 async function api(path, body) {
   const headers = {'X-Demo-User': user};
   const options = {headers};
   let operation;
   if (body !== undefined) {
-    operation = JSON.stringify([user, path, body]);
+    operation = requestCacheKey(JSON.stringify([user, path, body]));
     let key = sessionStorage.getItem(operation);
-    if (!key) { key = crypto.randomUUID(); sessionStorage.setItem(operation, key); }
+    if (!key) { key = Array.from(crypto.getRandomValues(new Uint32Array(4)), n => n.toString(16)).join('-'); sessionStorage.setItem(operation, key); }
     headers['Idempotency-Key'] = key;
     headers['Content-Type'] = 'application/json';
     options.method = 'POST'; options.body = JSON.stringify(body);
@@ -72,6 +81,7 @@ async function transactions() {
 async function navigate(nextView) {
   clearTimeout(aiPoll);
   view = nextView; selected = null;
+  history.replaceState(null, '', location.pathname + location.search);
   for (const id of ['board', 'post', 'wallet', 'detail']) $(id).hidden = true;
   for (const button of document.querySelectorAll('nav button')) button.classList.toggle('selected', button.dataset.view === view);
   await stats();
@@ -97,6 +107,7 @@ async function show(id) {
   clearTimeout(aiPoll);
   const data = await api('/bounties/' + encodeURIComponent(id));
   selected = id;
+  history.replaceState(null, '', '#bounty=' + encodeURIComponent(id));
   for (const section of ['board', 'post', 'wallet']) $(section).hidden = true;
   const detail = $('detail'); detail.hidden = false; detail.replaceChildren();
   const back = element('button', '← Back to board'); back.onclick = () => run(() => navigate('open'));
@@ -107,8 +118,8 @@ async function show(id) {
   const criteria = element('ul'); data.criteria.forEach(text => criteria.append(element('li', text))); detail.append(criteria);
   if (data.repository) detail.append(element('p', 'Repository: ' + data.repository, 'content'));
   data.context_links.forEach(text => detail.append(element('p', text, 'content')));
-  await artifactsSection(data.id, detail);
-  detail.append(element('p', `Requester: ${data.creator} · Worker: ${data.claimant || data.target || 'Available'} · ${data.funded ? 'Gold reserved at posting. Demo-verified PR delivery pays automatically; review remains separate.' : 'Historical import. No spendable Gold or new funding was created.'}`));
+  await artifactsSection(data, detail);
+  detail.append(element('p', `Requester: ${data.creator} · ${data.completed_by ? `Recorded completion: ${data.completed_by} · Historical assignment: ${data.target || 'Open'}` : `Worker: ${data.claimant || data.target || 'Available'}`} · ${data.funded ? 'Gold reserved at posting. Demo-verified PR delivery pays automatically; review remains separate.' : 'Historical import. No spendable Gold or new funding was created.'}`));
   const actions = element('div', undefined, 'actions');
   const action = (label, suffix) => { const b = element('button', label); b.onclick = () => run(() => mutate(`/bounties/${id}/${suffix}`)); actions.append(b); };
   if (data.funded && data.status === 'open') {
@@ -169,11 +180,17 @@ async function downloadArtifact(url, filename) {
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
-async function artifactsSection(id, detail) {
+async function artifactsSection(bounty, detail) {
+  const id = bounty.id;
   const data = await api(`/bounties/${encodeURIComponent(id)}/artifacts`);
   const section = element('section', undefined, 'evidence');
   section.append(element('h3', 'Artifacts · available before acceptance'),
     element('p', 'Preview and download everything currently stored with this bounty. Downloads do not accept the bounty or start AI work.'));
+  const readiness = element('div', undefined, 'package-readiness');
+  readiness.append(element('strong', data.readiness.status === 'needs_context' ? 'Missing inputs · review before starting' : 'Source supplied · verification still required'),
+    element('p', `${data.readiness.criteria_count} criteria · ${data.readiness.source_file_count} source files`));
+  for (const warning of data.readiness.missing) readiness.append(element('p', warning));
+  readiness.append(element('small', data.readiness.verification)); section.append(readiness);
   const all = element('button', 'Download all artifacts (ZIP)', 'primary');
   all.onclick = () => run(() => downloadArtifact(data.download_url, `bounty-${id}-artifacts.zip`));
   section.append(all);
@@ -185,6 +202,33 @@ async function artifactsSection(id, detail) {
     row.append(element('span', `${file.path} · ${file.size.toLocaleString()} bytes`), button); files.append(row);
   }
   section.append(files);
+  for (const attachment of bounty.packages) {
+    const record = element('div', undefined, 'package-record');
+    record.append(element('strong', `${attachment.kind === 'response' ? 'Response' : 'Source / support'} package · ${attachment.actor}`),
+      element('p', attachment.note || 'Attached evidence; not automatic verification.'),
+      element('code', `SHA-256 ${attachment.sha256}`));
+    if (attachment.kind === 'response') record.append(element('p', attachment.input_verified ? 'Original input ZIP hash and bounty ID matched.' : 'Original input linkage not independently checked; attach the original ZIP with the response to validate it.'));
+    section.append(record);
+  }
+  if ([bounty.creator, bounty.target, bounty.claimant, bounty.completed_by].includes(user)) {
+    const form = element('form');
+    const kindLabel = element('label', 'Attach a package'); const kind = element('select');
+    for (const [value, title] of [['response', 'Response from a fresh session'], ['support', 'Source / supporting evidence']]) {
+      const option = element('option', title); option.value = value; kind.append(option);
+    }
+    kindLabel.append(kind);
+    const zipLabel = element('label', 'Package ZIP · UTF-8 files with manifest.json and file hashes');
+    const zip = element('input'); zip.type = 'file'; zip.accept = '.zip'; zip.required = true; zipLabel.append(zip);
+    const originalLabel = element('label', 'Original bounty ZIP · optional, validates response linkage');
+    const original = element('input'); original.type = 'file'; original.accept = '.zip'; originalLabel.append(original);
+    kind.onchange = () => { originalLabel.hidden = kind.value !== 'response'; original.value = ''; };
+    const noteLabel = element('label', 'Short note'); const note = element('input'); note.maxLength = 2000; noteLabel.append(note);
+    form.append(kindLabel, zipLabel, originalLabel, noteLabel,
+      element('p', 'Attaches evidence only. No code runs, status change, Gold payment, or follow-up creation.'), element('button', 'Attach package'));
+    form.onsubmit = event => { event.preventDefault(); run(async () => mutate(`/bounties/${id}/packages`, {
+      kind: kind.value, package_zip: await encodeSourceZip(zip.files[0]), input_zip: await encodeSourceZip(original.files[0]), note: note.value})); };
+    section.append(form);
+  }
   if (data.external_references.length) {
     section.append(element('p', 'External references below are not embedded in the ZIP. Files mentioned in context must be attached to be included.'));
     for (const reference of data.external_references) {
@@ -225,6 +269,20 @@ async function aiSection(data, detail) {
     box.append(element('span', ai.status.replaceAll('_', ' '), 'pill'),
       element('p', `${ai.model} · ${ai.question_count}/3 questions · ${usage.api_calls} API calls · ${usage.input_tokens} input / ${usage.output_tokens} output tokens · ${(usage.elapsed_ms / 1000).toFixed(1)}s`));
     if (ai.result) box.append(element('p', ai.result.summary, 'content'));
+    if (ai.result?.plan?.length) {
+      const plan = element('details', undefined, 'complexity-plan'); plan.open = true;
+      plan.append(element('summary', 'Implementation plan · only SMALL leaves can commit'));
+      const render = steps => {
+        const list = element('ul');
+        for (const step of steps) {
+          const item = element('li', `${step.complexity} · ${step.title}`);
+          if (step.children.length) item.append(render(step.children));
+          list.append(item);
+        }
+        return list;
+      };
+      plan.append(render(ai.result.plan)); box.append(plan);
+    }
     for (const turn of ai.conversation) {
       const list = element('ul');
       for (const text of turn.questions || turn.answers) list.append(element('li', text));
@@ -319,6 +377,7 @@ $('post-form').onsubmit = e => {
   });
 };
 run(async () => {
+  const linkedBounty = new URLSearchParams(location.hash.slice(1)).get('bounty');
   const users = await api('/users');
   if (!users.some(item => item.id === user)) user = 'steve';
   for (const item of users) {
@@ -327,4 +386,5 @@ run(async () => {
   }
   $('user').value = user;
   await navigate('open');
+  if (linkedBounty) await show(linkedBounty);
 });
