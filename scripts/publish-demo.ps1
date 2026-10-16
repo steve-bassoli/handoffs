@@ -2,6 +2,8 @@
 param(
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
     [string]$SharedAddress,
+    [string]$SourceRepository,
+    [string]$SourceCommit,
     [ValidateRange(1024, 65535)][int]$Port = 8000,
     [switch]$InitializeSharedAccess,
     [switch]$ConfigureNetwork,
@@ -16,6 +18,30 @@ $principal = [Security.Principal.WindowsPrincipal]::new($identity)
 $isAdministrator = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 $ruleName = "HANDOFFS-Team-Access-$Port"
 $statePath = Join-Path $repo ".data\publish-$Port.json"
+
+function Get-PublishCommit {
+    param([string]$TargetRepository, [string]$SourceRepository, [string]$SourceCommit)
+    if ($SourceRepository) {
+        if ($SourceCommit -notmatch '^[a-fA-F0-9]{40}$') { throw 'Local publishing requires an exact full tested commit SHA.' }
+        $source = (Resolve-Path -LiteralPath $SourceRepository -ErrorAction Stop).Path
+        git -C $source cat-file -e "$SourceCommit^{commit}"
+        if ($LASTEXITCODE -ne 0) { throw 'The requested commit does not exist in the local source.' }
+        git -C $TargetRepository fetch --no-tags -- $source $SourceCommit | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'Local fetch failed; the running app was not changed.' }
+        $reference = 'FETCH_HEAD'
+    } else {
+        if ($SourceCommit) { throw 'SourceCommit requires SourceRepository.' }
+        git -C $TargetRepository fetch origin | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'Fetch failed; the running app was not changed.' }
+        $reference = 'origin/main'
+    }
+    $commit = git -C $TargetRepository rev-parse --verify "$reference^{commit}"
+    if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the deployment commit.' }
+    $commit = $commit.Trim()
+    git -C $TargetRepository merge-base --is-ancestor HEAD $commit
+    if ($LASTEXITCODE -ne 0) { throw 'Checkout cannot fast-forward to the deployment commit; the running app was not changed.' }
+    return $commit
+}
 
 function Get-DemoListeners {
     @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
@@ -101,10 +127,7 @@ if ($SharedAddress -and -not $InitializeSharedAccess) {
 }
 $dirty = @(git -C $repo status --porcelain)
 if ($LASTEXITCODE -ne 0 -or $dirty.Count) { throw 'Publish requires a clean Git checkout; local work was preserved.' }
-git -C $repo fetch origin
-if ($LASTEXITCODE -ne 0) { throw 'Fetch failed; the running app was not changed.' }
-git -C $repo merge-base --is-ancestor HEAD origin/main
-if ($LASTEXITCODE -ne 0) { throw 'Checkout cannot fast-forward to origin/main; the running app was not changed.' }
+$publishCommit = Get-PublishCommit -TargetRepository $repo -SourceRepository $SourceRepository -SourceCommit $SourceCommit
 $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffffffZ')
 $database = Join-Path $repo '.data\handoffs.sqlite'
 $backup = $null
@@ -114,7 +137,7 @@ if (Test-Path -LiteralPath $database) {
     & $python -c 'import sqlite3,sys; a=sqlite3.connect(sys.argv[1]); b=sqlite3.connect(sys.argv[2]); a.backup(b); b.close(); a.close()' $database $backup
     if ($LASTEXITCODE -ne 0) { throw 'Database backup failed; the running app was not changed.' }
 }
-git -C $repo merge --ff-only origin/main
+git -C $repo merge --ff-only $publishCommit
 if ($LASTEXITCODE -ne 0) { throw 'Fast-forward failed; the running app was not changed.' }
 if ($InitializeSharedAccess) {
     $result = Join-Path $repo ".data\network-setup-$stamp.json"
