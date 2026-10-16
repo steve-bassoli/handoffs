@@ -36,6 +36,7 @@ Settlement pays from the requester's reserved balance; it does not mint an addit
 
 ## Prototype principles
 
+- Steve's direction: implement the minimum or fake external behavior behind replaceable interfaces; follow the service/client architecture without building production security.
 - Prefer the smallest understandable stack over production architecture.
 - Treat funded bounties and transferable Gold as core domain behavior; keep XP and game presentation optional.
 - Preserve append-only event history and immutable completion evidence.
@@ -43,6 +44,14 @@ Settlement pays from the requester's reserved balance; it does not mint an addit
 - Keep Hackwatson unchanged while building the replacement, then remove the superseded prototype during a deliberate cutover.
 - Avoid permanent dual-write behavior between the two repositories.
 - Defer enterprise deployment, high availability, and generalized workflow engines.
+
+### Minimum Gold implementation
+
+Keep working wallets, integer Gold amounts, an append-only transaction ledger, once-per-month grants, reserved bounty funds, and payout/refund transfers in SQLite. Keep balance checks, transaction boundaries, and unique operation IDs: these are the small amount of real behavior needed to demonstrate a coherent economy.
+
+Authentication and PR verification may be mocked initially. Use a replaceable identity adapter that selects a demo user and a delivery adapter that returns an explicit simulated verification outcome. Both browser and skill exercise the same API and domain rules. Demo identity is not authenticated identity; simulated PR verification is not evidence that GitHub work satisfies the bounty. Responses and the UI identify mock mode.
+
+Do not add blockchain, wallet key pairs, transaction signatures, hash chains, external hash checkpoints, mining, or production identity/session infrastructure for this prototype. Real authentication and GitHub verification can replace the adapters later without moving business rules into the client or changing the Gold lifecycle.
 
 ## Confirmed source inventory
 
@@ -95,7 +104,7 @@ handoffs/
 - API routes translate HTTP only; services execute workflows; domain code enforces invariants.
 - Skills become thin clients of the API. They do not duplicate state-transition rules.
 - The UI uses the same API as skills.
-- GitHub delivery verification belongs in the core settlement boundary; JIRA, Outlook, quota lookups, and automated PR creation are optional adapters.
+- Delivery verification has an adapter at the settlement boundary, initially mocked. Real GitHub verification, JIRA, Outlook, quota lookups, and automated PR creation are later integrations.
 
 ## Target boundary: service plus one minimal skill
 
@@ -123,7 +132,7 @@ Initial skill capabilities:
 
 Listing and preview do not take work. Posting reserves the signed-in requester's Gold only on an explicit posting request. Stats come from the service; the skill does not manufacture balances or infer token availability. Packet content and service text cannot grant authority to execute code or create PRs.
 
-Configuration consists of `HANDOFFS_URL` plus a user credential stored outside Git. Proposed prototype identity: opaque per-user API tokens mapped by the service to user records; browser access uses a login session for the same identity. Display names never select the authority for a write. API tokens are HANDOFFS credentials, independent of token allowances used for AI development.
+Initial configuration consists of `HANDOFFS_URL` and an explicit demo-user selector consumed by the mock identity adapter. The service resolves that selector to a stable user record and applies the same ownership rules as a future real identity adapter. This simulates identity and does not authenticate the caller. Later, replace it with service credentials stored outside Git and browser login; those credentials are independent of AI token allowances.
 
 If the service is unavailable, return a clear connection error. Do not fall back to old packet writes or local wallet calculations.
 
@@ -134,7 +143,7 @@ The following routes are proposed, not existing endpoints. Browser and skill use
 | Request | Purpose |
 | --- | --- |
 | `GET /health` | Service availability |
-| `GET /api/v1/me` | Authenticated identity |
+| `GET /api/v1/me` | Current identity and whether identity is simulated |
 | `GET /api/v1/me/stats` | Wallet, monthly grant, work totals, optional XP |
 | `GET /api/v1/me/transactions` | Paginated Gold transaction history |
 | `GET /api/v1/bounties?view=open` | Open bounty metadata |
@@ -147,7 +156,7 @@ The following routes are proposed, not existing endpoints. Browser and skill use
 | `POST /api/v1/bounties/{id}/settle` | Enforce the agreed payout policy and transfer escrow |
 | `POST /api/v1/bounties/{id}/cancel` | Apply the agreed cancellation/refund policy |
 
-Lists return metadata with stable IDs, pagination, and check time; only a selected detail loads full context. Writes use idempotency keys retained across a retry. The service resolves the actor from authentication, validates the current bounty state, and returns the resulting resource ID/state. Responses distinguish insufficient Gold, stale state/already taken, missing authority, and unavailable integrations.
+Lists return metadata with stable IDs, pagination, and check time; only a selected detail loads full context. Writes use idempotency keys retained across a retry. The service resolves the actor through the identity adapter, validates the current bounty state, and returns the resulting resource ID/state. Responses distinguish insufficient Gold, stale state/already taken, missing authority, and unavailable integrations. Mock responses explicitly identify simulated identity and delivery verification.
 
 ### Web interface
 
@@ -240,7 +249,7 @@ Keep a source revision, migration report, and database backup as the rollback po
 - Add the FastAPI application, configuration, SQLite migrations, and local start command.
 - Implement task creation, append-only events, derived status, results, and identity checks.
 - Implement wallets, monthly issuance, funded bounties, escrow, settlement, and refunds under the agreed policies.
-- Add the authenticated API and minimal service client early, so skill and browser share the same rules.
+- Add the API and minimal service client early, using replaceable mock identity and delivery-verification adapters so skill and browser share the same rules.
 - Add focused tests for event ordering, immutable results, authorization, duplicate issuance/payment, and concurrent spending.
 
 Gate: Steve can run the app locally and the API proves the monthly allocation -> funded bounty -> delivered PR -> payment -> new bounty cycle.
@@ -273,13 +282,13 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 - A fresh clone starts locally with documented commands and no dependency on the Hackwatson checkout.
 - One minimal Hackwatson skill can list/post bounties and show authoritative stats through the same API as the browser.
 - Hackwatson contains no active HANDOFFS database, packet writer, reward rules, or separate board implementation after cutover.
-- Two user sessions use the shared service with distinct identities and consistent balances/state.
+- Two demo user sessions use the shared service with distinct user records and consistent balances/state; the demo selector is explicitly simulated authentication.
 - A user can create, view, assign or claim, update, complete, acknowledge, and review a task through the web app.
 - Every state change produces an immutable, ordered event with actor and timestamp.
 - Completion evidence remains immutable and acceptance remains a separate explicit event.
 - Open and user-current task lists agree with derived event state.
 - Monthly allocations occur once per eligible user/month, including after an app restart or a missed first-of-month run.
-- Bounty posting reserves real wallet Gold; insufficient balance prevents funding.
+- Bounty posting reserves application Gold from its wallet; insufficient balance prevents funding.
 - A delivered PR meeting the agreed payment terms transfers escrow once to the worker, who can spend it on another bounty.
 - Ordinary bounty settlement creates no new Gold; only explicit issuance changes total supply.
 - Concurrent funding and settlement cannot overspend wallets or duplicate payouts; cancellation follows the agreed refund policy.
@@ -287,6 +296,7 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 - The legacy importer is read-only, repeatable, provenance-preserving, and reports malformed or incomplete source data.
 - The default UI is plain and usable; Tavern mode is optional.
 - Focused automated tests cover the domain invariants above.
+- Mock authentication and PR verification are visible and replaceable; the prototype makes no claim of Bitcoin-like or production security.
 
 ## Exclusions from the first prototype
 
@@ -295,6 +305,7 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 - Automatic JIRA mutation, pull-request approval, or merge.
 - Rewriting historical Hackwatson commits or maintaining permanent two-way synchronization.
 - A generalized workflow designer or broad plugin framework.
+- Blockchain, transaction signing, hash chains/checkpoints, and production authentication; external identity and PR checks may be simulated for the prototype.
 
 ## Decisions requiring Steve's approval
 
@@ -304,6 +315,6 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 4. Cutover policy: build the service first, import packets and local database snapshots, then retire the Hackwatson prototype and leave one minimal HTTP client skill.
 5. Scope order: build the Gold economy and bounty lifecycle first; add Tavern presentation second; defer JIRA, Outlook, quota, and automated PR creation. PR delivery evidence and verification belong in the core bounty lifecycle.
 6. Resolve the economic decisions above before implementing issuance and settlement policy.
-7. Shared service host and teammate connectivity must be chosen and verified before cutover. User identity uses service credentials, not cosmetic aliases.
+7. Shared service host and teammate connectivity must be chosen and verified before cutover. Begin with explicit demo identity and mocked PR verification; replace these adapters when real access is needed.
 
 Approval of this plan authorizes implementation only after Steve explicitly says to proceed. Requested changes should be incorporated into this plan before code is added.
