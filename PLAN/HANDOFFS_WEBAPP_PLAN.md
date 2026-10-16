@@ -244,6 +244,13 @@ Keep a source revision, migration report, and database backup as the rollback po
 
 ## Delivery phases and approval gates
 
+The executable breakdown follows Hackwatson's `skills/common/iterative-implementation/SKILL.md` and its implementation-steps template:
+
+- [Ordered steps with criteria, dependencies, targets, complexity and validation](../codex/output/iterative_implementation_items.txt).
+- [Step status and evidence](../codex/output/iterative_implementation_items_status.txt).
+
+These retained planning artifacts are included in Git at Steve's explicit request to write and review the plan. Implementation executes the earliest ready item and stops for Steve's verification after each item. All steps are currently open; policy-dependent steps name their prerequisites. Optional integrations and game polish are excluded from the queue.
+
 ### Phase 1: runnable skeleton and domain core
 
 - Add the FastAPI application, configuration, SQLite migrations, and local start command.

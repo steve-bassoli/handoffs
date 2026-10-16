@@ -1,0 +1,25 @@
+# HANDOFFS iterative implementation status
+
+Planning artifacts created; no implementation started and no runtime validation claimed.
+All steps open. Dependencies and policies are tracked in the queue.
+
+HF-01 | open | Planned only; no execution evidence.
+HF-02 | open | Planned only; no execution evidence.
+HF-03 | open | Planned only; no execution evidence.
+HF-04 | open | Planned only; no execution evidence.
+HF-05 | open | Planned only; no execution evidence.
+HF-06 | open | Planned only; no execution evidence.
+HF-07 | open | Planned only; no execution evidence.
+HF-08 | open | Planned only; no execution evidence.
+HF-09 | open | Planned only; no execution evidence.
+HF-10 | open | Planned only; no execution evidence.
+HF-11 | open | Planned only; no execution evidence.
+HF-12 | open | Planned only; no execution evidence.
+HF-13 | open | Planned only; no execution evidence.
+HF-14 | open | Planned only; no execution evidence.
+HF-15 | open | Planned only; no execution evidence.
+HF-16 | open | Planned only; no execution evidence.
+HF-17 | open | Planned only; no execution evidence.
+
+Unresolved policies: monthly amount/eligibility/rollover/catch-up; payout gate; cancellation after claim; legacy opening balances; shared host.
+Bounty proposals: none.
