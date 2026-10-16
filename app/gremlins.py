@@ -68,3 +68,32 @@ def compare(payload):
             'scope': 'SIM', 'mode': 'supplied-observation-comparison', 'case_sha256': digest(document),
             'differences': differences, 'watson_executed': False,
             'note': 'Only the comparator ran. Supplied observations and expectations are claims, not independent Watson execution.'}
+
+
+def sabotage(payload):
+    """Mutate only a private in-memory copy, never a real backend or caller fixture."""
+    original = Comparison.model_validate(payload).model_dump()
+    baseline = compare(original)
+    if baseline['verdict'] != 'pass':
+        raise ValueError('Start with a passing synthetic case to prove controlled defect detection')
+    mutant = json.loads(json.dumps(original))
+    mutant['mirrors']['rest']['behavior']['result'] = {'gremlin_injected': mutant['mirrors']['rest']['behavior']['result']}
+    detected = compare(mutant)
+    return {'breed': 'Saboteur', 'scope': 'SIM', 'baseline': baseline, 'mutant': detected,
+            'detector_verified': detected['verdict'] == 'fail' and 'rest.result' in detected['differences'],
+            'input_unchanged': digest(original) == baseline['case_sha256'], 'watson_executed': False}
+
+
+def witness(payload):
+    request = Comparison.model_validate(payload)
+    result = compare(payload)
+    record = {'breed': 'Witness', 'scope': 'SIM', 'case': request.case.model_dump(),
+              'observations': request.mirrors.model_dump(), 'comparison': result,
+              'preservation': {'name': request.case.name, 'reproducer': request.case.stimulus,
+                               'rule': request.case.preservation_rule, 'source': request.case.source},
+              'discrepancy': None if result['verdict'] == 'pass' else {
+                  'question': 'Which observation violates the pinned behavior contract?',
+                  'reproducer_sha256': result['case_sha256'],
+                  'bounty': {'status': 'draft', 'creation_requires_human_approval': True}},
+              'note': 'Portable synthetic observation report; not a live Watson result or task creation.'}
+    return {**record, 'sha256': digest(record)}
