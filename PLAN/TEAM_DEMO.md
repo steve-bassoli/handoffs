@@ -4,6 +4,30 @@ This is a temporary laptop-hosted demo, not production deployment. Mock users ca
 
 ## Host setup
 
+### Routine publishing
+
+Use ordinary PowerShell for app publishing. The one-time handoff below copies the
+existing approved firewall scope into `HANDOFFS-Team-Access-8000` and replaces the
+old administrator-owned listeners. Approve its single Windows administrator prompt;
+only network setup runs elevated. The new web servers run as the ordinary user.
+The scoped firewall rule persists until explicitly removed.
+
+```powershell
+# Once, using the actual current approved private interface address:
+.\scripts\publish-demo.ps1 -SharedAddress '10.20.30.40' -InitializeSharedAccess
+# Every subsequent publish:
+.\scripts\publish-demo.ps1
+```
+
+Routine publishing uses a clean fast-forward, takes a consistent SQLite backup,
+migrates once, restarts only this checkout's listeners, checks their health, and
+prints the commit and URLs. It reuses the saved address, database, and existing
+network rule; it does not request elevation or change the firewall. Logs, backups,
+and publish state stay under ignored `.data/`. A changed VPN address requires
+reviewing the network rule; it is never silently replaced or broadened.
+
+The original manual launcher below remains available for temporary sessions.
+
 Obtain the host's private VPN/LAN IPv4 address and Nate and Will's private client IPv4 addresses from the interfaces actually used for their connection. VPN client isolation may prohibit inbound traffic even with a local firewall rule. Private addresses alone do not establish end-to-end reachability.
 
 From elevated PowerShell on Steve's laptop, run the following with actual addresses (the example values are placeholders):
