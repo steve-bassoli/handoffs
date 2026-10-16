@@ -53,7 +53,28 @@ def test_imported_manifest_context_and_result_are_downloadable_before_claim(clie
         assert json.loads(archive.read('imported/manifest.json'))['taskId'] == 'prove-demo'
         assert archive.read('imported/context.md') == b'Pinned criteria'
         assert archive.read('imported/updates/research.md') == b'Existing research artifact'
+        assert archive.read('context.md') == b'Pinned criteria'
+        assert 'imported/context.md' in archive.read('START_HERE.md').decode()
     assert client.get('/api/v1/bounties/prove-demo').json()['status'] == 'pending'
+
+
+def test_handoff_checksums_readiness_templates_and_stable_zip(client):
+    bounty = post_bounty(client).json()['id']
+    first = client.get(f'/api/v1/bounties/{bounty}/artifacts/download').content
+    assert client.get(f'/api/v1/bounties/{bounty}/artifacts/download').content == first
+    with zipfile.ZipFile(io.BytesIO(first)) as archive:
+        manifest = json.loads(archive.read('handoff.json'))
+        assert manifest['task_id'] == bounty
+        assert manifest['readiness']['status'] == 'needs_context'
+        assert manifest['readiness']['source_file_count'] == 0
+        assert manifest['readiness']['missing']
+        assert {entry['path'] for entry in manifest['files']} == set(archive.namelist()) - {'handoff.json'}
+        for entry in manifest['files']:
+            assert entry['sha256'] == hashlib.sha256(archive.read(entry['path'])).hexdigest()
+        assert json.loads(archive.read('response-template/manifest.json'))['task_id'] == bounty
+        assert 'does not verify work' in archive.read('START_HERE.md').decode()
+    inventory = client.get(f'/api/v1/bounties/{bounty}/artifacts').json()
+    assert inventory['readiness'] == manifest['readiness']
 
 
 def test_posted_source_is_available_to_luna_and_in_artifact_bundle(tmp_path):
