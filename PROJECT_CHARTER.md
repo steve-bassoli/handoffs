@@ -23,8 +23,8 @@ does not authorize reproducing a security weakness in a new access boundary.
 
 ## 2 Gremlins
 
-Gremlins is the Watson compatibility test harness and will expose its own MCP
-server. Large AI models own the implementation design, within the approved scope
+Gremlins is the Watson compatibility test harness target. Its first local version
+exposes an offline comparator through its own MCP server. Large AI models own the implementation design, within the approved scope
 and access boundaries; this charter does not prescribe a test framework or stack.
 
 Gremlins compares the pinned legacy baseline and candidate against a versioned
@@ -93,10 +93,34 @@ criteria have evidence, not merely because three children were created or closed
 
 ### Current Prototype Boundary
 
-The local development engine has typed LOW outcomes, ternary decomposition and
-managed commit receipts. Those changes are committed locally and not yet deployed.
-Demo identity and PR verification remain simulated. The current completion API
-accepts a human evidence note; it does not implement the artifact-binding and AI
-proof-review gate described above. Gremlins and complete Watson parity remain
-development targets. This charter does not close tasks, approve proposals, grant
-access, authorize production actions, or publish changes to shared main.
+The local engine enforces typed LOW outcomes, ternary decomposition, managed
+commit receipts, shared prerequisite cycle checks and separate parent acceptance.
+Posted, Claimed and Closed are lifecycle projections; cancellation and supersession
+are Closed dispositions, not successful verification.
+
+Bounties can declare SIM, ORA or LIVE validation targets and WRAP, REPLACE or RETIRE
+migration intent. These are metadata, not execution receipts. Known facts require
+a source; assumptions and unknowns occupy separate shelves. Mapper, Maker and
+Breaker describe responsibilities, not three agents claimed to have run. Shared
+prerequisites are linked once in a connected constellation.
+
+One immutable primary proof is bound to criteria, revisions, environment, source
+and prerequisite receipts. Current passing AI review and explicit human LOW
+verification gate completion and payment. Replacement proof preserves history;
+changed context invalidates acceptance. Historical closures are not retroactively
+verified. Composite acceptance needs three verified children and its own reviewed
+integration proof. Funded verified completion releases existing escrow once;
+decomposition neither mints nor duplicates Gold.
+
+Gremlins Mimic compares supplied Legacy, REST and MCP observations against an
+explicit expectation. Saboteur injects an in-memory discrepancy to challenge
+detection. Witness preserves the reproducer and named legacy quirk in a hashed
+report. This SIM-only version runs no Watson or Oracle operations and cannot
+certify live parity. Complete Watson REST/MCP replacement remains a target.
+
+These changes are local, not deployed. Demo identity and PR verification remain
+simulated. AI proof review uses a separate, tool-free provider request with
+structured criterion verdicts; provider access has only been tested with fixtures.
+MP4 can be retained and viewed, but automatic video review returns inconclusive.
+This charter does not close live tasks, approve proposals, grant access, authorize
+production actions, or publish changes to shared main.

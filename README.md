@@ -28,7 +28,7 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 
 Open <http://127.0.0.1:8000> for the web app or <http://127.0.0.1:8000/docs> for the API. Health returns `{"status":"ok","mode":"demo"}`.
 
-The app provides Board, My Work, Post Bounty, and Wallet/Stats. Choose Steve, Nate, or Will as a demo user. Post a funded bounty, switch to another user, take the work, and deliver a PR link with evidence. Mock verification releases the reserved Gold to the worker, who can post another bounty. Requester review is recorded separately.
+The app provides Board, My Work, Post Bounty, Gremlins, and Wallet/Stats. Choose Steve, Nate, or Will as a demo user. Claim a bounty, pin context, submit one sufficient proof and request AI review. Explicit human LOW verification is required before completion releases reserved demo Gold. A PR link cannot bypass this gate. Requester PR review remains separate.
 
 Defaults: 1,000 Gold per month, Eastern calendar, rollover, and current-month-only grants on wallet access/action. Cancellation refunds only an unclaimed bounty. `HANDOFFS_MONTHLY_GOLD` overrides the grant; `HANDOFFS_DB` overrides the database path (default `.data/handoffs.sqlite` relative to the working directory). Identity and PR checks are explicitly simulated. The server binds to loopback by default; a team host is a later deployment choice.
 
@@ -161,9 +161,57 @@ API routes under `/api/v1/bounties/{id}`: `ai/start`, `ai/answers`, `ai/retry`,
 same operation ID contract as the existing service. The existing demo identity
 selector is still simulated; the model key stays on the server.
 
+## Context and proof
+
+The bounty page projects **Posted → Claimed → Closed**, retaining detailed status
+and disposition. Cancellation is not successful verification. Context declares
+SIM/ORA/LIVE targets and WRAP/REPLACE/RETIRE migration intent, baseline/candidate
+revisions, environment and Known (with source), Assumed and Unknown shelves.
+Declarations do not prove execution. Mapper/Maker/Breaker are responsibilities,
+not an automatically launched agent fleet. Link shared prerequisites rather than
+copying tasks; the constellation rejects ancestry/dependency cycles.
+
+One immutable primary proof is directly viewable/downloadable on a closed bounty
+and in its artifact ZIP. Text/JSON is limited to 200 KB; PNG/JPEG/MP4 to 8 MB.
+Replacements preserve history. Changed intent, source, profile or prerequisite
+receipts make proof stale. Pin revisions and environment before attaching proof.
+
+**Request AI proof review** explicitly calls the server-side provider without tools
+or execution privileges, returning pass/fail/inconclusive for every criterion.
+`HANDOFFS_PROOF_MODEL` overrides `HANDOFFS_AI_MODEL`. Missing access, provider errors,
+inconsistent verdicts and unsupported MP4 review fail closed as inconclusive.
+Text/JSON and PNG/JPEG are supported by the adapter; provider access is tested only
+with fixtures. Restarted reviews require explicit retry, never automatic spending.
+The separate LOW human decision is not another artifact. HIGH/MEDIUM acceptance
+needs three verified children, shared prerequisites and separate integration proof.
+Historical closures without proof remain historical.
+
+Routes under `/api/v1/bounties/{id}`: `POST profile`, `POST dependencies`,
+`GET constellation`, `POST proofs`, `GET proofs/{proof_id}`, `POST proof-review`,
+`POST proof-human`, `POST complete`. Writes require operation IDs. `ai/complete`,
+PR delivery and settlement enforce the same gate.
+
+## Gremlins offline prototype
+
+The **Gremlins** tab compares supplied Legacy/REST/MCP results, state and effects
+against explicit expectations. Mimic detects mismatches; Saboteur injects a private
+in-memory defect to check detection; Witness packages the comparison and a named
+quirk's reproducer, preservation rule and source in one hashed report. Discrepancies
+can draft a question, never create a bounty automatically.
+`POST /api/v1/gremlins/{mimic|saboteur|witness}` performs the same computation.
+
+Results are SIM-only with `watson_executed: false`. This checks supplied claims,
+not their authenticity, and runs no Watson, application adapters or Oracle.
+Independently curate expected behavior. Never submit secrets or live records.
+
+Run the separate real read-only stdio MCP server with
+`.\.venv\Scripts\python.exe -m app.gremlins_mcp`. Its three tools are `mimic`,
+`saboteur` and `witness_report`; no HTTP service or API key is needed. Registration
+in a desktop host is a separate explicit step.
+
 ## Native desktop MCP connection
 
-The MCP bridge exposes `list_bounties`, `get_bounty`, `post_bounty`, `get_my_stats`, `take_bounty`, and `deliver_pr`. It calls the existing service; it does not open a database or call OpenAI models. Demo identity is fixed per connection. `get_my_stats` is annotated as a write because it can issue the due monthly grant; posting, taking and delivering are also marked as writes. Retain a unique `operation_id` for each intended write and reuse it for an identical retry.
+The MCP bridge exposes `list_bounties`, `get_bounty`, `post_bounty`, `get_my_stats`, `take_bounty`, `deliver_pr`, and `get_bounty_context`. It calls the existing service; it does not open a database or call OpenAI models. Demo identity is fixed per connection. `get_my_stats` is annotated as a write because it can issue the due monthly grant; posting, taking and delivering are also marked as writes. Retain a unique `operation_id` for each intended write and reuse it for an identical retry.
 
 Keep the HTTP service running, then register the local server with the desktop/Codex host:
 
@@ -174,7 +222,7 @@ codex mcp get handoffs --json
 
 For a different checkout, substitute its virtual environment path. Alternatively, in the desktop app open **Settings → MCP servers → Add server**, choose **STDIO**, and use that Python command with arguments `-m app.mcp_server` and the two environment variables. Reconnect/restart the MCP server after configuration changes. The current conversation may need a fresh session to discover newly registered tools.
 
-Try: “Show my HANDOFFS stats”, “List open HANDOFFS bounties”, or “Post a 150-Gold bounty to …”. Taking work or delivering requires an explicit user request; a delivery pays after simulated verification and does not create or merge a real PR. The OpenAI API key is not used for this connection.
+Try: “Show my HANDOFFS stats”, “List open HANDOFFS bounties”, or “Post a 150-Gold bounty to …”. Taking work or delivering requires an explicit user request. Delivery requires the service proof gate as well as simulated PR verification and does not create or merge a real PR. The OpenAI API key is not used by the MCP bridge.
 
 This configures the local desktop host. Hosted ChatGPT plugin/tunnel deployment is a separate step; localhost alone is not proof of cloud connectivity. See [official MCP setup](https://learn.chatgpt.com/docs/extend/mcp).
 

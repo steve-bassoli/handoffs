@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 let user = localStorage.getItem('handoffs-user') || 'steve';
 let view = 'open', offset = 0, txOffset = 0, selected = null;
-let aiPoll;
+let aiPoll, proofPoll;
 const pageSize = 12;
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -57,10 +57,10 @@ async function board() {
   if (!result.items.length) $('cards').append(element('div', view === 'mine' ? 'Your posted and taken bounties will appear here.' : 'A clear board. Post the first bounty and put your Gold to work.', 'empty'));
   for (const item of result.items) {
     const card = element('article', undefined, 'card');
-    const top = element('div'); top.append(element('span', item.status.replaceAll('_', ' '), 'pill'), element('span', item.complexity, 'pill'));
+    const top = element('div'); top.append(element('span', item.phase || item.status, 'pill'), element('span', item.complexity, 'pill'));
     if (item.funded) top.append(element('span', `${item.gold} GOLD`, 'pill bounty-gold'));
     const button = element('button', 'View bounty'); button.onclick = () => run(() => show(item.id));
-    card.append(top, element('h3', item.title), element('div', `${item.creator} → ${item.claimant || item.target || 'Open'}${item.funded ? '' : item.parent_id ? ' · Follow-up' : ' · Historical / unfunded'}`, 'meta'), button);
+    card.append(top, element('h3', item.title), element('div', `${item.creator} · ${item.claimant ? 'Claimed by ' + item.claimant : item.target ? 'Offered to ' + item.target + ' · not claimed' : 'Available to claim'} · ${item.disposition || item.status.replaceAll('_', ' ')}${item.funded ? '' : ' · Unfunded'}`, 'meta'), button);
     $('cards').append(card);
   }
   $('previous').disabled = offset === 0; $('next').disabled = result.items.length < pageSize;
@@ -80,46 +80,54 @@ async function transactions() {
 }
 async function navigate(nextView) {
   clearTimeout(aiPoll);
+  clearTimeout(proofPoll);
   view = nextView; selected = null;
   history.replaceState(null, '', location.pathname + location.search);
-  for (const id of ['board', 'post', 'wallet', 'detail']) $(id).hidden = true;
+  for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins']) $(id).hidden = true;
   for (const button of document.querySelectorAll('nav button')) button.classList.toggle('selected', button.dataset.view === view);
   await stats();
   if (view === 'post') $('post').hidden = false;
+  else if (view === 'gremlins') $('gremlins').hidden = false;
   else if (view === 'wallet') { $('wallet').hidden = false; await transactions(); }
   else { $('board').hidden = false; $('board-title').textContent = view === 'mine' ? 'My work' : 'Open bounties'; await board(); }
 }
 async function mutate(path, body = {}) {
   $('user').disabled = true;
-  for (const button of document.querySelectorAll('button')) button.disabled = true;
+  for (const button of document.querySelectorAll('button:not(:disabled)')) { button.dataset.busy = 'true'; button.disabled = true; }
   try {
     const result = await api(path, body);
-    message(result.status === 'settled' ? 'PR recorded. Demo verification passed and Gold was paid.' : 'Saved.');
+    message(result.status === 'settled' ? 'Verified completion recorded. Reserved demo Gold was paid.' : 'Saved.');
     await stats();
     await show(result.id);
     return result;
   } finally {
     $('user').disabled = false;
-    for (const button of document.querySelectorAll('button')) button.disabled = false;
+    for (const button of document.querySelectorAll('button[data-busy]')) { button.disabled = false; delete button.dataset.busy; }
   }
 }
 async function show(id) {
   clearTimeout(aiPoll);
+  clearTimeout(proofPoll);
   const data = await api('/bounties/' + encodeURIComponent(id));
   selected = id;
   history.replaceState(null, '', '#bounty=' + encodeURIComponent(id));
-  for (const section of ['board', 'post', 'wallet']) $(section).hidden = true;
+  for (const section of ['board', 'post', 'wallet', 'gremlins']) $(section).hidden = true;
   const detail = $('detail'); detail.hidden = false; detail.replaceChildren();
   const back = element('button', '← Back to board'); back.onclick = () => run(() => navigate('open'));
-  const header = element('div', undefined, 'detail-head'); header.append(element('span', data.status.replaceAll('_', ' '), 'pill'), element('span', data.complexity, 'pill'));
+  const header = element('div', undefined, 'detail-head'); header.append(element('span', data.phase, 'pill'), element('span', data.complexity, 'pill'), element('span', `Target: ${data.profile?.validation_scope || 'Unclassified'}`, 'pill'));
   if (data.funded) header.append(element('span', `${data.gold} GOLD`, 'pill bounty-gold'));
   header.append(element('h2', data.title), element('code', data.id));
   detail.append(back, header, element('h3', 'Goal'), element('p', data.goal, 'content'), element('h3', 'Completion criteria'));
+  const rail = element('ol', undefined, 'phase-rail'); rail.setAttribute('aria-label', 'Bounty lifecycle');
+  for (const phase of ['Posted', 'Claimed', 'Closed']) { const item = element('li', phase); if (phase === data.phase) item.setAttribute('aria-current', 'step'); rail.append(item); }
+  header.append(rail, element('small', `${data.disposition || data.status.replaceAll('_', ' ')} · Target is declared, not evidence of execution.`));
   const criteria = element('ul'); data.criteria.forEach(text => criteria.append(element('li', text))); detail.append(criteria);
   if (data.repository) detail.append(element('p', 'Repository: ' + data.repository, 'content'));
   data.context_links.forEach(text => detail.append(element('p', text, 'content')));
+  await workflowSection(data, detail);
+  proofSection(data, detail);
   await artifactsSection(data, detail);
-  detail.append(element('p', `Requester: ${data.creator} · ${data.completed_by ? `Prior recorded completion: ${data.completed_by} · Historical assignment: ${data.target || 'Open'}` : `Worker: ${data.claimant || data.target || 'Available'}`} · ${data.funded ? 'Gold reserved at posting. Demo-verified PR delivery pays automatically; review remains separate.' : 'Unfunded record. No spendable Gold or new funding was created.'}`));
+  detail.append(element('p', `Requester: ${data.creator} · ${data.claimant ? 'Worker: ' + data.claimant : data.target ? 'Offered to ' + data.target + ' · not claimed' : 'Available to claim'} · ${data.funded ? 'Reserved demo Gold is released only on verified completion.' : 'Unfunded record. No new funding was created.'}`));
   const actions = element('div', undefined, 'actions');
   const action = (label, suffix) => { const b = element('button', label); b.onclick = () => run(() => mutate(`/bounties/${id}/${suffix}`)); actions.append(b); };
   if (data.funded && data.status === 'open') {
@@ -144,7 +152,7 @@ async function show(id) {
     detail.append(progress, element('h3', 'Deliver your PR'));
     const form = element('form'); const urlLabel = element('label', 'PR URL'); const url = element('input'); url.type = 'url'; url.required = true; url.placeholder = 'https://github.com/owner/repo/pull/123'; urlLabel.append(url);
     const evidenceLabel = element('label', 'Completion evidence'); const evidence = element('textarea'); evidence.required = true; evidenceLabel.append(evidence);
-    form.append(urlLabel, evidenceLabel, element('button', 'Submit PR & receive demo payment', 'primary'));
+    form.append(urlLabel, evidenceLabel, element('p', 'PR delivery cannot bypass the proof gate above.'), element('button', 'Submit PR with verified proof', 'primary'));
     form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/deliveries`, {pr_url: url.value, evidence: evidence.value})); };
     detail.append(form);
   }
@@ -248,6 +256,88 @@ async function artifactsSection(bounty, detail) {
   detail.append(section);
 }
 
+function labeled(form, title, value = '', tag = 'input', options = []) {
+  const label = element('label', title), input = element(tag); input.value = value; input.setAttribute('aria-label', title);
+  if (tag === 'select') { for (const text of options) { const option = element('option', text); option.value = text; input.append(option); } input.value = value; }
+  label.append(input); form.append(label); return input;
+}
+const nonemptyLines = value => value.split('\n').map(line => line.trim()).filter(Boolean);
+async function workflowSection(data, detail) {
+  const box = element('details', undefined, 'evidence'); box.append(element('summary', 'Context & constellation'));
+  const profile = data.profile || {validation_scope: 'SIM', migration_stage: 'WRAP', knowledge: {}};
+  box.append(element('p', 'SIM = synthetic · ORA = Oracle-targeted · LIVE = application-targeted. These are declared targets, not verified coverage. WRAP → REPLACE → RETIRE describes migration intent.'));
+  const roles = element('div', undefined, 'three-columns');
+  for (const [role, responsibility] of Object.entries(data.roles)) { const card = element('div'); card.append(element('strong', role), element('p', responsibility)); roles.append(card); }
+  box.append(roles, element('small', 'Responsibilities, not a claim that three autonomous agents ran.'));
+  const form = element('form');
+  const scope = labeled(form, 'Validation target', profile.validation_scope, 'select', ['SIM', 'ORA', 'LIVE']);
+  const stage = labeled(form, 'Migration intent', profile.migration_stage, 'select', ['WRAP', 'REPLACE', 'RETIRE']);
+  const baseline = labeled(form, 'Pinned legacy / baseline revision', profile.baseline_revision || '');
+  const candidate = labeled(form, 'Pinned candidate revision', profile.candidate_revision || '');
+  const environment = labeled(form, 'Verification environment', profile.environment || '');
+  const known = labeled(form, 'Known · one statement | source per line', (profile.knowledge.known || []).map(item => `${item.statement} | ${item.source}`).join('\n'), 'textarea');
+  const assumed = labeled(form, 'Assumed · one per line', (profile.knowledge.assumed || []).join('\n'), 'textarea');
+  const unknown = labeled(form, 'Unknown · one per line', (profile.knowledge.unknown || []).join('\n'), 'textarea');
+  const editable = [data.creator, data.claimant].includes(user) && data.phase !== 'Closed';
+  for (const input of form.querySelectorAll('input,textarea,select')) input.disabled = !editable;
+  if (editable) {
+    form.append(element('p', 'Changing bound context makes existing proof stale.'), element('button', 'Save context'));
+    form.onsubmit = event => { event.preventDefault(); run(async () => {
+      const facts = nonemptyLines(known.value).map(line => { const at = line.indexOf('|'); if (at < 1 || !line.slice(at + 1).trim()) throw new Error('Each Known item needs a statement | source.'); return {statement: line.slice(0, at).trim(), source: line.slice(at + 1).trim()}; });
+      await mutate(`/bounties/${data.id}/profile`, {validation_scope: scope.value, migration_stage: stage.value,
+        baseline_revision: baseline.value, candidate_revision: candidate.value, environment: environment.value,
+        knowledge: {known: facts, assumed: nonemptyLines(assumed.value), unknown: nonemptyLines(unknown.value)}});
+    }); };
+  }
+  box.append(form);
+  const dependencies = element('form'); const ids = labeled(dependencies, 'Shared prerequisites · existing bounty IDs, one per line', data.depends_on.join('\n'), 'textarea'); ids.disabled = !editable;
+  if (editable) { dependencies.append(element('button', 'Link prerequisites')); dependencies.onsubmit = event => { event.preventDefault(); run(() => mutate(`/bounties/${data.id}/dependencies`, {depends_on: nonemptyLines(ids.value)})); }; }
+  box.append(dependencies);
+  const graph = await api(`/bounties/${data.id}/constellation`);
+  box.append(element('h3', 'Constellation'), element('p', 'Each bounty appears once. Arrows point from an outcome to required child work or a shared prerequisite.'));
+  const nodes = element('div', undefined, 'constellation');
+  for (const node of graph.nodes) { const button = element('button', `${node.title} · ${node.phase}`); button.className = node.id === data.id ? 'current-task' : ''; button.onclick = () => run(() => show(node.id)); nodes.append(button); }
+  box.append(nodes);
+  const title = id => graph.nodes.find(node => node.id === id)?.title || id;
+  const edges = element('ul'); for (const edge of graph.edges) edges.append(element('li', `${title(edge.from)} → ${title(edge.to)} · ${edge.kind}`));
+  box.append(edges); detail.append(box);
+}
+function proofSection(data, detail) {
+  const box = element('section', undefined, 'evidence'); box.append(element('h3', 'One proof · bound to this outcome'));
+  box.append(element('p', 'One sufficient text, image or video artifact. AI reviews the criteria; a human verifies each LOW. A parent requires separate integration proof. No automatic approval.'));
+  const proof = data.proof, editable = [data.creator, data.claimant].includes(user) && data.phase === 'Claimed' && data.claimant;
+  if (proof) {
+    box.append(element('strong', `${proof.accepted ? 'Accepted' : proof.fresh ? 'Current · awaiting verification' : 'Stale · context changed'} · ${proof.filename}`), element('p', proof.description), element('code', `SHA-256 ${proof.sha256}`));
+    const controls = element('div', undefined, 'actions'); const preview = element('div');
+    const view = element('button', 'View proof'); view.onclick = () => run(async () => {
+      const response = await fetch(proof.download_url, {headers: {'X-Demo-User': user}}); if (!response.ok) throw new Error('Could not open proof.');
+      const blob = await response.blob(); preview.replaceChildren();
+      if (['text/plain', 'application/json'].includes(proof.media_type)) preview.append(element('pre', await blob.text(), 'proof-text'));
+      else { const media = element(proof.media_type.startsWith('image/') ? 'img' : 'video'); const url = URL.createObjectURL(blob); media.src = url; media.className = 'proof-media'; if (media.tagName === 'IMG') { media.alt = proof.description; media.onload = () => URL.revokeObjectURL(url); } else { media.controls = true; media.onloadeddata = () => URL.revokeObjectURL(url); } preview.append(media); }
+    });
+    const download = element('button', 'Download proof'); download.onclick = () => run(() => downloadArtifact(proof.download_url, proof.filename)); controls.append(view, download); box.append(controls, preview);
+    const review = proof.review;
+    box.append(element('p', review ? `AI review: ${review.verdict} · ${review.reason || 'Review in progress'}` : 'AI review: not requested'));
+    for (const criterion of review?.criteria || []) box.append(element('p', `${criterion.index + 1}. ${criterion.verdict} · ${criterion.reason}`));
+    if (proof.human) box.append(element('p', `Human LOW verification: ${proof.human.accepted ? 'accepted' : 'rejected'} · ${proof.human.note}`));
+    if (editable && proof.fresh && !['queued', 'running'].includes(review?.verdict)) { const request = element('button', 'Request AI proof review'); request.onclick = () => run(() => mutate(`/bounties/${data.id}/proof-review`)); box.append(request, element('small', 'Explicit request uses the configured provider. Missing access or unsupported video review stays inconclusive.')); }
+    if (editable && data.complexity === 'LOW' && proof.fresh && review?.verdict === 'pass') {
+      const human = element('form'); const decision = labeled(human, 'Human verification decision', 'Choose…', 'select', ['Choose…', 'Accept', 'Reject']);
+      const note = labeled(human, 'What did you personally verify?', '', 'textarea'); note.required = true;
+      human.append(element('button', 'Record human decision')); human.onsubmit = event => { event.preventDefault(); run(async () => { if (decision.value === 'Choose…') throw new Error('Explicitly accept or reject the proof.'); await mutate(`/bounties/${data.id}/proof-human`, {accepted: decision.value === 'Accept', note: note.value}); }); }; box.append(human);
+    }
+    if (editable && proof.accepted) { const form = element('form'); const note = labeled(form, 'Completion note', '', 'textarea'); note.required = true; form.append(element('button', data.funded ? 'Complete & release reserved demo Gold' : 'Complete verified bounty', 'primary')); form.onsubmit = event => { event.preventDefault(); run(() => mutate(`/bounties/${data.id}/complete`, {note: note.value})); }; box.append(form); }
+    if (['queued', 'running'].includes(review?.verdict)) proofPoll = setTimeout(() => { if (selected === data.id) run(() => show(data.id)); }, 2000);
+  } else box.append(element('p', data.phase === 'Closed' ? 'Historical closure · no accepted proof recorded. Not retroactively verified.' : 'No proof yet. Pin revisions and environment in Context before submitting.'));
+  if (editable) {
+    const form = element('form'); const file = labeled(form, 'Primary proof · text/JSON ≤200 KB, PNG/JPEG/MP4 ≤8 MB'); file.type = 'file'; file.accept = '.txt,.md,.json,.png,.jpg,.jpeg,.mp4'; file.required = true;
+    const description = labeled(form, 'How this proves the criteria', '', 'textarea'); description.required = true;
+    form.append(element('p', 'Use approved test data. No credentials or private records. A replacement preserves history and needs a new review.'), element('button', proof ? 'Attach replacement proof' : 'Attach proof'));
+    form.onsubmit = event => { event.preventDefault(); run(async () => { const artifact = file.files[0]; if (!artifact || artifact.size > 8000000) throw new Error('Choose one artifact under 8 MB.'); const types = {txt: 'text/plain', md: 'text/plain', json: 'application/json', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', mp4: 'video/mp4'}; const media_type = types[artifact.name.split('.').at(-1).toLowerCase()]; if (!media_type) throw new Error('Unsupported proof format.'); let raw = ''; for (const byte of new Uint8Array(await artifact.arrayBuffer())) raw += String.fromCharCode(byte); await mutate(`/bounties/${data.id}/proofs`, {filename: artifact.name, media_type, content_base64: btoa(raw), description: description.value}); }); }; box.append(form);
+  }
+  if (data.proof_history.length > 1) { const history = element('details'); history.append(element('summary', 'Immutable proof history')); for (const record of data.proof_history) { const button = element('button', `Download ${record.filename} · ${record.sha256.slice(0, 12)}`); button.onclick = () => run(() => downloadArtifact(`/api/v1/bounties/${data.id}/proofs/${record.proof_id}`, record.filename)); history.append(button); } box.append(history); }
+  detail.append(box);
+}
 function sourceInput(form) {
   const label = element('label', 'Source ZIP · focused UTF-8 files, up to 2 MB unpacked; exclude secrets and dependencies');
   const input = element('input'); input.type = 'file'; input.accept = '.zip'; label.append(input);
@@ -321,12 +411,7 @@ async function aiSection(data, detail) {
       });
       box.append(button, element('p', 'Drop the ZIP into a fresh Codex chat. Start with START_HERE.md. Local verification is still required.'));
     }
-    if (ai.status === 'ready' && owner) {
-      const form = element('form'); const label = element('label', 'Local verification evidence');
-      const evidence = element('textarea'); evidence.required = true; label.append(evidence); form.append(label, element('button', 'Confirm locally verified'));
-      form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/ai/complete`, {evidence: evidence.value})); };
-      box.append(form);
-    }
+    if (ai.status === 'ready' && owner) box.append(element('p', 'Preparation is ready, not verified. Use One proof above to submit evidence, request AI review and record human LOW verification.'));
     if (ai.status === 'followups_pending') {
       box.append(element('h3', 'Proposed child bounties · awaiting your approval'),
         element('p', 'No child tickets exist yet. Approve the complete set to preserve the complexity rule. The parent remains unresolved until its acceptance criteria are verified.'));
@@ -378,6 +463,16 @@ async function aiSection(data, detail) {
   button.className = root.id === id ? 'current-task' : ''; button.onclick = () => run(() => show(root.id)); item.append(button); add(root.id, item); list.append(item); tree.append(list); detail.append(tree);
 }
 
+$('gremlins-example').onclick = () => {
+  const behavior = {result: {selected: null}, state: {run_status: 'unchanged'}, effects: []};
+  const observation = {scenario: 'synthetic-cancel', identity: 'fixture-user', environment: 'isolated-simulator', revision: 'fixture-v1', behavior};
+  $('gremlins-input').value = JSON.stringify({scope: 'SIM', case: {name: 'Cancel leaves run unchanged', source: 'SYNTHETIC example; not a Watson finding', preconditions: 'No real application or data', stimulus: {action: 'cancel'}, expected: behavior, preservation_rule: 'Do not invent a selected instrument on cancel'}, mirrors: {legacy: observation, rest: observation, mcp: observation}}, null, 2);
+};
+$('gremlins-form').onsubmit = event => { event.preventDefault(); run(async () => {
+  const result = await api(`/gremlins/${$('gremlins-breed').value}`, JSON.parse($('gremlins-input').value));
+  const text = JSON.stringify(result, null, 2); $('gremlins-output').textContent = text;
+  $('gremlins-download').hidden = false; $('gremlins-download').onclick = () => { const url = URL.createObjectURL(new Blob([text], {type: 'application/json'})); const link = element('a'); link.href = url; link.download = 'gremlins-sim-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+}); };
 for (const button of document.querySelectorAll('nav button')) button.onclick = () => run(async () => { offset = 0; message(''); await navigate(button.dataset.view); });
 $('user').onchange = () => run(async () => { user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });
 $('search').oninput = () => run(async () => { offset = 0; await board(); });

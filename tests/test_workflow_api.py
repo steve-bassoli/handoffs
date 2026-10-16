@@ -26,3 +26,14 @@ def test_dependency_graph_reuses_one_setup_and_rejects_cycles(client):
     assert len(graph['nodes']) == 3 and len(graph['edges']) == 2
     assert write(client, f'/bounties/{ids[2]}/dependencies', {'depends_on': [ids[0]]}).status_code == 422
     assert client.get(f'/api/v1/bounties/{ids[0]}').json()['phase'] == 'Posted'
+
+
+def test_gremlins_workbench_runs_only_offline_comparison(client):
+    from test_gremlins import fixture
+    before = client.get('/api/v1/bounties').json()
+    assert client.post('/api/v1/gremlins/mimic', json=fixture()).json()['watson_executed'] is False
+    assert client.post('/api/v1/gremlins/saboteur', json=fixture()).json()['detector_verified']
+    assert client.post('/api/v1/gremlins/witness', json=fixture()).json()['preservation']['rule']
+    assert client.post('/api/v1/gremlins/mimic', json={**fixture(), 'scope': 'LIVE'}).status_code == 422
+    assert client.get('/api/v1/bounties').json()['items'] == before['items']
+    assert 'gremlins-form' in client.get('/').text

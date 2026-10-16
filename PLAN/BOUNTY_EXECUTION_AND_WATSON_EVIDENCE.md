@@ -1,122 +1,73 @@
 # Bounty execution and Watson verification
 
-Product direction supplied by Steve, October 16, 2026. Save as the target workflow;
-this document does not claim these features are already implemented.
+Steve's October 16, 2026 one-proof decision supersedes the earlier deferred
+two-MP4 design. There is no paired-video requirement to activate later. One
+sufficient text, image or video artifact supports the claimed outcome; optional
+support does not create a fixed artifact count. See the governing
+[modernization charter](../PROJECT_CHARTER.md).
 
-## HIGH SIGNAL: Watson MP4 requirement temporarily disabled
+## Bounty lifecycle
 
-Steve's clarification, October 16, 2026: the two-MP4 requirement is deferred until
-HANDOFFS has a hardened, real working UI. Do not implement or enforce mandatory
-video uploads during the current prototype. Missing videos must not block bounty
-acceptance, artifact downloads, local-verification reporting, or completion.
-Retain the paired-video design below as a future requirement; enable it only
-after that milestone and Steve's explicit activation. Ordinary verification and
-audit history remain in scope.
+The three visible phases are Posted, Claimed and Closed. Detailed preparation,
+approval and verification states remain in the audit history. Cancelled and
+superseded are Closed dispositions, not verified successes. Research ending or
+children being proposed does not establish acceptance.
 
-## Goal
+HIGH decomposes into exactly three HIGHs or three MEDIUMs; MEDIUM into exactly
+three LOWs. New children require human confirmation of the complete set. A LOW
+implementation owns one minimal managed commit; verification-only LOWs need no
+invented code change. Parents require their own integrated acceptance, not merely
+three closed children. Shared prerequisites are linked rather than duplicated.
 
-Accept a bounty, let an API agent prepare a reviewable result, and retain an
-auditable record of the developer proving the changed behavior in the app.
-Gold and reward changes are out of scope for this direction.
+## One proof before completion
 
-## Required user flow
+Claim the bounty and pin its intent, criteria, baseline and candidate revisions,
+source and verification environment. Keep source-backed facts separate from
+assumptions and unknowns. SIM, ORA and LIVE identify the declared target, not proof
+that a system ran. WRAP, REPLACE and RETIRE identify migration intent.
 
-1. **Accept bounty.** Show a spinner and loading text on the button immediately.
-   One acceptance creates one task assignment and one AI run. Disable duplicate
-   submissions while the request is pending; an uncertain retry reuses the same
-   operation ID. Restore a usable button with a clear error if acceptance fails.
-2. **Progress notification.** Show one notification at the top right for that run.
-   Update it as the work progresses: queued, researching, awaiting developer
-   answers, preparing artifacts, ready, or failed. Use actual recorded stages;
-   do not invent percentages. The developer can navigate elsewhere while work
-   continues. Refreshing or returning to the app restores authoritative status.
-3. **Contextual model selection.** The service selects an appropriate model using
-   the bounty's context, task type, and complexity. Record the chosen model and
-   selection reason with the run. Luna remains the current testing model; the
-   routing policy and available model choices are still to be implemented.
-   Preserve the maximum of three developer questions across the whole run.
-4. **Research ready.** Update the same top-right notification when the research
-   or fix bundle is ready. Include a direct link to the exact bounty page.
-   Preparation being finished does not establish that the fix was verified.
-5. **Artifacts.** The bounty page lists every retained artifact with a download
-   link, plus the portable ZIP for a fresh Codex chat. Preserve the research,
-   source/context pins, implementation plan, proposed changes, local run
-   instructions, and available validation evidence. Clearly distinguish proposed
-   test commands from tests actually executed and their results.
-6. **Developer verification.** The developer applies the patch and verifies the
-   behavior in the application. The bounty page records evidence against the
-   acceptance criteria and the developer's explicit verification decision.
-7. **Watson evidence pair (deferred; temporarily disabled).** Once activated after
-   the hardened-UI milestone, for WATSON bounties only, require two MP4 attachments:
-   one demonstrating the legacy functionality and one demonstrating the same
-   functionality after the patch is applied. Label the slots **Legacy behavior**
-   and **Patched behavior**. Do not apply this requirement to non-Watson tasks.
-8. **Auditable completion.** Keep the videos, artifacts, revisions, criterion
-   verdicts, actor, timestamps, and verification decision together on the bounty.
-   An AI-produced ZIP, PR, notification, or pair of uploads cannot itself supply
-   the developer's verification decision.
+Attach one sufficient primary artifact and explicitly request AI review. The
+review checks each criterion without tools or execution privileges. Failed,
+unreadable, contradictory or insufficient evidence leaves work unresolved. A LOW
+also needs an explicit human verification decision before completion. A composite
+needs verified children/prerequisites and separate reviewed integration proof.
+Every closure and settlement path enforces the same gate.
 
-## Watson comparison contract
+The artifact is immutable and hashed. Replacements preserve prior artifacts;
+changed bound context makes proof stale. Closed LOW proof is directly viewable
+and downloadable, including in the artifact ZIP. An AI assertion, PR URL or empty
+approval note alone is not proof. Evidence must cover the declared scenario,
+relevant state, permissions and side effects; a screenshot alone may be inadequate.
+Use approved data and exclude credentials. Demo identities are not authenticated
+compliance signatures, and AI judgment is not a certification.
 
-The mandatory video provisions in this section apply only after explicit
-activation; they do not gate the current prototype.
+## Implemented local prototype
 
-- Determine Watson scope explicitly from the task/project metadata; do not infer
-  it from the title alone.
-- Both MP4s must demonstrate the same named scenario, with comparable inputs,
-  user role, configuration, and expected result. Record the legacy version and
-  patch commit/build so the comparison is attributable to specific software.
-- Each criterion records its expected behavior, observed legacy and patched
-  outcomes, evidence references (including video timestamps), and pass/fail or
-  unresolved verdict. A missing recording leaves the Watson verification gate
-  incomplete. A failed or unresolved criterion cannot count as verified.
-- Bind the evidence to the exact patch revision. A later patch requires a new
-  verification decision and evidence sufficient for that revision; old approval
-  does not silently apply to new code.
-- Record checks for relevant behavior that a screen recording cannot establish,
-  such as permissions, persisted data, audit events, e-signatures, transactions,
-  or error handling. Use actual test results or observable application/backend
-  evidence when those behaviors are in scope. Never manufacture a passing result.
-- Keep uploaded evidence immutable with a content hash and actor/time metadata.
-  Replacement evidence is a new version, preserving the previous record. Store
-  recordings in application artifact storage, not Git. Use approved test data;
-  credentials and sensitive records do not belong in demonstrations.
-- Two MP4s establish a reviewable before/after record for the demonstrated
-  scenarios. They do not alone prove 100% equivalence of all Watson behavior or
-  establish regulatory compliance. Report coverage against the explicit pinned
-  criteria and scenarios. Any overall rewrite coverage percentage requires a
-  defined baseline inventory and verified coverage of that inventory.
+The service and bounty UI support context shelves, lifecycle projection, a connected
+dependency constellation, primary proof upload/history, AI review, human LOW
+verification and guarded closure. Completion releases existing funded escrow once;
+it does not mint additional rewards. Provider errors and restarted reviews remain
+inconclusive until explicit retry. Text/JSON and PNG/JPEG can be submitted to the
+review adapter. MP4 is downloadable/viewable but automatic video review currently
+returns inconclusive; use sufficient text/image evidence rather than bypassing it.
+Provider calls were verified with fixtures, not a paid live run.
 
-## State and hierarchy
+Gremlins has an offline workbench and real read-only MCP server. Mimic compares
+supplied Legacy, REST and MCP observations; Saboteur challenges mismatch detection
+with an isolated in-memory mutation; Witness retains a hashed comparison and named
+quirk contract. This SIM-only comparator runs no Watson or Oracle operations.
+Unknown behavior remains unverified; coverage requires a pinned behavior catalog.
 
-Keep assignment, AI preparation, evidence submission, and human verification
-separate. A successful path is:
+## Remaining execution UX
 
-`available -> accepted/researching -> awaiting answers (if needed) -> artifacts ready -> awaiting local verification -> evidence ready -> verified`
+The target Accept bounty experience combines assignment and AI preparation with
+immediate button loading and one updating top-right progress notification linking
+to the bounty. Current separate take/start controls remain; there is no invented
+percentage or claim that this combined interaction is implemented. Contextual
+model routing and resumable global notifications remain future work. Luna is the
+configured test default, not automatic complexity-based routing. Preparation asks
+at most three developer questions and retains portable artifacts for a fresh chat.
 
-The next UX consolidates the current separate take/start controls into **Accept
-bounty** for this execution path. Acceptance starts preparation; downloading the
-result does not complete verification. Failed API work exposes a clear failure
-and explicit retry without losing the assignment or previous evidence.
-
-If the agent cannot produce a fix, retain its findings and propose bounded child
-tasks. The user must explicitly confirm the exact children before they exist.
-The attempt may close with outcome **follow-ups required**, while the original
-requirement remains unverified. The parent/child tree and ordered history must
-show that distinction through to the eventual verified result.
-
-## Minimum implementation order
-
-1. Wire Accept bounty to one persisted AI run with button loading and one
-   updating top-right notification linking back to the task.
-2. Expose all artifact downloads on the bounty page and record model selection.
-3. Keep criterion-based local verification and its patch revision visible in the UI.
-4. After a hardened, real working UI and Steve's explicit activation, add the
-   Watson marker, paired MP4 uploads, and mandatory video verification gate.
-
-Existing prototype foundations: Luna API execution, up to three questions,
-downloadable fix ZIP, explicit local-verification reporting, confirmed child
-creation, and a task tree. This direction adds contextual routing, global
-notifications, individual artifact downloads, and the Watson video/evidence gate;
-their presence must be verified before describing them as implemented. Current
-demo identity and simulated PR verification are not authenticated audit proof.
+Real Watson REST/MCP adapters, Oracle/application runners, deployment authorization,
+authenticated identity and broader legacy coverage remain separate work. Local
+verification does not publish these changes or mutate live bounties.
