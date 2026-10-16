@@ -27,6 +27,8 @@ The app provides Board, My Work, Post Bounty, and Wallet/Stats. Choose Steve, Na
 
 Defaults: 1,000 Gold per month, Eastern calendar, rollover, and current-month-only grants on wallet access/action. Cancellation refunds only an unclaimed bounty. `HANDOFFS_MONTHLY_GOLD` overrides the grant; `HANDOFFS_DB` overrides the database path (default `.data/handoffs.sqlite` relative to the working directory). Identity and PR checks are explicitly simulated. The server binds to loopback by default; a team host is a later deployment choice.
 
+For a temporary private-network team demo, use the [scoped launcher and participant setup](PLAN/TEAM_DEMO.md). It requires explicit host/client addresses and a remote connection check; it does not make localhost accessible automatically.
+
 The database, wallets and task rules live in the service. Browser and [minimal client skill](skills/handoffs/SKILL.md) use the same API:
 
 ```powershell

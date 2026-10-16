@@ -252,3 +252,27 @@ validation: Host reports enabled handoffs configuration; a canonical stdio clien
 exclusions: Do not restart the active desktop app, alter other servers, access the API key, or claim hosted ChatGPT connectivity.
 depends_on: HF-19
 status: done
+
+id: HF-21
+criterion: Prepare a private team demo without exposing mock identity to an unrestricted network.
+objective: Provide scoped startup and participant instructions.
+source: README.md; current loopback service and private network inspection
+target: scripts/start-team-demo.ps1; PLAN/TEAM_DEMO.md; README.md
+implementation: Require exact private host/client IPv4 addresses; bind one interface, add an address-scoped firewall rule, retain canonical SQLite and clean up the rule on normal exit. Document browser and per-user local MCP setup.
+complexity: medium
+validation: PowerShell parse check and six invalid-address rejection cases pass without firewall changes; application regression suite remains green.
+exclusions: No public tunnel, real authentication, broad firewall allow or remote-machine changes.
+depends_on: HF-20
+status: done
+
+id: HF-22
+criterion: Nate and Will can reach the same persistent HANDOFFS service from their machines.
+objective: Activate and verify private team access.
+source: PLAN/TEAM_DEMO.md
+target: selected host listener/firewall; participant connection settings; status evidence
+implementation: Obtain participant VPN addresses, activate the scoped launcher, verify remote health and common bounty IDs, then verify an explicitly authorized two-user cycle.
+complexity: medium
+validation: Each participant confirms remote health/board and native MCP discovery; host-only tests are insufficient.
+exclusions: No bypass of corporate VPN isolation, repository invitations or teammate messaging without authorization.
+depends_on: HF-21; participant addresses and reachable company-network route
+status: blocked
