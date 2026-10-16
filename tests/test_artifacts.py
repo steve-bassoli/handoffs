@@ -81,7 +81,7 @@ def test_posted_source_is_available_to_luna_and_in_artifact_bundle(tmp_path):
     model = FakeLuna([decision('deliver', files=[{'path': 'calc.py', 'content': 'def add(a,b): return a+b\n'}], instructions='Test locally')])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
         bounty = write(client, '/bounties', {'title': 'Fix addition', 'goal': 'Sum', 'criteria': ['Sums'],
-            'gold': 50, 'source_zip': source_zip()}).json()['id']
+            'gold': 50, 'complexity': 'LOW', 'source_zip': source_zip()}).json()['id']
         assert write(client, f'/bounties/{bounty}/ai/start', {}).status_code == 200
         assert client.get(f'/api/v1/bounties/{bounty}').json()['ai_run']['status'] == 'ready'
         response = client.get(f'/api/v1/bounties/{bounty}/artifacts/download')

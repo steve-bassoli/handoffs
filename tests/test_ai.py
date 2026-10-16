@@ -24,7 +24,7 @@ def source_zip(files=None):
 def decision(action, **extra):
     return Decision(action=action, summary='Investigated addition', questions=extra.get('questions', []),
         files=extra.get('files', []), instructions=extra.get('instructions', ''), verification=extra.get('verification', []),
-        proposals=extra.get('proposals', []), plan=extra.get('plan', [
+        proposals=[{'complexity': 'HIGH', **proposal} for proposal in extra.get('proposals', [])], plan=extra.get('plan', [
             {'id': 'fix', 'title': 'Apply the bounded fix', 'complexity': 'LOW', 'children': [],
              'files': [file['path'] for file in extra.get('files', [])]}] if action == 'deliver' else []))
 
@@ -103,21 +103,25 @@ def test_followups_require_confirmation_and_retain_lineage(tmp_path):
                  {'title': 'Implement the fix', 'goal': 'Apply the pinned contract', 'criteria': ['Tests pass']}]
     model = FakeLuna([decision('followups', proposals=proposals), decision('ask', questions=['Which contract?'])])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = post_bounty(client).json()['id']
+        bounty = write(client, '/bounties', {'title': 'Bound the parent', 'goal': 'Research', 'criteria': ['Verified outcome'],
+            'gold': 150, 'complexity': 'HIGH'}).json()['id']
         before = client.get('/api/v1/me/stats').json()
         write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
         assert get_run(client, bounty)['status'] == 'followups_pending'
         tree = client.get(f'/api/v1/bounties/{bounty}/lineage').json()
         assert len(tree['items']) == 1
-        assert client.get(f'/api/v1/bounties/{bounty}').json()['status'] == 'completed'
+        assert client.get(f'/api/v1/bounties/{bounty}').json()['status'] == 'awaiting_approval'
         assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0]}, 'nate').status_code == 403
         assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [5]}).status_code == 422
-        write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0]}, key='confirm')
-        write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0]}, key='confirm')
+        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0]}).status_code == 422
+        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0, 1]}, key='confirm').status_code == 200
+        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0, 1]}, key='confirm').status_code == 200
         tree = client.get(f'/api/v1/bounties/{bounty}/lineage').json()
-        assert len(tree['items']) == 2
+        assert len(tree['items']) == 3
         child = next(item for item in tree['items'] if item['parent_id'] == bounty)
         assert child['title'] == 'Find the contract'
+        assert client.get(f'/api/v1/bounties/{bounty}').json()['status'] == 'decomposed'
+        assert client.get(f"/api/v1/bounties/{child['id']}").json()['complexity'] == 'HIGH'
         assert client.get(f"/api/v1/bounties/{child['id']}/lineage").json()['root_id'] == bounty
         assert write(client, f"/bounties/{child['id']}/ai/start", {}).status_code == 200
         assert get_run(client, child['id'])['status'] == 'needs_input'

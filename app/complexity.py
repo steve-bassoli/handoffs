@@ -7,6 +7,15 @@ import re
 import subprocess
 
 
+def validate_bounty_split(parent, levels):
+    if parent == 'HIGH' and ((len(levels) > 1 and all(level == 'HIGH' for level in levels)) or
+                             (len(levels) == 3 and all(level == 'MEDIUM' for level in levels))):
+        return levels[0]
+    if parent == 'MEDIUM' and len(levels) == 3 and all(level == 'LOW' for level in levels):
+        return 'LOW'
+    raise ValueError('HIGH needs 2+ HIGHs or exactly 3 MEDIUMs; MEDIUM needs exactly 3 LOWs; LOW cannot decompose')
+
+
 def validate_plan(steps):
     seen = set()
     leaves = []
@@ -39,13 +48,8 @@ def validate_plan(steps):
             return {**step, 'complexity': level}
         if files:
             raise ValueError('Only LOW leaves declare commit files')
-        if level == 'HIGH' and len(children) > 1 and all(isinstance(child, dict) and
-                isinstance(child.get('complexity'), str) and child['complexity'].upper() == 'HIGH' for child in children):
-            child_level = 'HIGH'
-        else:
-            if len(children) != 3:
-                raise ValueError('HIGH needs 2+ HIGHs or exactly 3 MEDIUMs; MEDIUM needs exactly 3 LOWs')
-            child_level = 'MEDIUM' if level == 'HIGH' else 'LOW'
+        child_level = validate_bounty_split(level, [str(child.get('complexity', '')).upper()
+                                                  if isinstance(child, dict) else '' for child in children])
         return {**step, 'complexity': level, 'children': [visit(child, child_level) for child in children]}
 
     if not isinstance(steps, list) or not steps:
