@@ -8,6 +8,12 @@ description: Plan and execute the smallest acceptance-criteria-bound implementat
 Implement exactly the supplied acceptance criteria and nothing else. Treat them
 as both the required outcome and the scope ceiling.
 
+For Watson modernization and HANDOFFS work, read the
+[project charter](../../PROJECT_CHARTER.md). It defines Watson REST/MCP, Gremlins,
+the audit trail and the single-proof completion contract. Do not treat target
+capabilities as implemented or turn the charter into extra acceptance criteria
+for unrelated work.
+
 ## Plan before editing
 
 Read [references/implementation-steps-template.md](references/implementation-steps-template.md),
@@ -97,6 +103,15 @@ material decision is missing, stop with one concise question instead of
 expanding scope.
 
 ## Completion
+
+For a Watson/HANDOFFS LOW bounty, retain one sufficient primary proof artifact
+(video, image or text) linked to its criteria and relevant source/run provenance.
+It must be directly accessible from the closed LOW and inspectable by AI. AI
+reviews the proof; the human explicitly verifies the outcome before completion.
+Do not require multiple proof forms or silently reinstate the retired two-video
+gate. Missing or inconclusive proof leaves the bounty unresolved. Prepared
+reports and unexecuted checks are not passing evidence. If the runtime cannot
+enforce this gate yet, report that gap rather than claim verified closure.
 
 Return the verbatim plan and final status artifacts, the commit SHA, exact
 validation results, criterion-by-criterion evidence, and unresolved gaps.

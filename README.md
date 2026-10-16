@@ -2,6 +2,11 @@
 
 Standalone prototype for creating, assigning, tracking, and completing AI-assisted work handoffs.
 
+The [Watson AI Driven Modernization Charter](PROJECT_CHARTER.md) defines the
+Watson REST/MCP, Gremlins and HANDOFFS target, the rule of three, and one sufficient
+proof artifact before LOW completion. It distinguishes the target from current
+prototype enforcement.
+
 Requires Python 3.11 or newer. Run these setup commands from the repository root in PowerShell:
 
 ```powershell
