@@ -45,8 +45,9 @@ try {
     Assert ($prepared.prompt -match [regex]::Escape($prepared.planFile) -and $prepared.prompt -match [regex]::Escape($prepared.statusFile)) 'prompt must supply exact artifact paths'
     Assert ($prepared.prompt -match 'scope ceiling' -and $prepared.prompt -match 'remove anything not required' -and $prepared.prompt -match 'never commit the plan artifacts') 'prompt must enforce minimal AC-bound implementation'
     $iterativeContract = Get-Content -Raw -LiteralPath $prepared.iterativeImplementationSkillFile
-    Assert ($iterativeContract -match 'complexity: easy' -and $iterativeContract -match 'complexity:\s*medium') 'executor contract must permit only easy and medium plan items'
-    Assert ($iterativeContract -match 'bounty proposal is not a task' -and $iterativeContract -match 'human explicitly approves') 'high-complexity work must remain an unpublished bounty proposal'
+    Assert ($iterativeContract -match 'exactly 3 MEDIUM' -and $iterativeContract -match '3 SMALL' -and $iterativeContract -match 'Only SMALL') 'executor contract must enforce three-way decomposition and SMALL-only commits'
+    Assert (Test-Path -LiteralPath $prepared.complexityGuardFile -PathType Leaf) 'executor must receive standalone complexity guard'
+    Assert ((Get-FileHash -LiteralPath $prepared.complexityGuardFile).Hash -eq (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot '..\..\..\app\complexity.py')).Hash) 'executor must receive the same guard as the engine'
     Assert ($prepared.prompt -match 'Do not push' -and $prepared.prompt -match 'calling agent handles branch publication' -and $prepared.cleanupAfter -eq 'parent-verifies-plan-and-pr-confirmed-remote') 'prompt must separate implementation from automatic publication and retain evidence through parent verification'
 
     $directQuest = [ordered]@{

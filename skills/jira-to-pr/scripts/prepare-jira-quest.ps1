@@ -68,6 +68,8 @@ if ([string]::IsNullOrWhiteSpace($IterativeImplementationSkillPath)) {
 $iterativeSkillRoot = [System.IO.Path]::GetFullPath($IterativeImplementationSkillPath)
 $iterativeSkillSource = Join-Path $iterativeSkillRoot 'SKILL.md'
 $iterativeTemplateSource = Join-Path $iterativeSkillRoot 'references\implementation-steps-template.md'
+$complexityGuardSource = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\app\complexity.py'))
+if (-not (Test-Path -LiteralPath $complexityGuardSource -PathType Leaf)) { throw 'The shared complexity guard is missing.' }
 if (-not (Test-Path -LiteralPath $iterativeSkillSource -PathType Leaf)) {
     throw 'The iterative-implementation SKILL.md is missing.'
 }
@@ -101,6 +103,10 @@ $iterativeSkillFile = Join-Path $contractRoot 'SKILL.md'
 $iterativeTemplateFile = Join-Path $contractReferences 'implementation-steps-template.md'
 [System.IO.File]::Copy($iterativeSkillSource, $iterativeSkillFile)
 [System.IO.File]::Copy($iterativeTemplateSource, $iterativeTemplateFile)
+$contractScripts = Join-Path $contractRoot 'scripts'
+$null = New-Item -ItemType Directory -Path $contractScripts
+$complexityGuardFile = Join-Path $contractScripts 'complexity.py'
+[System.IO.File]::Copy($complexityGuardSource, $complexityGuardFile)
 $planFile = Join-Path $artifactsRoot 'iterative_implementation_items.txt'
 $statusFile = Join-Path $artifactsRoot 'iterative_implementation_items_status.txt'
 
@@ -145,9 +151,12 @@ Before editing source, write its plan and status artifacts to these exact paths:
 $planFile
 $statusFile
 
+The plan must be JSON with a steps hierarchy: HIGH -> exactly 3 MEDIUM children; MEDIUM -> exactly 3 SMALL children; LOW means SMALL. Only SMALL leaves execute or commit. Validate and commit using the standalone guard at:
+$complexityGuardFile
+
 This is a continuous delegated executor session: proceed through the retained plan without asking the parent between items. Treat the ticket requirements and any acceptance criteria as verbatim authority and as the scope ceiling. Inspect only relevant source. Implement the most minimal solution that satisfies exactly those criteria. Do not add cleanup, refactoring, hardening, error behavior, abstractions, documentation, or tests beyond the narrowest proof required by a criterion. Ask one concise question and stop if a material decision is missing.
 
-Before committing, compare every changed line and behavior with the retained plan and criteria, and remove anything not required. Create one local commit containing only the minimal implementation and its necessary focused tests; never commit the plan artifacts. Do not push, mutate JIRA, record human acceptance, or award rewards; the calling agent handles branch publication and PR creation. Return both plan artifacts verbatim, a requirement-by-requirement evidence matrix, exact validation results, unresolved gaps, an explicit plan-to-diff conformance statement, and the local commit SHA.
+Before committing each SMALL leaf, compare every changed line and behavior with the retained plan and criteria, and remove anything not required. Stage only that leaf's declared files and use the guard's commit action with --plan, --step, --repository and --message. Never commit a HIGH or MEDIUM parent or bypass the guard with direct git commit; never commit the plan artifacts. Do not push, mutate JIRA, record human acceptance, or award rewards; the calling agent handles branch publication and PR creation. Return both plan artifacts verbatim, a requirement-by-requirement evidence matrix, exact validation results, unresolved gaps, an explicit plan-to-diff conformance statement, and the local commit SHAs per SMALL leaf.
 "@
 
 [pscustomobject][ordered]@{
@@ -157,6 +166,7 @@ Before committing, compare every changed line and behavior with the retained pla
     repositoryRoot = $repository
     questFile = $savedQuest
     iterativeImplementationSkillFile = $iterativeSkillFile
+    complexityGuardFile = $complexityGuardFile
     planFile = $planFile
     statusFile = $statusFile
     baseRevision = $head
