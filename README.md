@@ -46,6 +46,12 @@ Defaults: 1,000 Gold per month, Eastern calendar, rollover, and current-month-on
 
 For a temporary private-network team demo, use the [scoped launcher and participant setup](PLAN/TEAM_DEMO.md). It requires an explicit host address and either named clients or the owner's opt-in to all reachable network clients, plus a remote connection check; it does not make localhost accessible automatically.
 
+Standing workflow: automatically deploy verified local change batches to the
+existing port-8000 service using the [pinned local publisher](PLAN/TEAM_DEMO.md#routine-publishing).
+Preserve the configured database and approved listeners. Remote pushes, public
+hosting, new network exposure and unsafe data migrations are not covered by that
+instruction; failures must be reported rather than calling a local commit live.
+
 The database, wallets and task rules live in the service. Browser and [minimal client skill](skills/handoffs/SKILL.md) use the same API:
 
 ```powershell

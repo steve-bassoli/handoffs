@@ -58,6 +58,23 @@ Maintaining the service does not confer ownership of participants' resources.
 Follow the constitution's consent, ledger-enforcement and independent-verification
 architecture requirements before claiming those protections are implemented.
 
+## Routine local deployment
+
+The user explicitly authorizes automatic deployment of completed, verified change
+batches to the existing The Commons port-8000 service on this workstation. For
+this setup, publish from `C:/work/modern_watson/handoffs` to the existing canonical
+checkout `C:/hackathon/handoffs`, using a full tested commit SHA and the established
+publisher. Reuse the configured database and existing approved loopback/private
+listeners. Take a consistent database backup, require a clean fast-forward target,
+and verify the served identity, health and deployed revision before reporting done.
+
+Routine local deployment no longer needs a repeated approval question. Stop on
+failed tests, dirty/divergent targets, unexplained data changes or an unsafe
+migration. This standing instruction does not authorize remote Git pushes, public
+hosting, new network exposure, destructive data changes, resource spending or
+claims of peer connectivity without an actual peer check. Broader deployments
+and material changes to access or protected policy remain separate decisions.
+
 ## 1 Watson Services
 
 Replace Watson's legacy application face with REST and MCP interfaces, migrating

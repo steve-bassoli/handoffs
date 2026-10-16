@@ -6,6 +6,24 @@ This is a temporary laptop-hosted demo, not production deployment. Mock users ca
 
 ### Routine publishing
 
+The user has authorized automatic deployment after each completed, verified local
+change batch. The existing canonical checkout is `C:/hackathon/handoffs`; deploy
+the tested source from `C:/work/modern_watson/handoffs` without a remote Git push:
+
+```powershell
+# Run from the tested source checkout. Substitute its verified full commit SHA.
+.\scripts\publish-demo.ps1 -RepositoryRoot 'C:\hackathon\handoffs' `
+  -SourceRepository 'C:\work\modern_watson\handoffs' -SourceCommit '<full-tested-commit-SHA>'
+```
+
+The local source must be a real filesystem checkout and the release must be an
+exact commit. The publisher fetches it into `FETCH_HEAD`, verifies a fast-forward,
+and does not change `origin` or its tracking references. The ordinary no-source
+command below retains its existing `origin/main` behavior. No remote push is
+implied by auto-deploy. Preserve the existing database and network scope; do not
+pass initialization/network flags for routine releases. Stop for unsafe migrations
+or dirty/divergent checkouts instead of discarding local work.
+
 Use ordinary PowerShell for app publishing. The one-time handoff below copies the
 existing approved firewall scope into `HANDOFFS-Team-Access-8000` and replaces the
 old administrator-owned listeners. Approve its single Windows administrator prompt;
