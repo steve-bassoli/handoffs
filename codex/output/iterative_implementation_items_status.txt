@@ -1,9 +1,9 @@
 # HANDOFFS iterative implementation status
 
-Planning artifacts created; no implementation started and no runtime validation claimed.
-All steps open. Dependencies and policies are tracked in the queue.
+HF-01 implemented and runtime-verified on October 16, 2026. HF-02 through HF-17 remain open.
+Dependencies and policies are tracked in the queue. Stop for Steve's HF-01 verification before HF-02.
 
-HF-01 | open | Planned only; no execution evidence.
+HF-01 | done | Python 3.13.1 fresh venv; pip install -e . exit 0; real uvicorn HTTP GET /health returned 200 and {"status":"ok"}; validation process exit 0 and server terminated after check.
 HF-02 | open | Planned only; no execution evidence.
 HF-03 | open | Planned only; no execution evidence.
 HF-04 | open | Planned only; no execution evidence.
@@ -23,3 +23,6 @@ HF-17 | open | Planned only; no execution evidence.
 
 Unresolved policies: monthly amount/eligibility/rollover/catch-up; payout gate; cancellation after claim; legacy opening balances; shared host.
 Bounty proposals: none.
+
+HF-01 scope conformance: pyproject.toml, app/__init__.py, app/main.py, .gitignore and README.md implement dependency setup, package discovery, health endpoint and documented startup only. Plan/status changes record execution and the Python 3.11+ runtime adjustment. Every changed path and behavior maps to HF-01 or its retained artifacts; no application-domain work added.
+Validation commands: python -m venv .venv; .\.venv\Scripts\python.exe -m pip install --timeout 20 --retries 1 -e .; live subprocess check launching .\.venv\Scripts\python.exe -m uvicorn app.main:app on an available loopback port and asserting HTTP 200 /health JSON; git diff --check. All final checks exit 0. Initial sandbox pip attempt stalled and was interrupted; successful installation used approved execution outside sandbox.

@@ -1,27 +1,27 @@
 # HANDOFFS iterative implementation queue
 
-Planning only. No application steps have executed.
+Implementation authorized October 16, 2026; progress is recorded in the status artifact.
 Skill: C:\hackathon\hackwatson\skills\common\iterative-implementation\SKILL.md
 Skill source checkout HEAD inspected: 8e7a44332f9c46c86ba8936df2095d2033ce839b (working-tree instructions were read; this is not a claim the checkout is clean).
 Parent acceptance contract: PLAN/HANDOFFS_WEBAPP_PLAN.md, Acceptance criteria for the prototype.
 Artifacts are intentionally committed because Steve explicitly requested a saved, reviewable plan and its steps.
-Execution: earliest ready step only; stop for Steve's verification after each implemented step. This turn creates planning artifacts only.
+Execution: earliest ready step only; stop for Steve's verification after each implemented step.
 Dependencies supplement the skill's required step fields. Every executable step is easy or medium. No high-complexity bounty is proposed.
 Policy dependencies do not stop HF-01 through HF-03. Resolve economic policy before its first dependent step; do not silently implement a proposal as a decision.
 Optional Tavern styling, XP, quota, notifications, production auth and real GitHub integration are deferred.
-Source symbols are existing evidence; target paths/symbols are proposed, not implemented.
+Source symbols are existing evidence; target paths/symbols remain proposed until their step is done.
 
 id: HF-01
 criterion: A fresh clone starts locally with documented commands and no dependency on the Hackwatson checkout.
 objective: Run the standalone service.
 source: README.md; PLAN/HANDOFFS_WEBAPP_PLAN.md, Application stack
-target: pyproject.toml; app/main.py; README.md
+target: pyproject.toml; app/__init__.py; app/main.py; .gitignore; README.md
 implementation: Create FastAPI entry point, /health, dependency setup and one local start command.
 complexity: easy
 validation: Start from a fresh environment; GET /health returns 200.
 exclusions: No domain workflows or external integrations.
 depends_on: none
-status: open
+status: done
 
 id: HF-02
 criterion: Every state change produces an immutable, ordered event with actor and timestamp.

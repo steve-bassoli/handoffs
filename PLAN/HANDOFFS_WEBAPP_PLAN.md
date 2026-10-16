@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for Steve's review. Updated October 16, 2026 to make HANDOFFS an independent service with one minimal client skill in Hackwatson. This repository contains planning only; implementation begins after Steve approves the plan.
+Implementation started at Steve's direction on October 16, 2026. HANDOFFS is an independent service with one minimal client skill in Hackwatson. Track completed steps and evidence in the linked iterative status artifact.
 
 ## Goal
 
@@ -72,7 +72,7 @@ The current source of shared task truth is Git under `PLAN/handoffs/`. The local
 
 ### Application stack
 
-- Backend: Python 3.12 with FastAPI.
+- Backend: Python 3.11+ with FastAPI; initial runtime verification uses the installed Python 3.13.
 - Database: SQLite with SQLAlchemy and Alembic migrations.
 - Frontend: HTML/CSS and browser-native JavaScript served by FastAPI.
 - Tests: pytest for domain/API behavior and a small browser smoke test only when the UI needs it.
@@ -249,7 +249,7 @@ The executable breakdown follows Hackwatson's `skills/common/iterative-implement
 - [Ordered steps with criteria, dependencies, targets, complexity and validation](../codex/output/iterative_implementation_items.txt).
 - [Step status and evidence](../codex/output/iterative_implementation_items_status.txt).
 
-These retained planning artifacts are included in Git at Steve's explicit request to write and review the plan. Implementation executes the earliest ready item and stops for Steve's verification after each item. All steps are currently open; policy-dependent steps name their prerequisites. Optional integrations and game polish are excluded from the queue.
+These retained planning artifacts are included in Git at Steve's explicit request to write and review the plan. Implementation executes the earliest ready item and stops for Steve's verification after each item. The status artifact records progress; policy-dependent steps name their prerequisites. Optional integrations and game polish are excluded from the queue.
 
 ### Phase 1: runnable skeleton and domain core
 
@@ -324,4 +324,4 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 6. Resolve the economic decisions above before implementing issuance and settlement policy.
 7. Shared service host and teammate connectivity must be chosen and verified before cutover. Begin with explicit demo identity and mocked PR verification; replace these adapters when real access is needed.
 
-Approval of this plan authorizes implementation only after Steve explicitly says to proceed. Requested changes should be incorporated into this plan before code is added.
+Steve authorized beginning minimal implementation. Continue one ready item at a time with verification checkpoints; unresolved economic policies remain dependencies of their respective steps.
