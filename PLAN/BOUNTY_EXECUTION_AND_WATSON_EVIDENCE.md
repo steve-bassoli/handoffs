@@ -3,6 +3,16 @@
 Product direction supplied by Steve, October 16, 2026. Save as the target workflow;
 this document does not claim these features are already implemented.
 
+## HIGH SIGNAL: Watson MP4 requirement temporarily disabled
+
+Steve's clarification, October 16, 2026: the two-MP4 requirement is deferred until
+HANDOFFS has a hardened, real working UI. Do not implement or enforce mandatory
+video uploads during the current prototype. Missing videos must not block bounty
+acceptance, artifact downloads, local-verification reporting, or completion.
+Retain the paired-video design below as a future requirement; enable it only
+after that milestone and Steve's explicit activation. Ordinary verification and
+audit history remain in scope.
+
 ## Goal
 
 Accept a bounty, let an API agent prepare a reviewable result, and retain an
@@ -36,7 +46,8 @@ Gold and reward changes are out of scope for this direction.
 6. **Developer verification.** The developer applies the patch and verifies the
    behavior in the application. The bounty page records evidence against the
    acceptance criteria and the developer's explicit verification decision.
-7. **Watson evidence pair.** For WATSON bounties only, require two MP4 attachments:
+7. **Watson evidence pair (deferred; temporarily disabled).** Once activated after
+   the hardened-UI milestone, for WATSON bounties only, require two MP4 attachments:
    one demonstrating the legacy functionality and one demonstrating the same
    functionality after the patch is applied. Label the slots **Legacy behavior**
    and **Patched behavior**. Do not apply this requirement to non-Watson tasks.
@@ -46,6 +57,9 @@ Gold and reward changes are out of scope for this direction.
    the developer's verification decision.
 
 ## Watson comparison contract
+
+The mandatory video provisions in this section apply only after explicit
+activation; they do not gate the current prototype.
 
 - Determine Watson scope explicitly from the task/project metadata; do not infer
   it from the title alone.
@@ -96,9 +110,9 @@ show that distinction through to the eventual verified result.
 1. Wire Accept bounty to one persisted AI run with button loading and one
    updating top-right notification linking back to the task.
 2. Expose all artifact downloads on the bounty page and record model selection.
-3. Add the explicit Watson marker, the two MP4 slots, and criterion-based local
-   verification tied to the patch revision.
-4. Enforce the verification gate and display its evidence and lineage in the UI.
+3. Keep criterion-based local verification and its patch revision visible in the UI.
+4. After a hardened, real working UI and Steve's explicit activation, add the
+   Watson marker, paired MP4 uploads, and mandatory video verification gate.
 
 Existing prototype foundations: Luna API execution, up to three questions,
 downloadable fix ZIP, explicit local-verification reporting, confirmed child

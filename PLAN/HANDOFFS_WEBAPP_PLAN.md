@@ -11,6 +11,10 @@ MP4 evidence pair with explicit developer verification. It supersedes the earlie
 worker-only execution boundary below; older prototype and economy descriptions
 remain historical context, not proof that the new verification gate exists.
 
+**Current override:** the two-MP4 requirement is temporarily disabled until a
+hardened, real working UI and Steve's explicit activation. Missing videos do not
+block the prototype's acceptance, downloads, verification reporting, or completion.
+
 ## Goal
 
 Extract the HANDOFFS concept from `nate-viniconis/hackwatson` into an independently owned application at `steve-bassoli/handoffs`. Deliver a web marketplace where users receive monthly Gold, post funded work bounties, and earn transferable Gold by delivering work using their own token allowances.
