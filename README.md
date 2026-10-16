@@ -47,8 +47,38 @@ downloads and **Download all artifacts (ZIP)**. These read-only downloads includ
 stored requirements, history, imported packet files, posted source attachments,
 and existing AI inputs/results when present. They never claim work or call a model.
 External references are listed separately, not fetched or included automatically.
+For legacy imports, canonical goal/criteria are projected from the preserved
+specification, root `context.md` contains that full specification, and the recorded
+completion actor is shown separately from the historical assignment.
+Every export includes a checksummed `handoff.json`, visible missing-input warnings,
+and a response template. Supplied source is not a claim of complete or live-tested
+readiness. ZIP bytes are stable while the stored inputs are unchanged.
 Attach a focused source ZIP while posting to make those files available for review
 before anyone accepts; Luna can reuse that source when the bounty is later started.
+
+Participants can attach **Source / supporting evidence** or a **Response from a
+fresh session** on the bounty page, including on completed historical bounties.
+The ZIP must contain UTF-8 files and root `manifest.json` with `schema_version: 1`,
+the matching `task_id`, and `files` listing every other file's relative `path` and
+lowercase `sha256`. Limits: 200 files / 2 MB unpacked; no secrets or nested ZIPs.
+Attach the original bounty ZIP with a response to verify its `input_sha256` and
+bounty ID; without it, linkage is explicitly unverified. Uploads preserve status,
+are auditable/idempotent, and never run code, pay Gold, start AI, or create tasks.
+Support files under `source/` can be reused by a later Luna run; response contents
+are evidence, not automatically applied source. Downloads include both packages.
+Use `/#bounty=<id>` to link directly to a bounty page.
+
+To package selected committed source without copying a dirty working tree or
+fetching a repository:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.packages --repository C:\path\to\repo --ref <full-commit> --bounty-id <id> --path src/example.py --notes setup-and-checks.md --output support.zip
+```
+
+Repeat `--path` for each required file. The builder records repository, exact
+revision, selected paths, and original blob hashes; it refuses to overwrite output.
+The optional notes should state prerequisites, exact checks/exit codes, and any
+outstanding live verification. The builder does not execute supplied code.
 
 Set `OPENAI_API_KEY` in the server environment and restart the server. The default
 test model is `gpt-6-luna`; `HANDOFFS_AI_MODEL` can select another explicitly chosen
@@ -65,6 +95,22 @@ A fix ZIP contains `START_HERE.md`, the patched `workspace/`, `changes.patch`, t
 criteria and run history. Drop it into a fresh Codex chat for local verification.
 Use **Confirm locally verified** with evidence to close the task. Generated test
 commands are explicitly unexecuted until the developer runs them.
+
+Complexity is enforced in the engine: **HIGH → exactly 3 MEDIUM → exactly 3
+SMALL per MEDIUM**. LOW is an alias for SMALL. A SMALL root is valid; filler tasks
+are not. Invalid or missing delivery plans cannot publish a fix. The hierarchy is
+displayed with the run and included in the fix ZIP alongside the standalone guard.
+Only SMALL leaves may produce commits through the managed commit command:
+
+```powershell
+python app/complexity.py validate --plan implementation-plan.json
+python app/complexity.py commit --plan implementation-plan.json --step <small-id> --repository <checkout> --message "Apply bounded change"
+```
+
+The gate checks the full decomposition and rejects parent commits or staged files
+outside the selected leaf, then records its ID and plan fingerprint in the commit.
+This governs the engine/executor workflow, not arbitrary Git commands elsewhere;
+no global Git hook is installed. Decomposition alone never publishes new bounties.
 
 If a fix cannot be produced, the attempt closes with proposed follow-ups. Select
 and confirm the exact tasks to create; proposals alone never create tasks. Child
