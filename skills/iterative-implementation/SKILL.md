@@ -19,15 +19,17 @@ that do not provide the narrowest evidence for a criterion.
 
 ## Complexity gate
 
-Use HIGH, MEDIUM, and SMALL. LOW is an alias for SMALL, not a fourth level.
-Every HIGH must have exactly 3 MEDIUM children. Every MEDIUM must have exactly
-3 SMALL children. SMALL is a leaf: no children. Only SMALL is executable and
-only SMALL can result in a Git commit. A genuinely SMALL task can be a root.
+Use HIGH, MEDIUM, and LOW only; retired labels are invalid, not aliases.
+Every HIGH must have either 2+ HIGH children or exactly 3 MEDIUM children,
+never a mixture. HIGH descendants must eventually decompose to MEDIUM and LOW;
+do not evade decomposition through an unbounded chain of HIGHs. Every MEDIUM
+must have exactly 3 LOW children. LOW is a leaf: no children. Only LOW is
+executable and only LOW can result in a Git commit. A genuinely LOW task can be a root.
 Do not pad with fake tasks or relabel work to bypass decomposition. If three
 meaningful children cannot be defined, ask the human; do not execute the parent.
 
 Retain a JSON plan with `steps`; each item has a unique `id`, bounded `title`,
-`complexity`, `files` (exact relative paths, SMALL only), and `children`. Retain
+`complexity`, `files` (exact relative paths, LOW only), and `children`. Retain
 criterion mapping and implementation/validation notes on the same items. Run
 `python scripts/complexity.py validate --plan <plan-file>` before execution.
 This replaces the previous easy/medium-only and automatic HIGH-bounty rule.
@@ -52,7 +54,7 @@ included in the commit body, but it does not replace the retained artifacts.
 
 ## Execution
 
-1. Implement the earliest open SMALL leaf only, retaining its parent links.
+1. Implement the earliest open LOW leaf only, retaining its parent links.
 2. Run its narrow validation and record `done`, `blocked`, or `skipped` with a
    short evidence note.
 3. Continue only as permitted by the caller:
@@ -61,9 +63,9 @@ included in the commit body, but it does not replace the retained artifacts.
      the next item without asking the parent between items.
 4. Before committing, compare every changed line with the plan and acceptance
    criteria. Remove any change that is not required.
-5. Stage only that SMALL leaf's declared files. Commit only its minimal change
+5. Stage only that LOW leaf's declared files. Commit only its minimal change
    and necessary focused tests through the managed gate:
-   `python scripts/complexity.py commit --plan <plan-file> --step <small-id>
+   `python scripts/complexity.py commit --plan <plan-file> --step <low-id>
    --repository <checkout> --message <subject>`. Never use direct `git commit`
    to bypass this workflow. The gate rejects parents, malformed trees, and
    staged files outside the selected leaf, and records the leaf/plan fingerprint.

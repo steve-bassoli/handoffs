@@ -96,15 +96,16 @@ criteria and run history. Drop it into a fresh Codex chat for local verification
 Use **Confirm locally verified** with evidence to close the task. Generated test
 commands are explicitly unexecuted until the developer runs them.
 
-Complexity is enforced in the engine: **HIGH → exactly 3 MEDIUM → exactly 3
-SMALL per MEDIUM**. LOW is an alias for SMALL. A SMALL root is valid; filler tasks
+Complexity is enforced in the engine: **HIGH → either 2+ HIGHs or exactly 3 MEDIUMs;
+MEDIUM → exactly 3 LOWs**. HIGH cannot mix child levels, and its descendants must
+eventually reach LOW. Only HIGH/MEDIUM/LOW are valid labels. A LOW root is valid; filler tasks
 are not. Invalid or missing delivery plans cannot publish a fix. The hierarchy is
 displayed with the run and included in the fix ZIP alongside the standalone guard.
-Only SMALL leaves may produce commits through the managed commit command:
+Only LOW leaves may produce commits through the managed commit command:
 
 ```powershell
 python app/complexity.py validate --plan implementation-plan.json
-python app/complexity.py commit --plan implementation-plan.json --step <small-id> --repository <checkout> --message "Apply bounded change"
+python app/complexity.py commit --plan implementation-plan.json --step <low-id> --repository <checkout> --message "Apply bounded change"
 ```
 
 The gate checks the full decomposition and rejects parent commits or staged files

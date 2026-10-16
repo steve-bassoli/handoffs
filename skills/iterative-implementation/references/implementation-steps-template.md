@@ -2,9 +2,10 @@
 
 Retain JSON with a `steps` array. Each node contains `id`, `title`, `complexity`,
 `children`, and `files`, plus the criterion/implementation/validation notes below.
-HIGH has exactly three MEDIUM children; MEDIUM has exactly three SMALL children.
-SMALL has no children. LOW normalizes to SMALL. Only SMALL leaves declare files,
-execute changes, and commit; parents have an empty files array. A genuinely SMALL
+HIGH has either two or more HIGH children or exactly three MEDIUM children,
+without mixing levels. Descendants eventually reach MEDIUM, which has exactly
+three LOW children. LOW has no children. Only HIGH/MEDIUM/LOW are valid labels.
+Only LOW leaves declare files, execute changes, and commit; parents have an empty files array. A genuinely LOW
 root needs no artificial parents. Never pad with fake tasks.
 
 Record these additional fields on each step:
@@ -16,7 +17,7 @@ objective: <smallest observable change needed>
 source: <relevant existing file and symbol>
 target: <file and symbol to change>
 implementation: <minimal edit only>
-complexity: <HIGH, MEDIUM, or SMALL>
+complexity: <HIGH, MEDIUM, or LOW>
 validation: <narrowest proof for this criterion>
 exclusions: <nearby behavior deliberately left unchanged>
 status: open

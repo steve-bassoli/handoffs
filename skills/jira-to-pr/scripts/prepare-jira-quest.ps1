@@ -151,12 +151,12 @@ Before editing source, write its plan and status artifacts to these exact paths:
 $planFile
 $statusFile
 
-The plan must be JSON with a steps hierarchy: HIGH -> exactly 3 MEDIUM children; MEDIUM -> exactly 3 SMALL children; LOW means SMALL. Only SMALL leaves execute or commit. Validate and commit using the standalone guard at:
+The plan must be JSON with a steps hierarchy and only HIGH/MEDIUM/LOW labels: HIGH -> either 2+ HIGH children or exactly 3 MEDIUM children, never a mixture; MEDIUM -> exactly 3 LOW children. HIGH descendants must eventually reach LOW. Only LOW leaves execute or commit. Validate and commit using the standalone guard at:
 $complexityGuardFile
 
 This is a continuous delegated executor session: proceed through the retained plan without asking the parent between items. Treat the ticket requirements and any acceptance criteria as verbatim authority and as the scope ceiling. Inspect only relevant source. Implement the most minimal solution that satisfies exactly those criteria. Do not add cleanup, refactoring, hardening, error behavior, abstractions, documentation, or tests beyond the narrowest proof required by a criterion. Ask one concise question and stop if a material decision is missing.
 
-Before committing each SMALL leaf, compare every changed line and behavior with the retained plan and criteria, and remove anything not required. Stage only that leaf's declared files and use the guard's commit action with --plan, --step, --repository and --message. Never commit a HIGH or MEDIUM parent or bypass the guard with direct git commit; never commit the plan artifacts. Do not push, mutate JIRA, record human acceptance, or award rewards; the calling agent handles branch publication and PR creation. Return both plan artifacts verbatim, a requirement-by-requirement evidence matrix, exact validation results, unresolved gaps, an explicit plan-to-diff conformance statement, and the local commit SHAs per SMALL leaf.
+Before committing each LOW leaf, compare every changed line and behavior with the retained plan and criteria, and remove anything not required. Stage only that leaf's declared files and use the guard's commit action with --plan, --step, --repository and --message. Never commit a HIGH or MEDIUM parent or bypass the guard with direct git commit; never commit the plan artifacts. Do not push, mutate JIRA, record human acceptance, or award rewards; the calling agent handles branch publication and PR creation. Return both plan artifacts verbatim, a requirement-by-requirement evidence matrix, exact validation results, unresolved gaps, an explicit plan-to-diff conformance statement, and the local commit SHAs per LOW leaf.
 "@
 
 [pscustomobject][ordered]@{
