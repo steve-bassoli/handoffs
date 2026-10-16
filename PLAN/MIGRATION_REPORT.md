@@ -8,14 +8,18 @@ FastAPI and SQLite own the bounty lifecycle, Gold ledger, monthly grants, reserv
 
 Self-verification covered monthly issuance/restart, funding/retries/insufficient balance, concurrent funding and claims, ownership, progress, delivery/payment/repost, cancellation, immutable evidence and explicit review. Browser verification moved 150 Gold from Steve's funded bounty to Nate's wallet (1000 -> 1150). A live PowerShell round trip paid 200 Gold once after a duplicate posting request.
 
+Final canonical checkout verification: 15 tests passed, exit 0, using a fresh `.data/pytest-GUID` directory after a Windows temp ACL conflict. One upstream Starlette/httpx TestClient deprecation warning remains. The canonical server runs on loopback port 8000, background PID 36212. Browser and client verified the imported board and 1000-Gold wallet. No synthetic verification bounties were copied into the canonical database.
+
 ## Historical sources
 
 - Git source: `nate-viniconis/hackwatson` at published commit `3102a142b1fbf21c112d5f8de377cd7421e2eb9e`, refreshed during this run.
 - All 30 published packets imported with no Git packet gaps. Original context, updates, events, result/review documents and provenance are preserved. Reimport and immutable-record conflicts are tested.
+- A repeat import returned 30 unchanged packets and zero new packets, exit 0.
 - A read-only consistent local SQLite snapshot contained five profiles and two capacity rows. Existing reward, PR-reward, intro-reward and spending tables contained zero rows.
 - Coverage gap: the snapshot had no `relations` table. Its absence is reported; no relationships were invented. Other teammates' local databases were not available, so this is not proof of all team-local data coverage.
 - Historical profiles/awards are retained as import records, not promoted into authenticated accounts or spendable currency. Imported quests are read-only/unfunded history. New funded bounties use the normal API.
 - Personal data and database snapshots remain outside source control.
+- Consistent backups were created with SQLite backup API at `.data/app-backup-4acca91b0d784297857636284179cbfc.sqlite` and `.data/legacy-backup-42684067ce8b49c5aaed666876963334.sqlite` in the canonical checkout.
 
 ## Hackwatson retirement candidate
 

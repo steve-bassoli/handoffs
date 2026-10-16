@@ -40,7 +40,7 @@ id: HF-03
 criterion: Mock authentication and PR verification are visible and replaceable; the prototype makes no claim of Bitcoin-like or production security.
 objective: Resolve demo identities through an adapter.
 source: PLAN/HANDOFFS_WEBAPP_PLAN.md, Minimum Gold implementation
-target: app/services/identity.py; app/api/me.py
+target: app/adapters.py; app/services.py; app/main.py
 implementation: Seed demo users; resolve explicit demo selector to stable user ID; expose identity and mock-mode flag.
 complexity: easy
 validation: Two selectors resolve to distinct users; mock mode appears in /api/v1/me.
@@ -52,7 +52,7 @@ id: HF-04
 criterion: Monthly allocations occur once per eligible user/month, including after an app restart or a missed first-of-month run.
 objective: Issue monthly Gold without duplicate grants.
 source: PLAN/HANDOFFS_WEBAPP_PLAN.md, Economic decisions still open
-target: app/services/wallets.py; app/api/me.py; tests/test_wallets.py
+target: app/services.py; app/main.py; tests/test_wallets.py
 implementation: Implement integer ledger transfers and unique user/month grants; use configurable prototype allocation; apply due grant when wallet is accessed, without a scheduler.
 complexity: medium
 validation: Repeat wallet access across restart and month boundary; exactly one grant per eligible month under chosen catch-up policy.
@@ -64,7 +64,7 @@ id: HF-05
 criterion: Bounty posting reserves application Gold from its wallet; insufficient balance prevents funding.
 objective: Post a funded bounty.
 source: Hackwatson .agents/skills/start/scripts/create-quest.ps1, parameters; new plan bounty cycle
-target: app/services/bounties.py; app/api/bounties.py; tests/test_funding.py
+target: app/services.py; app/main.py; tests/test_funding.py
 implementation: Accept title, goal, criteria, repository/context links and amount; create bounty, reserve Gold and append event in one SQLite transaction; retain idempotency key.
 complexity: medium
 validation: Funding reduces available Gold; insufficient funds writes nothing; a retry creates one bounty.
@@ -76,7 +76,7 @@ id: HF-06
 criterion: Open and user-current task lists agree with derived event state.
 objective: List and preview service bounties.
 source: Hackwatson git-handoffs.ps1, Get-Listing and Get-Task; new API contract
-target: app/api/bounties.py; app/services/bounties.py
+target: app/main.py; app/services.py
 implementation: Implement open/mine metadata lists with stable pagination and selected detail/history; derive status from events.
 complexity: easy
 validation: Funded open bounty appears on board; detail includes original criteria; lists omit full context.
@@ -88,7 +88,7 @@ id: HF-07
 criterion: Concurrent funding and settlement cannot overspend wallets or duplicate payouts; cancellation follows the agreed refund policy.
 objective: Take work and record progress with correct ownership.
 source: Hackwatson git-handoffs.ps1, claim/status behavior; new API contract
-target: app/services/bounties.py; app/api/bounties.py; tests/test_lifecycle.py
+target: app/services.py; app/main.py; tests/test_lifecycle.py
 implementation: Atomically take an open bounty once; permit claimant working/blocked transitions; use adapter-resolved actor and append events.
 complexity: medium
 validation: Two claim attempts yield one claimant; another user cannot change claimant progress; concurrent funding cannot overspend.
@@ -100,7 +100,7 @@ id: HF-08
 criterion: Completion evidence remains immutable and acceptance remains a separate explicit event.
 objective: Deliver a PR and retain the evidence.
 source: Hackwatson git-handoffs.ps1, result handling; new Minimum Gold implementation
-target: app/services/deliveries.py; app/api/bounties.py; tests/test_deliveries.py
+target: app/services.py; app/adapters.py; app/main.py; tests/test_bounty_cycle.py; tests/test_delivery_verification.py
 implementation: Store claimant PR URL and evidence as new immutable delivery; call mock verification adapter and mark simulation; record explicit acknowledgement/review separately.
 complexity: medium
 validation: Delivery survives reload; later evidence appends rather than overwrites; verification is visibly mocked; acknowledgement is not acceptance.
@@ -112,7 +112,7 @@ id: HF-09
 criterion: A delivered PR meeting the agreed payment terms transfers escrow once to the worker, who can spend it on another bounty.
 objective: Pay for delivered work and circulate Gold.
 source: PLAN/HANDOFFS_WEBAPP_PLAN.md, Proposed bounty cycle and payout decision
-target: app/services/settlement.py; app/api/bounties.py; tests/test_settlement.py
+target: app/services.py; app/main.py; tests/test_bounty_cycle.py
 implementation: Apply agreed demo payout gate; atomically debit escrow, credit worker and append settlement; duplicate requests return original result.
 complexity: medium
 validation: A funds bounty, B delivers, B receives payment once and funds a new bounty; settlement preserves total issued supply.
@@ -124,7 +124,7 @@ id: HF-10
 criterion: Concurrent funding and settlement cannot overspend wallets or duplicate payouts; cancellation follows the agreed refund policy.
 objective: Release funds on permitted cancellation.
 source: PLAN/HANDOFFS_WEBAPP_PLAN.md, cancellation decision
-target: app/services/bounties.py; app/api/bounties.py; tests/test_cancellation.py
+target: app/services.py; app/main.py; tests/test_bounty_cycle.py
 implementation: Implement only the agreed cancellation/refund transitions and atomic ledger reversal; retain history.
 complexity: medium
 validation: Permitted cancellation refunds once; settlement/cancellation conflict cannot both consume escrow.
@@ -136,7 +136,7 @@ id: HF-11
 criterion: One minimal Hackwatson skill can list/post bounties and show authoritative stats through the same API as the browser.
 objective: Create the thin client template in handoffs.
 source: Hackwatson start/SKILL.md; open-board.ps1; create-quest.ps1; new client boundary
-target: skills/handoffs/SKILL.md; skills/handoffs/scripts/handoffs-client.ps1; app/api/me.py
+target: skills/handoffs/SKILL.md; skills/handoffs/scripts/handoffs-client.ps1; app/main.py
 implementation: Implement board/show/post/stats plus take/status/deliver against service endpoints; expose wallet/history and work counts; preserve operation IDs across retries.
 complexity: medium
 validation: Use two demo users through PowerShell to list, post, take and deliver; stats match database-backed API results.
@@ -160,7 +160,7 @@ id: HF-13
 criterion: The legacy importer is read-only, repeatable, provenance-preserving, and reports malformed or incomplete source data.
 objective: Import Git packets without changing Hackwatson.
 source: Hackwatson git-handoffs.ps1, manifest/event/result readers; PLAN/handoffs
-target: scripts/import_hackwatson.py; app/services/imports.py; tests/test_imports.py
+target: app/importer.py; app/services.py; tests/test_imports.py
 implementation: Import from explicit Git revision; preserve source IDs, events, original context, updates/results and provenance; report malformed records; do not fund old bounties implicitly.
 complexity: medium
 validation: Import small disposable packet fixtures twice; same counts/history; malformed input reported; source tree unchanged.
@@ -172,7 +172,7 @@ id: HF-14
 criterion: The legacy importer is read-only, repeatable, provenance-preserving, and reports malformed or incomplete source data.
 objective: Reconcile database-only profiles and historical awards.
 source: Hackwatson handoffs-index.py, DEFAULT_DATABASE/create_schema and reward/profile functions
-target: scripts/import_hackwatson.py; app/services/imports.py; PLAN/MIGRATION_REPORT.md
+target: app/importer.py; PLAN/MIGRATION_REPORT.md
 implementation: Locate actual databases at execution; read consistent snapshots; map users and historical rewards separately from spendable Gold; record counts/conflicts and chosen opening balances.
 complexity: medium
 validation: Fixture snapshot imports repeatably; conflicting identity rows reported; historical awards do not become currency without approved mapping.
@@ -190,7 +190,7 @@ complexity: medium
 validation: Record two-session lifecycle and consistent balances after restart; save backup and final source checkpoint.
 exclusions: No production hosting stack or security claim.
 depends_on: HF-12, HF-14; reachable host
-status: open
+status: done
 
 id: HF-16
 criterion: Hackwatson contains no active HANDOFFS database, packet writer, reward rules, or separate board implementation after cutover.
@@ -214,4 +214,4 @@ complexity: medium
 validation: One accepted evidence set covers grants, funding, claims, delivery, payment, repost and retired prototype; duplicate/concurrent operations preserve balances.
 exclusions: No new optional features; child-step completion alone is not acceptance.
 depends_on: HF-16
-status: open
+status: blocked
