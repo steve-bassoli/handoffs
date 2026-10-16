@@ -60,6 +60,13 @@ class AIVerification(BaseModel):
     evidence: str = Field(min_length=1, max_length=10000)
 
 
+class EvidencePackage(BaseModel):
+    kind: Literal['support', 'response']
+    package_zip: str = Field(min_length=1, max_length=4000000)
+    input_zip: str = Field(default='', max_length=4000000)
+    note: str = Field(default='', max_length=2000)
+
+
 def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=None):
     @asynccontextmanager
     async def lifespan(app):
@@ -135,6 +142,11 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     def post(payload: PostBounty, request: Request, user=Depends(actor),
              idempotency_key: str = Header(min_length=1, max_length=200)):
         return request.app.state.service.execute(user, idempotency_key, 'post', payload.model_dump())
+
+    @app.post('/api/v1/bounties/{bounty_id}/packages')
+    def attach_package(bounty_id: str, payload: EvidencePackage, request: Request, user=Depends(actor),
+                       idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'attach_package', {'id': bounty_id, **payload.model_dump()})
 
     @app.post('/api/v1/bounties/{bounty_id}/take')
     def take(bounty_id: str, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):

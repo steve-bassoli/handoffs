@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
+from app.context import project_legacy
 from app.storage import all_rows, one
 
 
@@ -99,13 +100,19 @@ class Service:
         bounty['criteria'] = json.loads(bounty['criteria'])
         bounty['context_links'] = json.loads(bounty['context_links'])
         bounty['legacy'] = json.loads(bounty['legacy']) if bounty['legacy'] else None
+        project_legacy(bounty)
         if bounty['legacy']:
             documents = all_rows(c, 'SELECT source_id,data FROM import_records WHERE source=? AND source_id LIKE ? ORDER BY source_id',
                                  (bounty['legacy']['source'], bounty['legacy']['directory'] + '/%'))
             bounty['legacy']['documents'] = [{'path': d['source_id'], **json.loads(d['data'])} for d in documents if not d['source_id'].endswith('.json')]
         bounty['status'] = events[-1]['state']
         bounty['claimant'] = next((e['actor'] for e in reversed(events) if e['kind'] == 'taken'), None)
+        bounty['completed_by'] = next((e['actor'] for e in reversed(events)
+                                      if e['kind'] in ('legacy:completed', 'locally_verified')), None)
         bounty['events'] = events
+        bounty['packages'] = [{'id': event['seq'], 'actor': event['actor'], 'created_at': event['created_at'],
+                              **{key: value for key, value in event['data'].items() if key != 'files'}}
+                             for event in events if event['kind'] == 'package_attached']
         bounty['deliveries'] = all_rows(c, 'SELECT * FROM deliveries WHERE bounty_id=? ORDER BY created_at,id', (bounty_id,))
         ai = getattr(self, 'ai', None)
         row = one(c, 'SELECT * FROM ai_runs WHERE bounty_id=?', (bounty_id,))
@@ -141,7 +148,7 @@ class Service:
                 if cached['fingerprint'] != fingerprint:
                     raise RuleError('Idempotency key already used for different input')
                 return json.loads(cached['result'])
-            if not action.startswith('ai_'):
+            if not action.startswith('ai_') and action != 'attach_package':
                 self.grant_month(c, actor)
             result = getattr(self, 'do_' + action)(c, actor, payload)
             c.exec_driver_sql('INSERT INTO operations VALUES (?,?,?,?)', (actor, key, fingerprint, encode(result)))
@@ -161,6 +168,10 @@ class Service:
         self.transfer(c, 'wallet:' + actor, 'escrow:' + bounty_id, payload['gold'], 'bounty_funded', bounty_id)
         self.event(c, bounty_id, 'posted', actor, 'open', {'source_files': source} if source else None)
         return self.detail(c, bounty_id)
+
+    def do_attach_package(self, c, actor, payload):
+        from app.packages import attach
+        return attach(self, c, actor, payload)
 
     def require_live(self, bounty):
         if not bounty['funded'] and not bounty['parent_id']:
