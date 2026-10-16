@@ -89,7 +89,7 @@ bounty ID; without it, linkage is explicitly unverified. Uploads preserve status
 are auditable/idempotent, and never run code, pay Gold, start AI, or create tasks.
 Support files under `source/` can be reused by a later Luna run; response contents
 are evidence, not automatically applied source. Downloads include both packages.
-Use `/#bounty=<id>` to link directly to a bounty page.
+Use `/#opp=<id>` to link directly to an opportunity page. Existing `/#bounty=<id>` links still work.
 
 To package selected committed source without copying a dirty working tree or
 fetching a repository:

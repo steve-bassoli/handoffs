@@ -110,7 +110,7 @@ async function show(id) {
   clearTimeout(proofPoll);
   const data = await api('/bounties/' + encodeURIComponent(id));
   selected = id;
-  history.replaceState(null, '', '#bounty=' + encodeURIComponent(id));
+  history.replaceState(null, '', '#opp=' + encodeURIComponent(id));
   for (const section of ['board', 'post', 'wallet', 'gremlins']) $(section).hidden = true;
   const detail = $('detail'); detail.hidden = false; detail.replaceChildren();
   const back = element('button', '← Back to board'); back.onclick = () => run(() => navigate('open'));
@@ -493,7 +493,8 @@ $('post-form').onsubmit = e => {
   });
 };
 run(async () => {
-  const linkedBounty = new URLSearchParams(location.hash.slice(1)).get('bounty');
+  const link = new URLSearchParams(location.hash.slice(1));
+  const linkedOpportunity = link.get('opp') || link.get('bounty');
   const users = await api('/users');
   if (!users.some(item => item.id === user)) user = 'steve';
   for (const item of users) {
@@ -502,5 +503,5 @@ run(async () => {
   }
   $('user').value = user;
   await navigate('open');
-  if (linkedBounty) await show(linkedBounty);
+  if (linkedOpportunity) await show(linkedOpportunity);
 });
