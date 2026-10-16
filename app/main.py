@@ -14,6 +14,7 @@ from app.services import RuleError, Service
 from app.storage import Database
 from app.ai import AIRuns, Luna
 from app.artifacts import download, inventory
+from app.workflow import Profile
 
 
 class PostBounty(BaseModel):
@@ -27,11 +28,16 @@ class PostBounty(BaseModel):
     source_zip: str = Field(default='', max_length=4000000)
     complexity: Literal['HIGH', 'MEDIUM', 'LOW'] = 'HIGH'
     work_type: Literal['implementation', 'verification'] = 'implementation'
+    profile: Profile | None = None
 
 
 class Progress(BaseModel):
     status: Literal['working', 'blocked']
     note: str = ''
+
+
+class Prerequisites(BaseModel):
+    depends_on: list[str] = Field(max_length=30)
 
 
 class ReopenBounty(BaseModel):
@@ -224,6 +230,20 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     @app.get('/api/v1/bounties/{bounty_id}/lineage')
     def lineage(bounty_id: str, request: Request, user=Depends(actor)):
         return request.app.state.service.lineage(bounty_id)
+
+    @app.get('/api/v1/bounties/{bounty_id}/constellation')
+    def graph(bounty_id: str, request: Request, user=Depends(actor)):
+        return request.app.state.service.constellation(bounty_id)
+
+    @app.post('/api/v1/bounties/{bounty_id}/profile')
+    def profile(bounty_id: str, payload: Profile, request: Request, user=Depends(actor),
+                idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'ai_profile', {'id': bounty_id, 'profile': payload.model_dump()})
+
+    @app.post('/api/v1/bounties/{bounty_id}/dependencies')
+    def prerequisites(bounty_id: str, payload: Prerequisites, request: Request, user=Depends(actor),
+                      idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'ai_dependencies', {'id': bounty_id, **payload.model_dump()})
 
     static = Path(__file__).parent / 'static'
     app.mount('/static', StaticFiles(directory=static), name='static')

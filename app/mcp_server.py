@@ -69,6 +69,16 @@ def get_bounty(bounty_id: str) -> dict[str, Any]:
     return request('GET', '/bounties/' + quote(bounty_id, safe=''))
 
 
+@server.tool(annotations=READ)
+def get_bounty_context(bounty_id: str) -> dict[str, Any]:
+    """Read intent, coordinates, context shelves and shared prerequisites; never starts work."""
+    task = get_bounty(bounty_id)
+    return {'intent': {key: task[key] for key in ('id', 'title', 'goal', 'criteria')},
+            'change': {key: task[key] for key in ('coordinates', 'profile', 'depends_on', 'roles')},
+            'observation': {'phase': task['phase'], 'disposition': task['disposition'],
+                'proof': task.get('proof'), 'note': 'Reported context is not independently verified runtime evidence.'}}
+
+
 @server.tool(annotations=STATS)
 def get_my_stats() -> dict[str, Any]:
     """Show this connection's Gold and work stats, applying any due monthly demo grant once."""

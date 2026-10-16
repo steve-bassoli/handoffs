@@ -6,6 +6,7 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from app.context import project_legacy
+from app.workflow import ROLES, constellation, dependencies, disposition, phase, profile, validate_dependencies
 from app.storage import all_rows, one
 
 
@@ -114,6 +115,13 @@ class Service:
         bounty['completed_by'] = next((e['actor'] for e in reversed(events)
                                       if e['kind'] in ('legacy:completed', 'locally_verified')), None)
         bounty['events'] = events
+        bounty['profile'] = profile(events)
+        bounty['depends_on'] = dependencies(events)
+        bounty['phase'] = phase(bounty['status'])
+        bounty['disposition'] = disposition(bounty['status'])
+        bounty['coordinates'] = {'complexity': bounty['complexity'], 'phase': bounty['phase'],
+            'validation_target': (bounty['profile'] or {}).get('validation_scope')}
+        bounty['roles'] = ROLES
         bounty['packages'] = [{'id': event['seq'], 'actor': event['actor'], 'created_at': event['created_at'],
                               **{key: value for key, value in event['data'].items() if key != 'files'}}
                              for event in events if event['kind'] == 'package_attached']
@@ -143,7 +151,9 @@ class Service:
             for record in records:
                 classification = one(c, "SELECT json_extract(data,'$.complexity') AS complexity FROM events WHERE bounty_id=? AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW') ORDER BY seq DESC LIMIT 1", (record['id'],))
                 record['complexity'] = classification['complexity'] if classification else 'HIGH'
-            fields = ('id', 'title', 'gold', 'status', 'creator', 'target', 'claimant', 'created_at', 'funded', 'parent_id', 'complexity')
+                record['phase'] = phase(record['status'])
+                record['disposition'] = disposition(record['status'])
+            fields = ('id', 'title', 'gold', 'status', 'creator', 'target', 'claimant', 'created_at', 'funded', 'parent_id', 'complexity', 'phase', 'disposition')
             return {'items': [{key: r[key] for key in fields} for r in records], 'limit': limit,
                     'offset': offset, 'checked_at': now()}
 
@@ -175,8 +185,55 @@ class Service:
         self.transfer(c, 'wallet:' + actor, 'escrow:' + bounty_id, payload['gold'], 'bounty_funded', bounty_id)
         self.event(c, bounty_id, 'posted', actor, 'open', {'complexity': payload.get('complexity', 'HIGH'),
                                                        'work_type': payload.get('work_type', 'implementation'),
+                                                       **({'profile': payload['profile']} if payload.get('profile') else {}),
                                                        **({'source_files': source} if source else {})})
         return self.detail(c, bounty_id)
+
+    def workflow_nodes(self, c):
+        records = all_rows(c, '''SELECT b.id,b.title,b.parent_id,e.state AS status FROM bounties b
+            JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE bounty_id=b.id)''')
+        for record in records:
+            latest = one(c, "SELECT data FROM events WHERE bounty_id=? AND kind='dependencies_set' ORDER BY seq DESC LIMIT 1", (record['id'],))
+            record['depends_on'] = json.loads(latest['data'])['depends_on'] if latest else []
+            record['phase'] = phase(record['status'])
+        return records
+
+    def constellation(self, bounty_id):
+        with self.db.engine.connect() as c:
+            self.detail(c, bounty_id)
+            graph = constellation(self.workflow_nodes(c))
+        connected = {bounty_id}
+        while True:
+            expanded = connected | {edge[key] for edge in graph['edges'] if edge['from'] in connected or edge['to'] in connected for key in ('from', 'to')}
+            if expanded == connected:
+                break
+            connected = expanded
+        return {'nodes': [node for node in graph['nodes'] if node['id'] in connected],
+                'edges': [edge for edge in graph['edges'] if edge['from'] in connected]}
+
+    def workflow_owner(self, c, actor, bounty_id):
+        task = self.detail(c, bounty_id)
+        if actor not in (task['creator'], task['claimant']):
+            raise RuleError('Only requester or current worker can change the workflow contract', 403)
+        if task['phase'] == 'Closed':
+            raise RuleError('Closed workflow records are immutable; use an explicit reopening')
+        return task
+
+    def do_ai_profile(self, c, actor, payload):
+        task = self.workflow_owner(c, actor, payload['id'])
+        if 'sk-proj-' in encode(payload['profile']):
+            raise RuleError('Keep secrets out of bounty context', 422)
+        self.event(c, task['id'], 'profile_recorded', actor, task['status'], {'profile': payload['profile']})
+        return self.detail(c, task['id'])
+
+    def do_ai_dependencies(self, c, actor, payload):
+        task = self.workflow_owner(c, actor, payload['id'])
+        try:
+            validate_dependencies(self.workflow_nodes(c), task['id'], payload['depends_on'])
+        except ValueError as error:
+            raise RuleError(str(error), 422) from None
+        self.event(c, task['id'], 'dependencies_set', actor, task['status'], {'depends_on': payload['depends_on']})
+        return self.detail(c, task['id'])
 
     def do_ai_reopen(self, c, actor, payload):
         task = self.detail(c, payload['id'])

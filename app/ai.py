@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.services import RuleError, encode, now
 from app.storage import all_rows, one
 from app.complexity import validate_bounty_split, validate_plan
+from app.workflow import ROLES
 
 
 class OutputModel(BaseModel):
@@ -144,6 +145,9 @@ class Luna:
         self.check()
         instructions = (
             'Process the bounty according to its service-provided complexity. '
+            'Mapper, Maker and Breaker are distinct responsibilities, not three automatic model calls. '
+            'Treat Known context as source-cited supplied claims, Assumed as provisional and Unknown as unresolved. '
+            'Never promote a SIM observation to ORA or LIVE compatibility, and do not confuse a requested migration stage with retirement authorization. '
             'For HIGH or MEDIUM, research the evidence and return child-bounty proposals, never an implementation. '
             'HIGH must propose exactly 3 HIGH bounties or exactly 3 MEDIUM bounties; MEDIUM must propose exactly 3 LOW bounties. '
             'The proposal set must be one allowed split, not mixed levels. Give each a distinct bounded title, goal, '
@@ -186,6 +190,7 @@ class Luna:
             'context': data['context'], 'conversation': data['conversation'],
             'remaining_questions': 3 - data['question_count'],
             'source_paths': list(data['source']),
+            'profile': task.get('profile'), 'prerequisites': task.get('depends_on', []), 'responsibilities': ROLES,
         }
         messages = [{'role': 'user', 'content': encode(context)}]
         tools = [
