@@ -4,6 +4,13 @@
 
 Implementation started at Steve's direction on October 16, 2026. HANDOFFS is an independent service with one minimal client skill in Hackwatson. Track completed steps and evidence in the linked iterative status artifact.
 
+Current execution and verification direction: [Bounty execution and Watson verification](BOUNTY_EXECUTION_AND_WATSON_EVIDENCE.md).
+Steve's October 16 direction adds Accept bounty loading, top-right progress,
+contextual model selection, artifact downloads, and a Watson-only legacy/patched
+MP4 evidence pair with explicit developer verification. It supersedes the earlier
+worker-only execution boundary below; older prototype and economy descriptions
+remain historical context, not proof that the new verification gate exists.
+
 ## Goal
 
 Extract the HANDOFFS concept from `nate-viniconis/hackwatson` into an independently owned application at `steve-bassoli/handoffs`. Deliver a web marketplace where users receive monthly Gold, post funded work bounties, and earn transferable Gold by delivering work using their own token allowances.
