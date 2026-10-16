@@ -79,7 +79,7 @@ class Service:
             return {'user_id': user, 'available_gold': available, 'reserved_gold': reserved,
                     'monthly_gold': one(c, 'SELECT gold FROM monthly_allocations WHERE user_id=? AND month=?', (user, month))['gold'],
                     'month': month, 'next_allocation': next_month.isoformat(), 'simulated_identity': True,
-                    'active_count': sum(r['state'] in ('open', 'pending', 'working', 'blocked', 'delivered') for r in work),
+                    'active_count': sum(r['state'] in ('open', 'pending', 'working', 'blocked', 'delivered', 'awaiting_approval', 'decomposed') for r in work),
                     'completed_count': sum(r['state'] in ('settled', 'completed') for r in work)}
 
     def transactions(self, user, limit, offset):
@@ -106,6 +106,8 @@ class Service:
                                  (bounty['legacy']['source'], bounty['legacy']['directory'] + '/%'))
             bounty['legacy']['documents'] = [{'path': d['source_id'], **json.loads(d['data'])} for d in documents if not d['source_id'].endswith('.json')]
         bounty['status'] = events[-1]['state']
+        bounty['complexity'] = next((event['data']['complexity'] for event in reversed(events)
+                                    if event['data'].get('complexity') in ('HIGH', 'MEDIUM', 'LOW')), 'HIGH')
         bounty['claimant'] = next((e['actor'] for e in reversed(events) if e['kind'] == 'taken'), None)
         bounty['completed_by'] = next((e['actor'] for e in reversed(events)
                                       if e['kind'] in ('legacy:completed', 'locally_verified')), None)
@@ -136,7 +138,10 @@ class Service:
                 (?='mine' AND (b.creator=? OR b.target=? OR EXISTS(SELECT 1 FROM events x WHERE x.bounty_id=b.id AND x.actor=? AND x.kind='taken'))))
                 AND (b.title LIKE ? OR b.id LIKE ?) ORDER BY b.created_at DESC,b.id LIMIT ? OFFSET ?''',
                 (view, view, view, user, user, user, '%' + query + '%', '%' + query + '%', limit, offset))
-            fields = ('id', 'title', 'gold', 'status', 'creator', 'target', 'claimant', 'created_at', 'funded', 'parent_id')
+            for record in records:
+                classification = one(c, "SELECT json_extract(data,'$.complexity') AS complexity FROM events WHERE bounty_id=? AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW') ORDER BY seq DESC LIMIT 1", (record['id'],))
+                record['complexity'] = classification['complexity'] if classification else 'HIGH'
+            fields = ('id', 'title', 'gold', 'status', 'creator', 'target', 'claimant', 'created_at', 'funded', 'parent_id', 'complexity')
             return {'items': [{key: r[key] for key in fields} for r in records], 'limit': limit,
                     'offset': offset, 'checked_at': now()}
 
@@ -166,8 +171,21 @@ class Service:
                            payload['repository'], encode(payload['context_links']), actor, target, payload['gold'], now()))
         c.exec_driver_sql('INSERT INTO accounts VALUES (?,?,?)', ('escrow:' + bounty_id, actor, 'escrow'))
         self.transfer(c, 'wallet:' + actor, 'escrow:' + bounty_id, payload['gold'], 'bounty_funded', bounty_id)
-        self.event(c, bounty_id, 'posted', actor, 'open', {'source_files': source} if source else None)
+        self.event(c, bounty_id, 'posted', actor, 'open', {'complexity': payload.get('complexity', 'HIGH'),
+                                                       **({'source_files': source} if source else {})})
         return self.detail(c, bounty_id)
+
+    def do_ai_reopen(self, c, actor, payload):
+        task = self.detail(c, payload['id'])
+        if actor not in (task['creator'], task['target'], task['claimant'], task['completed_by']):
+            raise RuleError('Only bounty participants can reopen it', 403)
+        if task['status'] not in ('completed', 'settled'):
+            raise RuleError('Only a completed bounty can be reopened')
+        if task['ai_run']:
+            raise RuleError('A prior AI run must remain intact; this reopen path supports bounties without an existing run')
+        self.event(c, task['id'], 'reopened', actor, 'open', {'complexity': payload['complexity'],
+            'note': payload['note'], 'previous_state': task['status'], 'previous_completed_by': task['completed_by']})
+        return self.detail(c, task['id'])
 
     def do_attach_package(self, c, actor, payload):
         from app.packages import attach

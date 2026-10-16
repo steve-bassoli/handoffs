@@ -25,11 +25,17 @@ class PostBounty(BaseModel):
     gold: int = Field(gt=0, strict=True)
     target: str | None = None
     source_zip: str = Field(default='', max_length=4000000)
+    complexity: Literal['HIGH', 'MEDIUM', 'LOW'] = 'HIGH'
 
 
 class Progress(BaseModel):
     status: Literal['working', 'blocked']
     note: str = ''
+
+
+class ReopenBounty(BaseModel):
+    complexity: Literal['HIGH', 'MEDIUM', 'LOW']
+    note: str = Field(min_length=1, max_length=2000)
 
 
 class Delivery(BaseModel):
@@ -147,6 +153,11 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     def attach_package(bounty_id: str, payload: EvidencePackage, request: Request, user=Depends(actor),
                        idempotency_key: str = Header(min_length=1, max_length=200)):
         return request.app.state.service.execute(user, idempotency_key, 'attach_package', {'id': bounty_id, **payload.model_dump()})
+
+    @app.post('/api/v1/bounties/{bounty_id}/reopen')
+    def reopen(bounty_id: str, payload: ReopenBounty, request: Request, user=Depends(actor),
+               idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'ai_reopen', {'id': bounty_id, **payload.model_dump()})
 
     @app.post('/api/v1/bounties/{bounty_id}/take')
     def take(bounty_id: str, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):

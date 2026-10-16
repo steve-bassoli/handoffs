@@ -18,4 +18,4 @@ def write(client, path, data=None, user='steve', key=None):
 
 def post_bounty(client, gold=150, user='steve', key=None):
     return write(client, '/bounties', {'title': 'Prove a useful change', 'goal': 'Deliver a PR',
-                 'criteria': ['The change works'], 'gold': gold}, user, key)
+                 'criteria': ['The change works'], 'gold': gold, 'complexity': 'LOW'}, user, key)
