@@ -148,6 +148,8 @@ class Service:
             return result
 
     def do_post(self, c, actor, payload):
+        from app.ai import read_source
+        source = read_source(payload.get('source_zip'))
         bounty_id = str(uuid4())
         target = payload.get('target')
         if target and not one(c, 'SELECT id FROM users WHERE id=?', (target,)):
@@ -157,7 +159,7 @@ class Service:
                            payload['repository'], encode(payload['context_links']), actor, target, payload['gold'], now()))
         c.exec_driver_sql('INSERT INTO accounts VALUES (?,?,?)', ('escrow:' + bounty_id, actor, 'escrow'))
         self.transfer(c, 'wallet:' + actor, 'escrow:' + bounty_id, payload['gold'], 'bounty_funded', bounty_id)
-        self.event(c, bounty_id, 'posted', actor, 'open')
+        self.event(c, bounty_id, 'posted', actor, 'open', {'source_files': source} if source else None)
         return self.detail(c, bounty_id)
 
     def require_live(self, bounty):

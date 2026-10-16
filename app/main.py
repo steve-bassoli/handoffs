@@ -1,6 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -12,6 +13,7 @@ from app.adapters import DemoDeliveryVerifier, DemoIdentity
 from app.services import RuleError, Service
 from app.storage import Database
 from app.ai import AIRuns, Luna
+from app.artifacts import download, inventory
 
 
 class PostBounty(BaseModel):
@@ -22,6 +24,7 @@ class PostBounty(BaseModel):
     context_links: list[str] = Field(default_factory=list)
     gold: int = Field(gt=0, strict=True)
     target: str | None = None
+    source_zip: str = Field(default='', max_length=4000000)
 
 
 class Progress(BaseModel):
@@ -112,6 +115,21 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     @app.get('/api/v1/bounties/{bounty_id}')
     def bounty(bounty_id: str, request: Request, user=Depends(actor)):
         return request.app.state.service.get(bounty_id)
+
+    @app.get('/api/v1/bounties/{bounty_id}/artifacts')
+    def artifacts(bounty_id: str, request: Request, user=Depends(actor)):
+        return inventory(request.app.state.service, bounty_id)
+
+    @app.get('/api/v1/bounties/{bounty_id}/artifacts/download')
+    def artifact_bundle(bounty_id: str, request: Request, user=Depends(actor)):
+        return Response(download(request.app.state.service, bounty_id), media_type='application/zip',
+                        headers={'Content-Disposition': 'attachment; filename="bounty-artifacts.zip"'})
+
+    @app.get('/api/v1/bounties/{bounty_id}/artifacts/file')
+    def artifact_file(bounty_id: str, request: Request, path: str, user=Depends(actor)):
+        content = download(request.app.state.service, bounty_id, path)
+        return Response(content, media_type='application/octet-stream',
+                        headers={'Content-Disposition': "attachment; filename*=UTF-8''" + quote(path.rsplit('/', 1)[-1], safe='')})
 
     @app.post('/api/v1/bounties')
     def post(payload: PostBounty, request: Request, user=Depends(actor),

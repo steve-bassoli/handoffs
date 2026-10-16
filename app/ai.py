@@ -224,6 +224,9 @@ class AIRuns:
             raise RuleError('This bounty already has an AI run')
         self.model.check()
         source = read_source(payload.get('source_zip'))
+        if not source:
+            source = {path: content for event in task['events']
+                      for path, content in event['data'].get('source_files', {}).items()}
         context = payload.get('context', '')
         if 'sk-proj-' in context:
             raise RuleError('Keep API keys in the server environment, never task context', 422)

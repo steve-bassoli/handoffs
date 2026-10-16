@@ -42,6 +42,14 @@ Supply and retain `-OperationId <guid>` for writes; reuse it with identical inpu
 
 ## Luna bounty execution
 
+Every bounty detail has an **Artifacts** section before acceptance, with individual
+downloads and **Download all artifacts (ZIP)**. These read-only downloads include
+stored requirements, history, imported packet files, posted source attachments,
+and existing AI inputs/results when present. They never claim work or call a model.
+External references are listed separately, not fetched or included automatically.
+Attach a focused source ZIP while posting to make those files available for review
+before anyone accepts; Luna can reuse that source when the bounty is later started.
+
 Set `OPENAI_API_KEY` in the server environment and restart the server. The default
 test model is `gpt-6-luna`; `HANDOFFS_AI_MODEL` can select another explicitly chosen
 model. The key is used only in the server's Authorization header.

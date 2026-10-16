@@ -107,6 +107,7 @@ async function show(id) {
   const criteria = element('ul'); data.criteria.forEach(text => criteria.append(element('li', text))); detail.append(criteria);
   if (data.repository) detail.append(element('p', 'Repository: ' + data.repository, 'content'));
   data.context_links.forEach(text => detail.append(element('p', text, 'content')));
+  await artifactsSection(data.id, detail);
   detail.append(element('p', `Requester: ${data.creator} · Worker: ${data.claimant || data.target || 'Available'} · ${data.funded ? 'Gold reserved at posting. Demo-verified PR delivery pays automatically; review remains separate.' : 'Historical import. No spendable Gold or new funding was created.'}`));
   const actions = element('div', undefined, 'actions');
   const action = (label, suffix) => { const b = element('button', label); b.onclick = () => run(() => mutate(`/bounties/${id}/${suffix}`)); actions.append(b); };
@@ -152,16 +153,55 @@ async function show(id) {
     const row = element('div', undefined, 'event'); row.append(element('span', `${event.actor} · ${event.kind}${event.data.note ? ' · ' + event.data.note : ''}`), element('span', new Date(event.created_at).toLocaleString())); detail.append(row);
   }
 }
+async function encodeSourceZip(file) {
+  if (!file) return '';
+  if (file.size > 3000000) throw new Error('Choose a focused ZIP under 3 MB.');
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let raw = ''; for (const byte of bytes) raw += String.fromCharCode(byte);
+  return btoa(raw);
+}
+
+async function downloadArtifact(url, filename) {
+  const response = await fetch(url, {headers: {'X-Demo-User': user}});
+  if (!response.ok) throw new Error('Could not download this artifact.');
+  const objectUrl = URL.createObjectURL(await response.blob());
+  const link = element('a'); link.href = objectUrl; link.download = filename; link.click();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+async function artifactsSection(id, detail) {
+  const data = await api(`/bounties/${encodeURIComponent(id)}/artifacts`);
+  const section = element('section', undefined, 'evidence');
+  section.append(element('h3', 'Artifacts · available before acceptance'),
+    element('p', 'Preview and download everything currently stored with this bounty. Downloads do not accept the bounty or start AI work.'));
+  const all = element('button', 'Download all artifacts (ZIP)', 'primary');
+  all.onclick = () => run(() => downloadArtifact(data.download_url, `bounty-${id}-artifacts.zip`));
+  section.append(all);
+  const files = element('details'); files.append(element('summary', `${data.items.length} files · view individual downloads`));
+  for (const file of data.items) {
+    const row = element('div', undefined, 'event');
+    const button = element('button', 'Download'); button.setAttribute('aria-label', `Download ${file.path}`);
+    button.onclick = () => run(() => downloadArtifact(file.download_url, file.path.split('/').at(-1)));
+    row.append(element('span', `${file.path} · ${file.size.toLocaleString()} bytes`), button); files.append(row);
+  }
+  section.append(files);
+  if (data.external_references.length) {
+    section.append(element('p', 'External references below are not embedded in the ZIP. Files mentioned in context must be attached to be included.'));
+    for (const reference of data.external_references) {
+      if (/^https?:\/\//i.test(reference)) {
+        const link = element('a', reference); link.href = reference; link.target = '_blank'; link.rel = 'noopener noreferrer';
+        const row = element('p'); row.append(link); section.append(row);
+      } else section.append(element('p', reference, 'content'));
+    }
+  }
+  detail.append(section);
+}
+
 function sourceInput(form) {
   const label = element('label', 'Source ZIP · focused UTF-8 files, up to 2 MB unpacked; exclude secrets and dependencies');
-  const input = element('input'); input.type = 'file'; input.accept = '.zip'; label.append(input); form.append(label);
-  return async () => {
-    if (!input.files.length) return '';
-    if (input.files[0].size > 3000000) throw new Error('Choose a focused ZIP under 3 MB.');
-    const bytes = new Uint8Array(await input.files[0].arrayBuffer());
-    let raw = ''; for (const byte of bytes) raw += String.fromCharCode(byte);
-    return btoa(raw);
-  };
+  const input = element('input'); input.type = 'file'; input.accept = '.zip'; label.append(input);
+  form.insertBefore(label, form.querySelector('button[type="submit"]'));
+  return () => encodeSourceZip(input.files[0]);
 }
 
 async function aiSection(data, detail) {
@@ -266,13 +306,15 @@ $('previous').onclick = () => run(async () => { offset = Math.max(0, offset - pa
 $('next').onclick = () => run(async () => { offset += pageSize; await board(); });
 $('tx-previous').onclick = () => run(async () => { txOffset = Math.max(0, txOffset - pageSize); await transactions(); });
 $('tx-next').onclick = () => run(async () => { txOffset += pageSize; await transactions(); });
+const postSourceZip = sourceInput($('post-form'));
 $('post-form').onsubmit = e => {
   e.preventDefault();
   run(async () => {
     const form = new FormData(e.target);
     const lines = name => form.get(name).split('\n').map(s => s.trim()).filter(Boolean);
     const result = await mutate('/bounties', {title: form.get('title'), goal: form.get('goal'), criteria: lines('criteria'),
-      repository: form.get('repository'), context_links: lines('context_links'), gold: Number(form.get('gold')), target: form.get('target') || null});
+      repository: form.get('repository'), context_links: lines('context_links'), gold: Number(form.get('gold')), target: form.get('target') || null,
+      source_zip: await postSourceZip()});
     if (result) e.target.reset();
   });
 };
