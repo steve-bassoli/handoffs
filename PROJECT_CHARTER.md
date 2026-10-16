@@ -33,6 +33,24 @@ must reject the affected operation rather than crash the system. The daily
 allocation, positive reserve, resource model and terminology migration are
 adopted targets, not currently implemented wallet behavior.
 
+## Human guidance and AI implementation
+
+The user delegates routine technical decisions and implementation to AI within
+approved HANDOFFS outcomes. AI investigates, decomposes, implements and validates
+the smallest sufficient change, continuing ready LOW steps without repeated
+permission requests. Humans supply purpose, domain knowledge and consequential
+choices; explicit human LOW verification and participant consent remain real
+decisions, not approvals an agent may fabricate. This delegation is revocable.
+
+Humane behavior is an acceptance constraint: preserve agency, privacy, protected
+resources and a usable way to question or leave the system. Ask only when missing
+information materially changes the outcome, authority or risk. Broad trust does
+not authorize spending for another person, unilateral resource deductions,
+unapproved sharing or deployment, or changing the protected guarantees themselves.
+Maintaining the service does not confer ownership of participants' resources.
+Follow the constitution's consent, ledger-enforcement and independent-verification
+architecture requirements before claiming those protections are implemented.
+
 ## 1 Watson Services
 
 Replace Watson's legacy application face with REST and MCP interfaces, migrating

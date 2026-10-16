@@ -78,7 +78,13 @@ included in the commit body, but it does not replace the retained artifacts.
 2. Run its narrow validation and record `done`, `blocked`, or `skipped` with a
    short evidence note.
 3. Continue only as permitted by the caller:
-   - In an interactive user session, stop for verification after each item.
+   - For approved HANDOFFS outcomes, the project's standing human-guided AI mandate
+     permits continuous ready LOW execution unless the user requests a checkpoint.
+     Keep human LOW verification, participant consent, spending and deployment
+     authority separate; the mandate cannot supply those approvals. Stop for a
+     material scope, authority or risk decision and follow the project charter.
+   - In other interactive sessions without continuous delegation, stop for
+     verification after each item.
    - In a delegated executor session explicitly marked continuous, proceed to
      the next item without asking the parent between items.
 4. Before committing, compare every changed line with the plan and acceptance

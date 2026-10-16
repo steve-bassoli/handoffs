@@ -5,6 +5,31 @@ people through voluntary contribution, shared learning and self-guidance. People
 do not owe the platform labor to remain secure. These are governing design
 commitments; the resource mechanics below are not yet runtime enforcement.
 
+## Human guided AI development
+
+The user entrusts AI with choosing and carrying out humane implementation details
+within approved HANDOFFS outcomes. This is standing, revocable delegation, not a
+transfer of human agency to the software. Three responsibilities remain distinct:
+
+1. Humans set purpose, supply domain guidance and retain consequential choices.
+2. AI investigates, decomposes, implements and validates minimal approved changes.
+3. Humans explicitly verify LOW outcomes; participants authorize their own resource
+   use and sharing. AI evidence preparation is not their consent or verification.
+
+Proceed through ready LOW steps without repeatedly asking about routine technical
+choices. Retain the plan, reasoning needed to understand material choices, exact
+checks and unresolved limits. Ask when missing information changes the purpose,
+scope, authority or material risk, rather than inventing an answer or silently
+weakening a guarantee. A person can pause work, challenge a decision or change
+direction. Never exploit trust, dependence or engagement to expand permissions.
+
+Humane implementation must preserve understandable choices, privacy, accessible
+participation and the ability to decline. Prefer the smallest design that meets
+those constraints. The mandate does not authorize policy amendments, someone
+else's spending or sharing, production access, publication or deployment merely
+because the AI believes an action is beneficial. Preserve existing explicit
+checkpoints and external permissions; do not manufacture a human approval.
+
 ## Three commitments
 
 1. **Security without earning it.** Every participant receives an unconditional
@@ -131,6 +156,43 @@ or strand people. There is no unrestricted administrator deduction exception.
 Migration and incident repair need explicit authority, auditable correction and
 the same reserve protections rather than a hidden bypass.
 
+## Resource ownership and implementation architecture
+
+Maintaining HANDOFFS does not confer ownership of participants' resources. The
+implementation direction has three boundaries, each requiring actual validation:
+
+1. **Consent.** Replace demo identity with authenticated identity. Bind each debit
+   authorization to its owner, amount, destination, purpose and allowed lifetime,
+   with replay protection. Escrow releases follow the bounded terms already
+   authorized; they do not grant future access to a personal wallet. Recovery
+   must use a disclosed, consented mechanism, not an administrator impersonation
+   backdoor. Authentication alone is not transaction authorization.
+2. **Enforcement.** Use a small ledger authority that atomically checks consent and
+   the protected reserve. Application code cannot directly rewrite balances;
+   there is no arbitrary administrator-debit operation. Separate runtime, ledger
+   administration and deployment privileges. Test every mutation path rather
+   than trusting a UI restriction or a policy document.
+3. **Independent verification.** Provide verifiable receipts and independently
+   retained history checkpoints, with controlled releases and explicit approval
+   for changes to protected guarantees. Identify who controls the verifiers and
+   recovery keys. A maintainer vote cannot substitute for a user's authorization
+   to spend their resources. A rewrite of history must not be silently accepted.
+
+These boundaries address different threats. Restricting application permissions
+does not prove protection against an operator who controls the database and all
+verification keys. Signed receipts and external checkpoints can expose tampering;
+they do not by themselves stop a malicious operator from refusing service. Claims
+of prevention must state their trust assumptions and be supported by evidence.
+
+Start with real authentication, consent-bound ledger operations and independent
+verification. Blockchain is not a prerequisite. Reconsider an independently
+validated ledger if resisting unilateral operator control becomes necessary;
+putting the same operator in charge of a private chain does not resolve that
+threat. Any future contract or upgrade mechanism must preserve owner consent and
+the reserve rather than reintroducing an administrator deduction power. Consider
+key loss, compromised clients, collusion, repair and availability explicitly; no
+architecture earns an unconditional claim of incorruptibility.
+
 ## Further design proposals
 
 Three home surfaces could make the values visible: **My security** for allocation
@@ -157,8 +219,10 @@ preserved autonomy and reusable learning rather than maximizing work or spending
 The current service still uses Gold, monthly allocations and existing bounty
 UI/API names. It prevents overdrafts but does not enforce a positive protected
 reserve. It has artifacts, not the Knowledge/Growth resource model described
-here. This change establishes policy and design; it does not migrate wallets,
-create daily grants, rename the UI or claim a tested moral guarantee.
+here. Authenticated identity, consent-bound debit authorization, an isolated ledger
+authority and independent verification are not implemented by this policy change.
+It does not migrate wallets, create daily grants, rename the UI, deploy blockchain
+or claim a tested moral or operator-resistance guarantee.
 
 Before implementing the economy, explicitly set the daily Credit amount, protected
 reserve and calendar/catch-up policy. Preserve balances, earned rewards and open
