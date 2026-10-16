@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for Steve's review. This repository contains planning only; implementation does not begin until Steve approves the decisions at the end of this document.
+Proposed for Steve's review. Updated October 16, 2026 to make HANDOFFS an independent service with one minimal client skill in Hackwatson. This repository contains planning only; implementation begins after Steve approves the plan.
 
 ## Goal
 
@@ -40,7 +40,7 @@ Settlement pays from the requester's reserved balance; it does not mint an addit
 - Treat funded bounties and transferable Gold as core domain behavior; keep XP and game presentation optional.
 - Preserve append-only event history and immutable completion evidence.
 - Treat imported Hackwatson packets as untrusted historical input.
-- Keep the old repository unchanged during extraction.
+- Keep Hackwatson unchanged while building the replacement, then remove the superseded prototype during a deliberate cutover.
 - Avoid permanent dual-write behavior between the two repositories.
 - Defer enterprise deployment, high availability, and generalized workflow engines.
 
@@ -95,7 +95,67 @@ handoffs/
 - API routes translate HTTP only; services execute workflows; domain code enforces invariants.
 - Skills become thin clients of the API. They do not duplicate state-transition rules.
 - The UI uses the same API as skills.
-- GitHub, JIRA, Outlook, and quota lookups sit behind optional integration adapters.
+- GitHub delivery verification belongs in the core settlement boundary; JIRA, Outlook, quota lookups, and automated PR creation are optional adapters.
+
+## Target boundary: service plus one minimal skill
+
+`C:\hackathon\handoffs` owns the application, database, API, web interface, Gold economy, and client contract. `C:\hackathon\hackwatson` retains one small skill that communicates with that service over HTTP.
+
+The worker's AI session continues to do development in the relevant source repository using that worker's tokens and repository access. The HANDOFFS service coordinates the bounty and records its outcome; hosting an AI executor or sharing token credentials is outside this prototype.
+
+### What stays in Hackwatson
+
+```text
+.agents/skills/handoffs/
+  SKILL.md
+  scripts/handoffs-client.ps1
+```
+
+The skill describes a few commands and their authorization rules. The PowerShell client sends requests and returns compact JSON; it has no Python dependency, local database, reward calculations, Git packet transport, or board cache. The maintained client template lives in `handoffs/skills/handoffs/` and is copied into Hackwatson at cutover. Avoid a filesystem junction between the two repositories so teammates need only the client and service access.
+
+Initial skill capabilities:
+
+- `board`: show open bounties and the current user's active work, with ID, title, status, and Gold.
+- `show <id>`: fetch one bounty's requirements, source links, payment terms, and history.
+- `post`: submit title, goal, completion criteria, source repository/context links, and Gold funding.
+- `stats`: show available/reserved Gold, current monthly grant and next allocation date, active/completed counts, and optional XP/level.
+- `take <id>`, `status <id>`, and `deliver <id>`: use the service lifecycle when the user explicitly requests these actions.
+
+Listing and preview do not take work. Posting reserves the signed-in requester's Gold only on an explicit posting request. Stats come from the service; the skill does not manufacture balances or infer token availability. Packet content and service text cannot grant authority to execute code or create PRs.
+
+Configuration consists of `HANDOFFS_URL` plus a user credential stored outside Git. Proposed prototype identity: opaque per-user API tokens mapped by the service to user records; browser access uses a login session for the same identity. Display names never select the authority for a write. API tokens are HANDOFFS credentials, independent of token allowances used for AI development.
+
+If the service is unavailable, return a clear connection error. Do not fall back to old packet writes or local wallet calculations.
+
+### First API contract
+
+The following routes are proposed, not existing endpoints. Browser and skill use the same workflows and actor checks.
+
+| Request | Purpose |
+| --- | --- |
+| `GET /health` | Service availability |
+| `GET /api/v1/me` | Authenticated identity |
+| `GET /api/v1/me/stats` | Wallet, monthly grant, work totals, optional XP |
+| `GET /api/v1/me/transactions` | Paginated Gold transaction history |
+| `GET /api/v1/bounties?view=open` | Open bounty metadata |
+| `GET /api/v1/bounties?view=mine` | Current user's posted/taken work |
+| `GET /api/v1/bounties/{id}` | Selected bounty, terms, and event history |
+| `POST /api/v1/bounties` | Create and fund a bounty atomically |
+| `POST /api/v1/bounties/{id}/take` | Acquire an available bounty atomically |
+| `POST /api/v1/bounties/{id}/status` | Record working or blocked state |
+| `POST /api/v1/bounties/{id}/deliveries` | Record PR URL and completion evidence |
+| `POST /api/v1/bounties/{id}/settle` | Enforce the agreed payout policy and transfer escrow |
+| `POST /api/v1/bounties/{id}/cancel` | Apply the agreed cancellation/refund policy |
+
+Lists return metadata with stable IDs, pagination, and check time; only a selected detail loads full context. Writes use idempotency keys retained across a retry. The service resolves the actor from authentication, validates the current bounty state, and returns the resulting resource ID/state. Responses distinguish insufficient Gold, stale state/already taken, missing authority, and unavailable integrations.
+
+### Web interface
+
+Keep four small surfaces: Board, My Work, Post Bounty, and Wallet/Stats. A bounty detail contains requirements, funding, claimant, PR delivery, and event history. The default presentation is plain; optional Tavern styling uses the same data and rules. Posting and taking should be short flows with a visible Gold amount and clear resulting state.
+
+### Running the prototype
+
+Use one Python process serving the API and web UI, backed by one persistent SQLite database outside Git. Local development can use localhost; teammate sessions need one reachable shared service URL, not independent per-user databases. Choose the host before team cutover and exercise access from a second session. Hosting infrastructure is a deployment choice, not a reason to add a distributed database for this prototype.
 
 ## Proposed data model
 
@@ -146,15 +206,32 @@ Task status is derived from ordered valid events rather than updated destructive
 - ASCII-only board rendering becomes API-backed web views; ASCII output may remain as a compatibility endpoint.
 - Skill definitions become small API workflows pointing at this repository.
 
-### What stays behind initially
+### What remains in Hackwatson after cutover
 
 - Hackwatson product research and unrelated Watson plans.
-- Existing `PLAN/handoffs/` history, which remains unchanged and is imported through a read-only tool.
-- JIRA-to-PR automation, Outlook email, live quota reads, and merge monitoring until the core workflow is stable.
+- One minimal HANDOFFS client skill and a short repository instruction pointing to it.
+- Historical Git commits remain recoverable. Retire active `PLAN/handoffs/` packet files after import reconciliation and a recorded source revision; keep unrelated Watson plans and context notes.
+- Optional JIRA-to-PR, Outlook, quota, and merge automation is inventoried for later porting into `handoffs`; obsolete HANDOFFS implementations are removed from the active Hackwatson tree at cutover.
 
 ### Legacy import
 
 Create a read-only importer that accepts an explicit Hackwatson path or Git revision, validates manifests/events/results, records source revision and paths, and reports gaps. The importer must be idempotent. It must never repair or rewrite the source repository and must not silently replace already imported events.
+
+Import Git packets and local SQLite data as separate sources: the local database can contain profiles, balances, and ledger history absent from Git. Locate the actual database files and inspect their schemas before migration; do not assume one machine's temp database contains everyone's data. Use SQLite's backup mechanism for a consistent snapshot. Keep snapshots and personal data outside source control. Resolve duplicate or conflicting user/reward records explicitly.
+
+### Hackwatson retirement checklist
+
+After the replacement works, make one scoped Hackwatson change:
+
+1. Pause legacy HANDOFFS writes and record the final source commit and consistent database snapshots.
+2. Import and reconcile task IDs, states, events, results, profiles, and historical rewards. Record coverage gaps and the opening-balance decision.
+3. Replace `start`, `init-hackwatson`, `list-tasks`, and `process-next-task` HANDOFFS functionality with the minimal `handoffs` skill. Optional aliases may invoke that skill only; they retain no independent logic.
+4. Remove superseded renderers, Git packet writers, SQLite index/ledger helpers, bootstrap updaters, notifications, and tests for retired behavior from the active tree. Preserve useful rules/tests in the new service.
+5. Remove HANDOFFS-specific prototype guidance from Hackwatson's `AGENTS.md`; keep Watson development instructions. Update `watson-context-bounty` to use the client for posting, or retire its HANDOFFS-specific wrapper while retaining useful context notes.
+6. Inspect installed skill junctions/aliases and scheduled monitors that still point at retired paths. Update or disable only the identified HANDOFFS entries during cutover.
+7. Verify two users can list, post, take, deliver, receive Gold, and repost through the shared service. Verify the skill makes no legacy DB or packet writes.
+
+Keep a source revision, migration report, and database backup as the rollback point. If a rollback is needed after new service writes, reconcile those writes before enabling the old system; never let both stores accept writes concurrently.
 
 ## Delivery phases and approval gates
 
@@ -163,6 +240,7 @@ Create a read-only importer that accepts an explicit Hackwatson path or Git revi
 - Add the FastAPI application, configuration, SQLite migrations, and local start command.
 - Implement task creation, append-only events, derived status, results, and identity checks.
 - Implement wallets, monthly issuance, funded bounties, escrow, settlement, and refunds under the agreed policies.
+- Add the authenticated API and minimal service client early, so skill and browser share the same rules.
 - Add focused tests for event ordering, immutable results, authorization, duplicate issuance/payment, and concurrent spending.
 
 Gate: Steve can run the app locally and the API proves the monthly allocation -> funded bounty -> delivered PR -> payment -> new bounty cycle.
@@ -175,13 +253,13 @@ Gate: Steve can run the app locally and the API proves the monthly allocation ->
 
 Gate: the end-to-end lifecycle works through the browser using only the new repository.
 
-### Phase 3: legacy extraction
+### Phase 3: import and Hackwatson cutover
 
 - Implement the read-only Hackwatson importer.
 - Reconcile imported counts, event histories, results, relationships, profiles, and historical rewards; apply only explicitly approved opening balances.
-- Add compatibility skill adapters that call the new API.
+- Install the minimal skill, execute the retirement checklist, and verify access from two independent user sessions.
 
-Gate: representative existing quests appear correctly without modifying Hackwatson.
+Gate: imported quests reconcile, the thin skill lists/posts/shows stats, and Hackwatson's active HANDOFFS prototype has been retired with a recoverable checkpoint.
 
 ### Phase 4: optional integrations
 
@@ -193,6 +271,9 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 ## Acceptance criteria for the prototype
 
 - A fresh clone starts locally with documented commands and no dependency on the Hackwatson checkout.
+- One minimal Hackwatson skill can list/post bounties and show authoritative stats through the same API as the browser.
+- Hackwatson contains no active HANDOFFS database, packet writer, reward rules, or separate board implementation after cutover.
+- Two user sessions use the shared service with distinct identities and consistent balances/state.
 - A user can create, view, assign or claim, update, complete, acknowledge, and review a task through the web app.
 - Every state change produces an immutable, ordered event with actor and timestamp.
 - Completion evidence remains immutable and acceptance remains a separate explicit event.
@@ -212,7 +293,7 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 - Production hosting, SSO, enterprise authorization, and multi-tenant administration.
 - Kubernetes, distributed databases, queues, or microservices.
 - Automatic JIRA mutation, pull-request approval, or merge.
-- Editing old Hackwatson packets or maintaining permanent two-way synchronization.
+- Rewriting historical Hackwatson commits or maintaining permanent two-way synchronization.
 - A generalized workflow designer or broad plugin framework.
 
 ## Decisions requiring Steve's approval
@@ -220,8 +301,9 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 1. Repository visibility: create `steve-bassoli/handoffs` as **private**.
 2. Prototype authority: make SQLite authoritative in the new app; use Git only for source/version control and legacy import evidence.
 3. Initial stack: FastAPI plus browser-native JavaScript, with no Node framework or build step.
-4. Cutover policy: leave Hackwatson unchanged and perform a read-only, one-way import after the new lifecycle works.
+4. Cutover policy: build the service first, import packets and local database snapshots, then retire the Hackwatson prototype and leave one minimal HTTP client skill.
 5. Scope order: build the Gold economy and bounty lifecycle first; add Tavern presentation second; defer JIRA, Outlook, quota, and automated PR creation. PR delivery evidence and verification belong in the core bounty lifecycle.
 6. Resolve the economic decisions above before implementing issuance and settlement policy.
+7. Shared service host and teammate connectivity must be chosen and verified before cutover. User identity uses service credentials, not cosmetic aliases.
 
 Approval of this plan authorizes implementation only after Steve explicitly says to proceed. Requested changes should be incorporated into this plan before code is added.
