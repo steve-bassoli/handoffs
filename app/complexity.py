@@ -1,4 +1,4 @@
-"""Three-way decomposition and a SMALL-only managed Git commit gate (stdlib only)."""
+"""Bounded HIGH decomposition and a LOW-only managed Git commit gate (stdlib only)."""
 import argparse
 import hashlib
 import json
@@ -17,10 +17,12 @@ def validate_plan(steps):
         if step['id'] in seen or len(seen) >= 200:
             raise ValueError('Plan IDs must be unique; at most 200 items')
         seen.add(step['id'])
-        level = step.get('complexity', '').upper()
-        level = 'SMALL' if level == 'LOW' else level
-        if level not in ('HIGH', 'MEDIUM', 'SMALL') or (expected and level != expected):
-            raise ValueError('HIGH requires MEDIUM children; MEDIUM requires SMALL children; LOW means SMALL')
+        level = step.get('complexity')
+        if not isinstance(level, str):
+            raise ValueError('Complexity must be HIGH, MEDIUM, or LOW')
+        level = level.upper()
+        if level not in ('HIGH', 'MEDIUM', 'LOW') or (expected and level != expected):
+            raise ValueError('Use HIGH, MEDIUM, or LOW; children must match the declared decomposition')
         title = step.get('title')
         children = step.get('children')
         files = step.get('files')
@@ -30,14 +32,21 @@ def validate_plan(steps):
                path.startswith('/') or '\\' in path or ':' in path or '..' in PurePosixPath(path).parts
                for path in files) or len(files) != len(set(files)):
             raise ValueError('Plan files must be distinct exact relative paths')
-        if level == 'SMALL':
+        if level == 'LOW':
             if children:
-                raise ValueError('SMALL is a leaf and cannot have children')
+                raise ValueError('LOW is a leaf and cannot have children')
             leaves.append({**step, 'complexity': level})
             return {**step, 'complexity': level}
-        if files or len(children) != 3:
-            raise ValueError(level + ' must have exactly 3 children and no commit files')
-        return {**step, 'complexity': level, 'children': [visit(child, 'MEDIUM' if level == 'HIGH' else 'SMALL') for child in children]}
+        if files:
+            raise ValueError('Only LOW leaves declare commit files')
+        if level == 'HIGH' and len(children) > 1 and all(isinstance(child, dict) and
+                isinstance(child.get('complexity'), str) and child['complexity'].upper() == 'HIGH' for child in children):
+            child_level = 'HIGH'
+        else:
+            if len(children) != 3:
+                raise ValueError('HIGH needs 2+ HIGHs or exactly 3 MEDIUMs; MEDIUM needs exactly 3 LOWs')
+            child_level = 'MEDIUM' if level == 'HIGH' else 'LOW'
+        return {**step, 'complexity': level, 'children': [visit(child, child_level) for child in children]}
 
     if not isinstance(steps, list) or not steps:
         raise ValueError('Provide at least one plan item')
@@ -49,14 +58,14 @@ def commit(repository, steps, step_id, message, run=subprocess.run):
     normalized, leaves = validate_plan(steps)
     leaf = next((item for item in leaves if item['id'] == step_id), None)
     if not leaf or not leaf['files']:
-        raise ValueError('Only a SMALL leaf with declared files can commit')
+        raise ValueError('Only a LOW leaf with declared files can commit')
     prefix = ['git', '-C', str(repository)]
     staged = run(prefix + ['diff', '--cached', '--name-only', '-z'], check=True, capture_output=True).stdout.decode().split('\0')
     paths = {path for path in staged if path}
     if not paths or not paths <= set(leaf['files']):
-        raise ValueError('Stage only files declared by the selected SMALL leaf')
+        raise ValueError('Stage only files declared by the selected LOW leaf')
     fingerprint = hashlib.sha256(json.dumps(normalized, sort_keys=True).encode()).hexdigest()
-    receipt = f"Complexity: SMALL\nPlan-step: {step_id}\nPlan-sha256: {fingerprint}"
+    receipt = f"Complexity: LOW\nPlan-step: {step_id}\nPlan-sha256: {fingerprint}"
     return run(prefix + ['commit', '-m', message, '-m', receipt], check=True, capture_output=True, text=True).stdout
 
 
@@ -77,7 +86,7 @@ def main(argv=None):
             print(commit(args.repository, steps, args.step, args.message).strip())
         else:
             normalized, leaves = validate_plan(steps)
-            print(json.dumps({'steps': normalized, 'small_leaves': len(leaves)}, indent=2))
+            print(json.dumps({'steps': normalized, 'low_leaves': len(leaves)}, indent=2))
     except (ValueError, KeyError, TypeError, AttributeError) as error:
         parser.exit(2, str(error) + '\n')
 
