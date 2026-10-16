@@ -21,7 +21,7 @@ HF-16 | blocked | Isolated retirement candidate verified at local commit b42fd65
 HF-17 | blocked | Local integrated acceptance verified: 15 passing tests, real browser and client currency cycles, canonical imported board/runtime. Full team-cutover acceptance depends on HF-16 activation.
 HF-18 | done | SDK stdio initialization/discovery lists exactly six tools with read/write annotations; bridge calls existing HTTP API only.
 HF-19 | done | Two real MCP sessions verify fund/retry/claim/deliver/payment/repost, errors and unavailable-service handling on isolated SQLite; complete suite 17 passed, exit 0.
-HF-20 | open | Canonical dependency install and native MCP registration next; active conversation has not yet discovered the tools.
+HF-20 | done | Canonical dependencies installed; handoffs registered and enabled through codex mcp add. A real stdio client launched from the saved host configuration discovered all six tools and verified the live 30-item board, Steve stats and selected detail. Active conversation needs MCP reconnect/restart to discover the new tools.
 
 Demo defaults: 1000 Gold/month; Eastern calendar; rollover; grant current month only; mock-positive delivery pays automatically; refund only before claim; legacy rewards stay historical.
 Target consolidation: app/services.py contains domain workflows; app/main.py contains routes/models; app/storage.py contains SQLAlchemy connections; app/adapters.py contains mock boundaries; app/importer.py contains read-only source import. This replaces the originally proposed multi-file split to keep the prototype small.
@@ -34,3 +34,5 @@ Final canonical verification: pip install -e C:\hackathon\handoffs[test] => exit
 Final import: Git 30/30 with zero gaps; second validation run 30 unchanged, exit 0. Local SQLite pass exit 1 accurately reports only the absent relations table, retaining seven records and issuing zero Gold. No claim of other users' local-DB coverage.
 Backups: C:\hackathon\handoffs\.data\app-backup-4acca91b0d784297857636284179cbfc.sqlite and legacy-backup-42684067ce8b49c5aaed666876963334.sqlite. Both generated with SQLite backup API. Personal data stays ignored.
 App implementation published at f8a53bb; final status/report changes are documentation only. All changed app behaviors map to HF-02 through HF-15 or retained evidence. No high-complexity bounty proposals.
+
+MCP checkpoint: implementation published at 4ca3e52; full regression suite 17 passed, exit 0, with the existing upstream Starlette/httpx deprecation warning. Canonical dependency installation and saved native configuration protocol smoke both exited 0. Six tools proxy the existing HTTP service; no OpenAI API key access or model calls. This is a local desktop connection, not hosted ChatGPT connectivity. Legacy cutover blockers HF-16/HF-17 remain unchanged.

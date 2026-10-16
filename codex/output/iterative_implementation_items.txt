@@ -251,4 +251,4 @@ complexity: easy
 validation: Host reports enabled handoffs configuration; a canonical stdio client discovers/calls its tools. State if the running conversation needs a reconnect/restart before tools become available.
 exclusions: Do not restart the active desktop app, alter other servers, access the API key, or claim hosted ChatGPT connectivity.
 depends_on: HF-19
-status: open
+status: done
