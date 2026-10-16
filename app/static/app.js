@@ -57,7 +57,7 @@ async function board() {
   if (!result.items.length) $('cards').append(element('div', view === 'mine' ? 'Your posted and taken bounties will appear here.' : 'A clear board. Post the first bounty and put your Gold to work.', 'empty'));
   for (const item of result.items) {
     const card = element('article', undefined, 'card');
-    const top = element('div'); top.append(element('span', item.status, 'pill'));
+    const top = element('div'); top.append(element('span', item.status.replaceAll('_', ' '), 'pill'), element('span', item.complexity, 'pill'));
     if (item.funded) top.append(element('span', `${item.gold} GOLD`, 'pill bounty-gold'));
     const button = element('button', 'View bounty'); button.onclick = () => run(() => show(item.id));
     card.append(top, element('h3', item.title), element('div', `${item.creator} → ${item.claimant || item.target || 'Open'}${item.funded ? '' : item.parent_id ? ' · Follow-up' : ' · Historical / unfunded'}`, 'meta'), button);
@@ -111,7 +111,7 @@ async function show(id) {
   for (const section of ['board', 'post', 'wallet']) $(section).hidden = true;
   const detail = $('detail'); detail.hidden = false; detail.replaceChildren();
   const back = element('button', '← Back to board'); back.onclick = () => run(() => navigate('open'));
-  const header = element('div', undefined, 'detail-head'); header.append(element('span', data.status, 'pill'));
+  const header = element('div', undefined, 'detail-head'); header.append(element('span', data.status.replaceAll('_', ' '), 'pill'), element('span', data.complexity, 'pill'));
   if (data.funded) header.append(element('span', `${data.gold} GOLD`, 'pill bounty-gold'));
   header.append(element('h2', data.title), element('code', data.id));
   detail.append(back, header, element('h3', 'Goal'), element('p', data.goal, 'content'), element('h3', 'Completion criteria'));
@@ -119,12 +119,19 @@ async function show(id) {
   if (data.repository) detail.append(element('p', 'Repository: ' + data.repository, 'content'));
   data.context_links.forEach(text => detail.append(element('p', text, 'content')));
   await artifactsSection(data, detail);
-  detail.append(element('p', `Requester: ${data.creator} · ${data.completed_by ? `Recorded completion: ${data.completed_by} · Historical assignment: ${data.target || 'Open'}` : `Worker: ${data.claimant || data.target || 'Available'}`} · ${data.funded ? 'Gold reserved at posting. Demo-verified PR delivery pays automatically; review remains separate.' : 'Historical import. No spendable Gold or new funding was created.'}`));
+  detail.append(element('p', `Requester: ${data.creator} · ${data.completed_by ? `Prior recorded completion: ${data.completed_by} · Historical assignment: ${data.target || 'Open'}` : `Worker: ${data.claimant || data.target || 'Available'}`} · ${data.funded ? 'Gold reserved at posting. Demo-verified PR delivery pays automatically; review remains separate.' : 'Unfunded record. No spendable Gold or new funding was created.'}`));
   const actions = element('div', undefined, 'actions');
   const action = (label, suffix) => { const b = element('button', label); b.onclick = () => run(() => mutate(`/bounties/${id}/${suffix}`)); actions.append(b); };
   if (data.funded && data.status === 'open') {
     if (user === data.creator) action('Cancel & refund', 'cancel');
     else if (!data.target || data.target === user) action('Take manually', 'take');
+  }
+  if (!data.ai_run && ['completed', 'settled'].includes(data.status)
+      && [data.creator, data.target, data.claimant, data.completed_by].includes(user)) {
+    const reopen = element('button', 'Reopen as HIGH for decomposition');
+    reopen.onclick = () => run(() => mutate(`/bounties/${id}/reopen`, {complexity: 'HIGH',
+      note: 'Reopened for bounded child-bounty proposals. Prior completion and evidence preserved; no new acceptance or rewards.'}));
+    actions.append(reopen);
   }
   detail.append(actions);
   await aiSection(data, detail);
@@ -253,13 +260,15 @@ async function aiSection(data, detail) {
   const owner = data.ai_run?.actor === user;
   const box = element('section', undefined, 'ai-panel');
   box.append(element('h3', 'Luna workbench'));
-  if (!data.ai_run && !data.legacy && ['open', 'working', 'blocked'].includes(data.status)
+  if (!data.ai_run && (!data.legacy || data.events.some(event => event.kind === 'reopened')) && ['open', 'working', 'blocked'].includes(data.status)
       && (!data.claimant || data.claimant === user) && (!data.target || data.target === user)) {
-    box.append(element('p', 'Give Luna the source. It investigates, asks up to three questions, and prepares a fix ZIP or follow-up proposals for your confirmation.'));
+    box.append(element('p', data.complexity === 'LOW'
+      ? 'Luna investigates the supplied evidence and prepares the minimal fix. It can ask up to three questions.'
+      : `Luna researches this ${data.complexity} bounty and proposes child bounties. You must approve the complete valid set before any are created. The parent is not completed by decomposition.`));
     const form = element('form');
     const label = element('label', 'Additional context'); const context = element('textarea'); label.append(context); form.append(label);
     const source = sourceInput(form);
-    form.append(element('button', 'Start with Luna', 'primary'));
+    form.append(element('button', data.complexity === 'LOW' ? 'Start with Luna' : 'Propose child bounties with Luna', 'primary'));
     form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/start`, {context: context.value, source_zip: await source()})); };
     box.append(form);
   }
@@ -316,15 +325,16 @@ async function aiSection(data, detail) {
       box.append(form);
     }
     if (ai.status === 'followups_pending') {
-      box.append(element('h3', 'Proposed follow-ups · nothing created yet'));
+      box.append(element('h3', 'Proposed child bounties · awaiting your approval'),
+        element('p', 'No child tickets exist yet. Approve the complete set to preserve the complexity rule. The parent remains unresolved until its acceptance criteria are verified.'));
       const form = element('form'); const choices = [];
       ai.result.proposals.forEach((proposal, index) => {
-        const card = element('div', undefined, 'evidence'); const label = element('label', proposal.title);
+        const card = element('div', undefined, 'evidence'); const label = element('label', `${proposal.complexity} · ${proposal.title}`);
         const choice = element('input'); choice.type = 'checkbox'; choice.value = index; label.prepend(choice); card.append(label, element('p', proposal.goal));
         const checks = element('ul'); proposal.criteria.forEach(text => checks.append(element('li', text))); card.append(checks); form.append(card); choices.push(choice);
       });
       if (owner) {
-        form.append(element('button', 'Confirm selected tasks', 'primary'));
+        form.append(element('button', `Approve all ${ai.result.proposals.length} child bounties`, 'primary'));
         form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/ai/confirm-followups`, {indices: choices.filter(c => c.checked).map(c => Number(c.value))})); };
       } else choices.forEach(choice => { choice.disabled = true; });
       box.append(form);
@@ -371,7 +381,7 @@ $('post-form').onsubmit = e => {
     const form = new FormData(e.target);
     const lines = name => form.get(name).split('\n').map(s => s.trim()).filter(Boolean);
     const result = await mutate('/bounties', {title: form.get('title'), goal: form.get('goal'), criteria: lines('criteria'),
-      repository: form.get('repository'), context_links: lines('context_links'), gold: Number(form.get('gold')), target: form.get('target') || null,
+      repository: form.get('repository'), context_links: lines('context_links'), complexity: form.get('complexity'), gold: Number(form.get('gold')), target: form.get('target') || null,
       source_zip: await postSourceZip()});
     if (result) e.target.reset();
   });

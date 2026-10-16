@@ -84,7 +84,13 @@ Set `OPENAI_API_KEY` in the server environment and restart the server. The defau
 test model is `gpt-6-luna`; `HANDOFFS_AI_MODEL` can select another explicitly chosen
 model. The key is used only in the server's Authorization header.
 
-Open a bounty and choose **Start with Luna**. Attach a focused ZIP of UTF-8 source
+New bounties default to HIGH; select HIGH/MEDIUM/LOW explicitly when posting.
+Participants can reopen a completed record without an existing AI run as HIGH
+for decomposition. This appends an audited event and preserves previous completion,
+assignment, attachments and Gold; it never erases or repays the earlier work.
+
+Open a bounty and choose **Propose child bounties with Luna** for HIGH/MEDIUM,
+or **Start with Luna** for LOW. Attach a focused ZIP of UTF-8 source
 files (up to 200 files / 2 MB unpacked), excluding secrets, Git data, and dependency
 trees. Luna can list/read the supplied files, asks at most three questions total,
 and records API calls, tokens, elapsed time, questions and answers in the task.
@@ -113,15 +119,20 @@ outside the selected leaf, then records its ID and plan fingerprint in the commi
 This governs the engine/executor workflow, not arbitrary Git commands elsewhere;
 no global Git hook is installed. Decomposition alone never publishes new bounties.
 
-If a fix cannot be produced, the attempt closes with proposed follow-ups. Select
-and confirm the exact tasks to create; proposals alone never create tasks. Child
+HIGH/MEDIUM bounties cannot deliver implementations. Luna processes the original
+requirements, attached fresh-session responses, provenance, and current support
+evidence into typed child-bounty proposals, not merely plan nodes. The same strict
+split rules apply to those proposals. A LOW bounty cannot create child bounties.
+Proposals leave the parent `awaiting_approval`, with no child tickets created.
+Approve the entire valid set; partial approval is rejected. Child
 tasks retain the parent link and inherit source/context when started without a new
-ZIP. The expandable task tree and event history show the whole chain. These AI
+ZIP. Creation moves the parent to `decomposed`, not completed: children alone are
+not integrated acceptance evidence. The expandable task tree and event history show the whole chain. These AI
 actions neither pay rewards nor reserve new Gold for children. Restarted in-flight
 turns require an explicit retry; answered and completed runs survive restart.
 
 API routes under `/api/v1/bounties/{id}`: `ai/start`, `ai/answers`, `ai/retry`,
-`ai/confirm-followups`, `ai/complete`, `ai/artifact`, and `lineage`. Writes use the
+`ai/confirm-followups`, `ai/complete`, `ai/artifact`, `reopen`, and `lineage`. Writes use the
 same operation ID contract as the existing service. The existing demo identity
 selector is still simulated; the model key stays on the server.
 
