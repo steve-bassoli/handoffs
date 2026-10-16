@@ -7,7 +7,7 @@ import json
 import os
 import time
 import zipfile
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Literal
 from uuid import uuid4
 
@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.services import RuleError, encode, now
 from app.storage import all_rows, one
+from app.complexity import validate_plan
 
 
 class OutputModel(BaseModel):
@@ -33,6 +34,14 @@ class Followup(OutputModel):
     criteria: list[str] = Field(min_length=1)
 
 
+class PlanStep(OutputModel):
+    id: str
+    title: str
+    complexity: Literal['HIGH', 'MEDIUM', 'SMALL', 'LOW']
+    files: list[str]
+    children: list['PlanStep']
+
+
 class Decision(OutputModel):
     action: Literal['ask', 'deliver', 'followups']
     summary: str = Field(min_length=1)
@@ -41,6 +50,7 @@ class Decision(OutputModel):
     instructions: str
     verification: list[str]
     proposals: list[Followup]
+    plan: list[PlanStep]
 
 
 def source_path(path):
@@ -112,7 +122,11 @@ class Luna:
             'Ask at most the remaining question budget across the entire run. '
             'If source or a required decision is missing, ask for it; never invent source. '
             'Return deliver only when you can provide the complete changed files and clear local steps. '
-            'Plan only easy or medium complexity steps; propose a follow-up for high complexity work. '
+            'HARD complexity rules: HIGH has exactly 3 MEDIUM children; each MEDIUM has exactly 3 SMALL children. '
+            'LOW means SMALL. SMALL is a leaf with no children. Only SMALL can result in a Git commit. '
+            'Return the hierarchy in plan with unique IDs, bounded titles, and exact commit files on SMALL leaves only. '
+            'Do not pad with fake tasks or relabel complex work as SMALL. A genuinely SMALL task may be a root leaf. '
+            'For deliver, cover every changed file in SMALL leaves. For ask or followups, plan must be empty. '
             'If you cannot produce a fix after the answers, return followups with specific bounded tasks. '
             'Proposals are drafts: the user must confirm each new task. '
             'You cannot execute code here: verification entries must be proposed commands, never passing claims. '
@@ -225,8 +239,13 @@ class AIRuns:
         self.model.check()
         source = read_source(payload.get('source_zip'))
         if not source:
-            source = {path: content for event in task['events']
-                      for path, content in event['data'].get('source_files', {}).items()}
+            for event in task['events']:
+                source.update(event['data'].get('source_files', {}))
+                if event['kind'] == 'package_attached' and event['data']['kind'] == 'support':
+                    source.update({source_path(path.removeprefix('source/')): content
+                                   for path, content in event['data']['files'].items() if path.startswith('source/')})
+            if len(source) > 200 or sum(len(content.encode()) for content in source.values()) > 2_000_000:
+                raise RuleError('Combined supplied source exceeds 200 files / 2 MB; attach a focused source ZIP for this run', 422)
         context = payload.get('context', '')
         if 'sk-proj-' in context:
             raise RuleError('Keep API keys in the server environment, never task context', 422)
@@ -292,6 +311,13 @@ class AIRuns:
                     or (decision.action != 'deliver' and decision.files)
                     or (decision.action != 'followups' and decision.proposals)):
                 raise ValueError('Conflicting model outcomes')
+            if decision.action == 'deliver':
+                normalized, leaves = validate_plan([step.model_dump() for step in decision.plan])
+                if {path for leaf in leaves for path in leaf['files']} != {file.path for file in decision.files}:
+                    raise ValueError('Every changed file must belong to a SMALL leaf')
+                decision.plan = [PlanStep.model_validate(step) for step in normalized]
+            elif decision.plan:
+                raise ValueError('Only a delivery has an executable plan')
             paths = [source_path(f.path) for f in decision.files]
             if len(paths) != len(set(paths)):
                 raise ValueError('Duplicate artifact path')
@@ -402,15 +428,26 @@ class AIRuns:
                  'with the proposed changes already applied. Inspect changes.patch, the source, and bounty.json; '
                  'install the declared prerequisites, then perform the local verification below. '
                  'No build or tests have been run by the API agent. Report actual results before calling the fix verified.\n\n'
+                 'Only SMALL plan leaves may produce Git commits. Validate implementation-plan.json with '
+                 'python tools/complexity.py validate --plan implementation-plan.json. Then stage only one SMALL leaf\'s '
+                 'declared files and use python tools/complexity.py commit --plan implementation-plan.json --step <id> '
+                 '--repository <checkout> --message <message>. Never commit a HIGH or MEDIUM parent. '
+                 'Legacy ZIPs without a valid plan require decomposition before any commit.\n\n'
                  + result['instructions'] + '\n\n## Local verification commands (not yet executed)\n\n'
                  + '\n'.join('- ' + command for command in result['verification']))
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr('START_HERE.md', start)
-            archive.writestr('bounty.json', encode({key: task[key] for key in ('id', 'parent_id', 'title', 'goal', 'criteria', 'repository', 'context_links')} |
+            def store(path, content):
+                entry = zipfile.ZipInfo(path, date_time=(1980, 1, 1, 0, 0, 0))
+                entry.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(entry, content)
+            store('START_HERE.md', start)
+            store('bounty.json', encode({key: task[key] for key in ('id', 'parent_id', 'title', 'goal', 'criteria', 'repository', 'context_links')} |
                 {'developer_context': row['data']['context']}))
-            archive.writestr('changes.patch', ''.join(patch))
-            archive.writestr('history.json', encode({'run': self.public(row), 'events': task['events']}))
+            store('changes.patch', ''.join(patch))
+            store('implementation-plan.json', encode({'steps': result.get('plan', [])}))
+            store('tools/complexity.py', Path(__file__).with_name('complexity.py').read_bytes())
+            store('history.json', encode({'run': self.public(row), 'events': task['events']}))
             for path, content in files.items():
-                archive.writestr('workspace/' + source_path(path), content)
+                store('workspace/' + source_path(path), content)
         return buffer.getvalue()

@@ -24,7 +24,9 @@ def source_zip(files=None):
 def decision(action, **extra):
     return Decision(action=action, summary='Investigated addition', questions=extra.get('questions', []),
         files=extra.get('files', []), instructions=extra.get('instructions', ''), verification=extra.get('verification', []),
-        proposals=extra.get('proposals', []))
+        proposals=extra.get('proposals', []), plan=extra.get('plan', [
+            {'id': 'fix', 'title': 'Apply the bounded fix', 'complexity': 'SMALL', 'children': [],
+             'files': [file['path'] for file in extra.get('files', [])]}] if action == 'deliver' else []))
 
 
 class FakeLuna:
@@ -72,6 +74,9 @@ def test_questions_answers_zip_and_idempotency(tmp_path):
             assert 'No build or tests have been run' in archive.read('START_HERE.md').decode()
             assert '-    return a - b' in archive.read('changes.patch').decode()
             assert json.loads(archive.read('bounty.json'))['id'] == bounty
+            assert json.loads(archive.read('implementation-plan.json'))['steps'][0]['complexity'] == 'SMALL'
+            assert 'tools/complexity.py' in archive.namelist()
+        assert client.get(f'/api/v1/bounties/{bounty}/ai/artifact').content == result.content
         assert client.get(f'/api/v1/bounties/{bounty}').json()['status'] == 'delivered'
         assert write(client, f'/bounties/{bounty}/ai/complete', {'evidence': 'Local checks passed'}, 'nate').status_code == 403
         assert write(client, f'/bounties/{bounty}/ai/complete', {'evidence': 'Local checks passed'}, key='verified').json()['status'] == 'completed'
@@ -178,3 +183,14 @@ def test_target_and_claimant_are_respected(tmp_path):
         assert write(client, f'/bounties/{bounty}/ai/start', {}).status_code == 403
         write(client, f'/bounties/{bounty}/take', user='nate')
         assert write(client, f'/bounties/{bounty}/ai/start', {}, user='will').status_code == 403
+
+
+@pytest.mark.parametrize('plan', [[], [{'id': 'parent', 'title': 'Too broad', 'complexity': 'MEDIUM', 'children': [], 'files': ['calc.py']}],
+    [{'id': 'leaf', 'title': 'Wrong files', 'complexity': 'SMALL', 'children': [], 'files': ['unrelated.py']}]])
+def test_invalid_complexity_cannot_publish_a_fix(tmp_path, plan):
+    model = FakeLuna([decision('deliver', files=[{'path': 'calc.py', 'content': 'fixed'}], instructions='Test', plan=plan)])
+    with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
+        bounty = post_bounty(client).json()['id']
+        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
+        assert get_run(client, bounty)['status'] == 'failed'
+        assert client.get(f'/api/v1/bounties/{bounty}/ai/artifact').status_code == 409
