@@ -19,6 +19,9 @@ HF-14 | done | Consistent read-only snapshot preserved 5 profiles/2 capacity rec
 HF-15 | done | Canonical checkout tested: 15 passed; local browser/client share persistent service at 127.0.0.1:8000 (PID 36212); restart test passes; consistent backups created. Cross-machine hosting remains an activation prerequisite.
 HF-16 | blocked | Isolated retirement candidate verified at local commit b42fd657512ce175b123fd81e3fb4cb95de17b32. Auto-review denied publishing to Nate's remote without explicit destination authorization. Original checkout/main untouched; dirty/unpublished work and shared host require reconciliation before activation.
 HF-17 | blocked | Local integrated acceptance verified: 15 passing tests, real browser and client currency cycles, canonical imported board/runtime. Full team-cutover acceptance depends on HF-16 activation.
+HF-18 | done | SDK stdio initialization/discovery lists exactly six tools with read/write annotations; bridge calls existing HTTP API only.
+HF-19 | done | Two real MCP sessions verify fund/retry/claim/deliver/payment/repost, errors and unavailable-service handling on isolated SQLite; complete suite 17 passed, exit 0.
+HF-20 | open | Canonical dependency install and native MCP registration next; active conversation has not yet discovered the tools.
 
 Demo defaults: 1000 Gold/month; Eastern calendar; rollover; grant current month only; mock-positive delivery pays automatically; refund only before claim; legacy rewards stay historical.
 Target consolidation: app/services.py contains domain workflows; app/main.py contains routes/models; app/storage.py contains SQLAlchemy connections; app/adapters.py contains mock boundaries; app/importer.py contains read-only source import. This replaces the originally proposed multi-file split to keep the prototype small.

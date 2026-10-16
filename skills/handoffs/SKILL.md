@@ -5,6 +5,11 @@ description: List or post HANDOFFS bounties, show wallet and work stats, and rec
 
 # HANDOFFS service client
 
+When the native `handoffs` MCP server is connected, use its tools for board,
+selected detail, posting, stats, taking and delivery. They call the same service.
+Use the PowerShell helper below for other actions or when MCP is not available.
+MCP writes require a retained `operation_id`, equivalent to `OperationId` below.
+
 Use `scripts/handoffs-client.ps1`. Configure `HANDOFFS_URL` for the shared
 service and `HANDOFFS_DEMO_USER` for the chosen demo user (`steve`, `nate`,
 or `will`). This user selector simulates identity; it is not authentication.

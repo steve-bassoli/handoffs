@@ -108,6 +108,12 @@ handoffs/
 
 ## Target boundary: service plus one minimal skill
 
+### Native desktop MCP bridge
+
+Steve approved adding the native connection on October 16, 2026. A local stdio MCP server exposes six tools: `list_bounties`, `get_bounty`, `post_bounty`, `get_my_stats`, `take_bounty`, and `deliver_pr`. It calls the existing HTTP API and holds no domain state or Gold rules. HANDOFFS_URL chooses the service; HANDOFFS_DEMO_USER fixes the demo actor for that connection. Writes require an operation ID retained for retries. Tool metadata marks writes, including stats because it applies a due monthly grant. Returned data remains visibly simulated where appropriate.
+
+Verify real MCP initialization, discovery and tool calls, including an isolated two-user earn/repost flow. Then register the server with the local desktop/Codex host using the canonical checkout's virtual environment. This connection does not use the stored OpenAI API key. Hosted ChatGPT plugin/tunnel deployment and publication to Nate's repository remain separate from this local connection.
+
 `C:\hackathon\handoffs` owns the application, database, API, web interface, Gold economy, and client contract. `C:\hackathon\hackwatson` retains one small skill that communicates with that service over HTTP.
 
 The worker's AI session continues to do development in the relevant source repository using that worker's tokens and repository access. The HANDOFFS service coordinates the bounty and records its outcome; hosting an AI executor or sharing token credentials is outside this prototype.

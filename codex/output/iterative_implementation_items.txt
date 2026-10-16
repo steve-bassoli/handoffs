@@ -215,3 +215,40 @@ validation: One accepted evidence set covers grants, funding, claims, delivery, 
 exclusions: No new optional features; child-step completion alone is not acceptance.
 depends_on: HF-16
 status: blocked
+
+id: HF-18
+criterion: Expose HANDOFFS bounty and wallet operations to native AI sessions through a minimal MCP bridge.
+objective: Add six tools proxying the existing API.
+source: app/main.py API routes; official desktop MCP documentation; installed MCP SDK
+target: app/mcp_server.py; pyproject.toml; README.md; skills/handoffs/SKILL.md
+implementation: Local stdio transport; fixed demo actor per connection; HTTP proxy; explicit operation IDs; read/write annotations; no API key or duplicate business rules.
+complexity: medium
+validation: SDK protocol client initializes, lists exactly six tools and calls list/detail/stats successfully.
+exclusions: No hosted plugin/tunnel, public endpoint, model calls or Hackwatson cutover.
+depends_on: HF-15
+status: done
+
+
+id: HF-19
+criterion: MCP calls follow the same funding, ownership and payment rules as the browser and existing skill.
+objective: Verify two-user bounty circulation through real MCP clients.
+source: app/mcp_server.py; tests/test_bounty_cycle.py
+target: tests/test_mcp.py
+implementation: Test discovery, metadata, funding/retry, errors, competing identities, PR delivery and earned-Gold repost against an isolated live HTTP service through stdio MCP sessions.
+complexity: medium
+validation: Real stdio end-to-end test plus existing regression suite passes; no writes to the live demo database during the lifecycle test.
+exclusions: No browser changes or broad new testing framework.
+depends_on: HF-18
+status: done
+
+id: HF-20
+criterion: The verified local MCP bridge is configured for the user's native desktop host.
+objective: Register handoffs and document activation.
+source: verified stdio launch; local codex mcp CLI and existing configuration
+target: local host MCP configuration via codex mcp add; README.md; iterative status
+implementation: Add only the handoffs server entry using the canonical Python environment, service URL and demo user; retain unrelated settings; verify saved configuration and canonical launch.
+complexity: easy
+validation: Host reports enabled handoffs configuration; a canonical stdio client discovers/calls its tools. State if the running conversation needs a reconnect/restart before tools become available.
+exclusions: Do not restart the active desktop app, alter other servers, access the API key, or claim hosted ChatGPT connectivity.
+depends_on: HF-19
+status: open

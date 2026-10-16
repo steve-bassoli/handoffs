@@ -38,6 +38,23 @@ $env:HANDOFFS_DEMO_USER = 'steve'
 
 Supply and retain `-OperationId <guid>` for writes; reuse it with identical inputs after an uncertain response. No implicit retries or local packet fallback occur.
 
+## Native desktop MCP connection
+
+The MCP bridge exposes `list_bounties`, `get_bounty`, `post_bounty`, `get_my_stats`, `take_bounty`, and `deliver_pr`. It calls the existing service; it does not open a database or call OpenAI models. Demo identity is fixed per connection. `get_my_stats` is annotated as a write because it can issue the due monthly grant; posting, taking and delivering are also marked as writes. Retain a unique `operation_id` for each intended write and reuse it for an identical retry.
+
+Keep the HTTP service running, then register the local server with the desktop/Codex host:
+
+```powershell
+codex mcp add handoffs --env HANDOFFS_URL=http://127.0.0.1:8000 --env HANDOFFS_DEMO_USER=steve -- C:\hackathon\handoffs\.venv\Scripts\python.exe -m app.mcp_server
+codex mcp get handoffs --json
+```
+
+For a different checkout, substitute its virtual environment path. Alternatively, in the desktop app open **Settings → MCP servers → Add server**, choose **STDIO**, and use that Python command with arguments `-m app.mcp_server` and the two environment variables. Reconnect/restart the MCP server after configuration changes. The current conversation may need a fresh session to discover newly registered tools.
+
+Try: “Show my HANDOFFS stats”, “List open HANDOFFS bounties”, or “Post a 150-Gold bounty to …”. Taking work or delivering requires an explicit user request; a delivery pays after simulated verification and does not create or merge a real PR. The OpenAI API key is not used for this connection.
+
+This configures the local desktop host. Hosted ChatGPT plugin/tunnel deployment is a separate step; localhost alone is not proof of cloud connectivity. See [official MCP setup](https://learn.chatgpt.com/docs/extend/mcp).
+
 Import legacy Git packets and an optional consistent SQLite snapshot without editing either source:
 
 ```powershell
