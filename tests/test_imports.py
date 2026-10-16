@@ -103,6 +103,26 @@ def test_later_events_append_without_rewriting_prior_history(tmp_path):
     assert result['imported'] == 1 and not result['gaps']
     detail = service.get('prove-demo')
     assert detail['status'] == 'completed' and len(detail['events']) == 2
+    assert detail['completed_by'] == 'nate'
     assert detail['legacy']['documents'][-1]['content'] == 'Preserved result evidence'
     assert import_git(db, repo, 'HEAD')['unchanged'] == 1
+    db.engine.dispose()
+
+
+def test_legacy_requirements_project_for_new_and_existing_imports(tmp_path):
+    repo, directory, git = fixture_repository(tmp_path)
+    context = '# Probe\n\n## Goal\n\nRead safely.\n\n## Acceptance criteria\n\n- Only three operations.\n  Keep TLS.\n- No live calls.\n\n## Constraints\nDo not mutate.\n'
+    (directory / 'context.md').write_text(context, encoding='utf-8')
+    git('add', '.')
+    git('commit', '-m', 'Requirements')
+    db, service = initialized(tmp_path)
+    assert not import_git(db, repo, 'HEAD')['gaps']
+    detail = service.get('prove-demo')
+    assert detail['goal'] == 'Read safely.'
+    assert detail['criteria'] == ['Only three operations.\nKeep TLS.', 'No live calls.']
+    with db.write() as c:
+        c.exec_driver_sql("UPDATE bounties SET goal='Historical imported assignment',criteria='[]',repository='' WHERE id='prove-demo'")
+    assert service.get('prove-demo') == detail
+    assert import_git(db, repo, 'HEAD')['unchanged'] == 1
+    assert git('status', '--porcelain') == ''
     db.engine.dispose()

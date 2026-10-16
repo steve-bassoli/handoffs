@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from app.adapters import DemoDeliveryVerifier
+from app.context import legacy_requirements
 from app.services import Service, encode
 from app.storage import Database, one
 
@@ -119,8 +120,9 @@ def import_git(db, repository, reference):
                 else:
                     metadata = {'source': source, 'revision': revision, 'directory': directory, 'manifest': manifest,
                                 'context': packet_files[directory + '/context.md']}
+                    goal, criteria = legacy_requirements(metadata['context'])
                     c.exec_driver_sql('INSERT INTO bounties(id,title,goal,criteria,repository,context_links,creator,target,gold,created_at,legacy,funded) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-                                      (bounty_id, manifest['title'], 'Historical imported assignment', encode([]), '', encode([]),
+                                      (bounty_id, manifest['title'], goal or 'Historical imported assignment', encode(criteria), origin.removesuffix('.git'), encode([]),
                                        manifest['sender'].lower(), None if manifest['recipient'] == 'OPEN' else manifest['recipient'].lower(),
                                        manifest.get('gold') or 150, manifest['createdUtc'], encode(metadata), 0))
                 imported_events = {r['source_id'] for r in c.exec_driver_sql('SELECT source_id FROM import_records WHERE source=?', (source,)).mappings()}
