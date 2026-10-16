@@ -26,6 +26,7 @@ class PostBounty(BaseModel):
     target: str | None = None
     source_zip: str = Field(default='', max_length=4000000)
     complexity: Literal['HIGH', 'MEDIUM', 'LOW'] = 'HIGH'
+    work_type: Literal['implementation', 'verification'] = 'implementation'
 
 
 class Progress(BaseModel):

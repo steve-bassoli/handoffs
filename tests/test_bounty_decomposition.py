@@ -23,6 +23,7 @@ def completed_packet(client, tmp_path):
     renamed = directory.with_name('prove-demo-steve')
     directory.rename(renamed)
     (renamed / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    (renamed / 'context.md').write_text('# Fixture\n\n## Goal\n\nPinned scope\n\n## Acceptance criteria\n\n- Pinned criteria\n', encoding='utf-8')
     event = {'schemaVersion': 1, 'eventId': 'completed-one', 'taskId': 'prove-demo', 'type': 'completed',
              'actor': 'NATE', 'createdUtc': '2026-10-16T12:00:00Z', 'resultPath': '', 'replyTo': ''}
     (renamed / 'events/completed-one.json').write_text(json.dumps(event), encoding='utf-8')
@@ -59,7 +60,7 @@ def test_reopened_high_processes_original_and_response_then_waits_for_full_human
     class InspectEvidence(FakeLuna):
         def generate(self, task, data):
             assert task['complexity'] == 'HIGH' and task['completed_by'] == 'nate'
-            assert data['source']['_bounty/original-context.md'] == 'Pinned criteria'
+            assert '- Pinned criteria' in data['source']['_bounty/original-context.md']
             assert any(path.endswith('TICKET_RESPONSE.md') and text == 'Fresh-context review'
                        for path, text in data['source'].items())
             assert json.loads(data['source']['_bounty/package-provenance.json'])[0]['input_verified']

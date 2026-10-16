@@ -63,7 +63,8 @@ def files_for(service, bounty_id):
     files['references.json'] = encode({'repository_and_context_links': references,
         'note': 'External references are listed, not fetched or embedded. Files merely mentioned in context are not automatically attached.'})
     if task['ai_run'] and task['ai_run']['download_url']:
-        files['fix.zip'] = service.ai.artifact(bounty_id)
+        name = 'evidence.zip' if task['ai_run']['result']['action'] == 'evidence' else 'fix.zip'
+        files[name] = service.ai.artifact(bounty_id)
     source_paths = [path for path in files if path.startswith(('posted-source/', 'ai/source/', 'parent/source/')) or
                     (path.startswith('packages/') and '/source/' in path)]
     missing = []

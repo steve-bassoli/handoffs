@@ -108,6 +108,8 @@ class Service:
         bounty['status'] = events[-1]['state']
         bounty['complexity'] = next((event['data']['complexity'] for event in reversed(events)
                                     if event['data'].get('complexity') in ('HIGH', 'MEDIUM', 'LOW')), 'HIGH')
+        bounty['work_type'] = next((event['data']['work_type'] for event in reversed(events)
+                                   if event['data'].get('work_type') in ('implementation', 'verification')), 'implementation')
         bounty['claimant'] = next((e['actor'] for e in reversed(events) if e['kind'] == 'taken'), None)
         bounty['completed_by'] = next((e['actor'] for e in reversed(events)
                                       if e['kind'] in ('legacy:completed', 'locally_verified')), None)
@@ -172,6 +174,7 @@ class Service:
         c.exec_driver_sql('INSERT INTO accounts VALUES (?,?,?)', ('escrow:' + bounty_id, actor, 'escrow'))
         self.transfer(c, 'wallet:' + actor, 'escrow:' + bounty_id, payload['gold'], 'bounty_funded', bounty_id)
         self.event(c, bounty_id, 'posted', actor, 'open', {'complexity': payload.get('complexity', 'HIGH'),
+                                                       'work_type': payload.get('work_type', 'implementation'),
                                                        **({'source_files': source} if source else {})})
         return self.detail(c, bounty_id)
 

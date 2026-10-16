@@ -24,7 +24,8 @@ def source_zip(files=None):
 def decision(action, **extra):
     return Decision(action=action, summary='Investigated addition', questions=extra.get('questions', []),
         files=extra.get('files', []), instructions=extra.get('instructions', ''), verification=extra.get('verification', []),
-        proposals=[{'complexity': 'HIGH', **proposal} for proposal in extra.get('proposals', [])], plan=extra.get('plan', [
+        proposals=[{'complexity': 'HIGH', 'work_type': 'implementation', 'parent_criteria': [0], **proposal} for proposal in extra.get('proposals', [])],
+        why_three=extra.get('why_three', 'Three bounded responsibilities cover the parent criterion.' if action == 'followups' else ''), plan=extra.get('plan', [
             {'id': 'fix', 'title': 'Apply the bounded fix', 'complexity': 'LOW', 'children': [],
              'files': [file['path'] for file in extra.get('files', [])]}] if action == 'deliver' else []))
 
@@ -100,7 +101,8 @@ def test_restart_marks_interrupted_turn_for_explicit_retry(tmp_path):
 
 def test_followups_require_confirmation_and_retain_lineage(tmp_path):
     proposals = [{'title': 'Find the contract', 'goal': 'Resolve the missing contract', 'criteria': ['Contract is pinned']},
-                 {'title': 'Implement the fix', 'goal': 'Apply the pinned contract', 'criteria': ['Tests pass']}]
+                 {'title': 'Implement the fix', 'goal': 'Apply the pinned contract', 'criteria': ['Tests pass']},
+                 {'title': 'Validate integration', 'goal': 'Check parent integration', 'criteria': ['Acceptance observed']}]
     model = FakeLuna([decision('followups', proposals=proposals), decision('ask', questions=['Which contract?'])])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
         bounty = write(client, '/bounties', {'title': 'Bound the parent', 'goal': 'Research', 'criteria': ['Verified outcome'],
@@ -114,10 +116,10 @@ def test_followups_require_confirmation_and_retain_lineage(tmp_path):
         assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0]}, 'nate').status_code == 403
         assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [5]}).status_code == 422
         assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0]}).status_code == 422
-        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0, 1]}, key='confirm').status_code == 200
-        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0, 1]}, key='confirm').status_code == 200
+        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0, 1, 2]}, key='confirm').status_code == 200
+        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0, 1, 2]}, key='confirm').status_code == 200
         tree = client.get(f'/api/v1/bounties/{bounty}/lineage').json()
-        assert len(tree['items']) == 3
+        assert len(tree['items']) == 4
         child = next(item for item in tree['items'] if item['parent_id'] == bounty)
         assert child['title'] == 'Find the contract'
         assert client.get(f'/api/v1/bounties/{bounty}').json()['status'] == 'decomposed'
