@@ -40,6 +40,36 @@ $env:HANDOFFS_DEMO_USER = 'steve'
 
 Supply and retain `-OperationId <guid>` for writes; reuse it with identical inputs after an uncertain response. No implicit retries or local packet fallback occur.
 
+## Luna bounty execution
+
+Set `OPENAI_API_KEY` in the server environment and restart the server. The default
+test model is `gpt-6-luna`; `HANDOFFS_AI_MODEL` can select another explicitly chosen
+model. The key is used only in the server's Authorization header.
+
+Open a bounty and choose **Start with Luna**. Attach a focused ZIP of UTF-8 source
+files (up to 200 files / 2 MB unpacked), excluding secrets, Git data, and dependency
+trees. Luna can list/read the supplied files, asks at most three questions total,
+and records API calls, tokens, elapsed time, questions and answers in the task.
+Repository URLs and context links are references; this prototype does not fetch
+private repositories or execute the generated code on the host.
+
+A fix ZIP contains `START_HERE.md`, the patched `workspace/`, `changes.patch`, task
+criteria and run history. Drop it into a fresh Codex chat for local verification.
+Use **Confirm locally verified** with evidence to close the task. Generated test
+commands are explicitly unexecuted until the developer runs them.
+
+If a fix cannot be produced, the attempt closes with proposed follow-ups. Select
+and confirm the exact tasks to create; proposals alone never create tasks. Child
+tasks retain the parent link and inherit source/context when started without a new
+ZIP. The expandable task tree and event history show the whole chain. These AI
+actions neither pay rewards nor reserve new Gold for children. Restarted in-flight
+turns require an explicit retry; answered and completed runs survive restart.
+
+API routes under `/api/v1/bounties/{id}`: `ai/start`, `ai/answers`, `ai/retry`,
+`ai/confirm-followups`, `ai/complete`, `ai/artifact`, and `lineage`. Writes use the
+same operation ID contract as the existing service. The existing demo identity
+selector is still simulated; the model key stays on the server.
+
 ## Native desktop MCP connection
 
 The MCP bridge exposes `list_bounties`, `get_bounty`, `post_bounty`, `get_my_stats`, `take_bounty`, and `deliver_pr`. It calls the existing service; it does not open a database or call OpenAI models. Demo identity is fixed per connection. `get_my_stats` is annotated as a write because it can issue the due monthly grant; posting, taking and delivering are also marked as writes. Retain a unique `operation_id` for each intended write and reuse it for an identical retry.

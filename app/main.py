@@ -2,8 +2,8 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, Query, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, Query, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Literal
@@ -11,6 +11,7 @@ from typing import Literal
 from app.adapters import DemoDeliveryVerifier, DemoIdentity
 from app.services import RuleError, Service
 from app.storage import Database
+from app.ai import AIRuns, Luna
 
 
 class PostBounty(BaseModel):
@@ -38,7 +39,25 @@ class Review(BaseModel):
     note: str = Field(min_length=1)
 
 
-def create_app(database=None, clock=None, grant=None, verifier=None):
+class AIStart(BaseModel):
+    context: str = Field(default='', max_length=100000)
+    source_zip: str = Field(default='', max_length=4000000)
+
+
+class AIAnswers(BaseModel):
+    answers: list[str] = Field(min_length=1, max_length=3)
+    source_zip: str = Field(default='', max_length=4000000)
+
+
+class AIConfirm(BaseModel):
+    indices: list[int] = Field(max_length=20)
+
+
+class AIVerification(BaseModel):
+    evidence: str = Field(min_length=1, max_length=10000)
+
+
+def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=None):
     @asynccontextmanager
     async def lifespan(app):
         path = database or os.environ.get('HANDOFFS_DB', str(Path('.data/handoffs.sqlite').resolve()))
@@ -46,6 +65,8 @@ def create_app(database=None, clock=None, grant=None, verifier=None):
         db.migrate()
         service = Service(db, verifier or DemoDeliveryVerifier(), clock, grant)
         service.seed()
+        service.ai = AIRuns(service, ai_model or Luna())
+        service.ai.recover()
         app.state.service = service
         try:
             yield
@@ -120,6 +141,47 @@ def create_app(database=None, clock=None, grant=None, verifier=None):
     @app.post('/api/v1/bounties/{bounty_id}/reviews')
     def review(bounty_id: str, payload: Review, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
         return request.app.state.service.execute(user, idempotency_key, 'review', {'id': bounty_id, **payload.model_dump()})
+
+    def ai_write(request, background, user, key, action, bounty_id, payload):
+        service = request.app.state.service
+        result = service.execute(user, key, action, {'id': bounty_id, **payload})
+        if action in ('ai_start', 'ai_answer', 'ai_retry'):
+            background.add_task(service.ai.generate, bounty_id)
+        return result
+
+    @app.post('/api/v1/bounties/{bounty_id}/ai/start')
+    def ai_start(bounty_id: str, payload: AIStart, request: Request, background: BackgroundTasks,
+                 user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return ai_write(request, background, user, idempotency_key, 'ai_start', bounty_id, payload.model_dump())
+
+    @app.post('/api/v1/bounties/{bounty_id}/ai/answers')
+    def ai_answer(bounty_id: str, payload: AIAnswers, request: Request, background: BackgroundTasks,
+                  user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return ai_write(request, background, user, idempotency_key, 'ai_answer', bounty_id, payload.model_dump())
+
+    @app.post('/api/v1/bounties/{bounty_id}/ai/retry')
+    def ai_retry(bounty_id: str, request: Request, background: BackgroundTasks,
+                 user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return ai_write(request, background, user, idempotency_key, 'ai_retry', bounty_id, {})
+
+    @app.post('/api/v1/bounties/{bounty_id}/ai/confirm-followups')
+    def ai_confirm(bounty_id: str, payload: AIConfirm, request: Request, background: BackgroundTasks,
+                   user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return ai_write(request, background, user, idempotency_key, 'ai_confirm', bounty_id, payload.model_dump())
+
+    @app.get('/api/v1/bounties/{bounty_id}/ai/artifact')
+    def ai_artifact(bounty_id: str, request: Request, user=Depends(actor)):
+        return Response(request.app.state.service.ai.artifact(bounty_id), media_type='application/zip',
+                        headers={'Content-Disposition': f'attachment; filename="bounty-{bounty_id}.zip"'})
+
+    @app.post('/api/v1/bounties/{bounty_id}/ai/complete')
+    def ai_complete(bounty_id: str, payload: AIVerification, request: Request, background: BackgroundTasks,
+                    user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return ai_write(request, background, user, idempotency_key, 'ai_complete', bounty_id, payload.model_dump())
+
+    @app.get('/api/v1/bounties/{bounty_id}/lineage')
+    def lineage(bounty_id: str, request: Request, user=Depends(actor)):
+        return request.app.state.service.lineage(bounty_id)
 
     static = Path(__file__).parent / 'static'
     app.mount('/static', StaticFiles(directory=static), name='static')

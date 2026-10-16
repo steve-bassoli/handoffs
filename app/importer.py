@@ -119,7 +119,7 @@ def import_git(db, repository, reference):
                 else:
                     metadata = {'source': source, 'revision': revision, 'directory': directory, 'manifest': manifest,
                                 'context': packet_files[directory + '/context.md']}
-                    c.exec_driver_sql('INSERT INTO bounties VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+                    c.exec_driver_sql('INSERT INTO bounties(id,title,goal,criteria,repository,context_links,creator,target,gold,created_at,legacy,funded) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
                                       (bounty_id, manifest['title'], 'Historical imported assignment', encode([]), '', encode([]),
                                        manifest['sender'].lower(), None if manifest['recipient'] == 'OPEN' else manifest['recipient'].lower(),
                                        manifest.get('gold') or 150, manifest['createdUtc'], encode(metadata), 0))

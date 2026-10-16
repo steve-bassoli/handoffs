@@ -107,6 +107,13 @@ class Service:
         bounty['claimant'] = next((e['actor'] for e in reversed(events) if e['kind'] == 'taken'), None)
         bounty['events'] = events
         bounty['deliveries'] = all_rows(c, 'SELECT * FROM deliveries WHERE bounty_id=? ORDER BY created_at,id', (bounty_id,))
+        ai = getattr(self, 'ai', None)
+        row = one(c, 'SELECT * FROM ai_runs WHERE bounty_id=?', (bounty_id,))
+        if ai and row:
+            row['data'] = json.loads(row['data'])
+            bounty['ai_run'] = ai.public(row)
+        else:
+            bounty['ai_run'] = None
         return bounty
 
     def get(self, bounty_id):
@@ -122,7 +129,7 @@ class Service:
                 (?='mine' AND (b.creator=? OR b.target=? OR EXISTS(SELECT 1 FROM events x WHERE x.bounty_id=b.id AND x.actor=? AND x.kind='taken'))))
                 AND (b.title LIKE ? OR b.id LIKE ?) ORDER BY b.created_at DESC,b.id LIMIT ? OFFSET ?''',
                 (view, view, view, user, user, user, '%' + query + '%', '%' + query + '%', limit, offset))
-            fields = ('id', 'title', 'gold', 'status', 'creator', 'target', 'claimant', 'created_at', 'funded')
+            fields = ('id', 'title', 'gold', 'status', 'creator', 'target', 'claimant', 'created_at', 'funded', 'parent_id')
             return {'items': [{key: r[key] for key in fields} for r in records], 'limit': limit,
                     'offset': offset, 'checked_at': now()}
 
@@ -134,7 +141,8 @@ class Service:
                 if cached['fingerprint'] != fingerprint:
                     raise RuleError('Idempotency key already used for different input')
                 return json.loads(cached['result'])
-            self.grant_month(c, actor)
+            if not action.startswith('ai_'):
+                self.grant_month(c, actor)
             result = getattr(self, 'do_' + action)(c, actor, payload)
             c.exec_driver_sql('INSERT INTO operations VALUES (?,?,?,?)', (actor, key, fingerprint, encode(result)))
             return result
@@ -153,7 +161,7 @@ class Service:
         return self.detail(c, bounty_id)
 
     def require_live(self, bounty):
-        if not bounty['funded']:
+        if not bounty['funded'] and not bounty['parent_id']:
             raise RuleError('Legacy record is historical and unfunded')
 
     def do_take(self, c, actor, payload):
@@ -188,7 +196,7 @@ class Service:
         c.exec_driver_sql('INSERT INTO deliveries VALUES (?,?,?,?,?,?,?)',
                           (delivery_id, bounty['id'], actor, payload['pr_url'], payload['evidence'], int(verification['simulated']), now()))
         self.event(c, bounty['id'], 'delivered', actor, 'delivered', {'delivery_id': delivery_id, 'verification': verification})
-        if verification['verified']:
+        if verification['verified'] and bounty['funded']:
             self.settle(c, bounty['id'], actor)
         return self.detail(c, bounty['id'])
 
@@ -217,7 +225,8 @@ class Service:
             raise RuleError('Only the requester can cancel', 403)
         if bounty['status'] != 'open':
             raise RuleError('Only unclaimed bounties can be cancelled in this prototype')
-        self.transfer(c, 'escrow:' + bounty['id'], 'wallet:' + actor, bounty['gold'], 'bounty_refunded', bounty['id'])
+        if bounty['funded']:
+            self.transfer(c, 'escrow:' + bounty['id'], 'wallet:' + actor, bounty['gold'], 'bounty_refunded', bounty['id'])
         self.event(c, bounty['id'], 'cancelled', actor, 'cancelled')
         return self.detail(c, bounty['id'])
 
@@ -230,3 +239,33 @@ class Service:
             raise RuleError('Nothing has been delivered')
         self.event(c, bounty['id'], payload['decision'], actor, bounty['status'], {'note': payload['note']})
         return self.detail(c, bounty['id'])
+
+    def do_ai_start(self, c, actor, payload):
+        return self.ai.start(c, actor, payload)
+
+    def do_ai_answer(self, c, actor, payload):
+        return self.ai.answer(c, actor, payload)
+
+    def do_ai_confirm(self, c, actor, payload):
+        return self.ai.confirm(c, actor, payload)
+
+    def do_ai_retry(self, c, actor, payload):
+        return self.ai.retry(c, actor, payload)
+
+    def do_ai_complete(self, c, actor, payload):
+        return self.ai.complete(c, actor, payload)
+
+    def lineage(self, bounty_id):
+        with self.db.engine.connect() as c:
+            task = self.detail(c, bounty_id)
+            root = task['id']
+            while task['parent_id']:
+                task = self.detail(c, task['parent_id'])
+                root = task['id']
+            rows = all_rows(c, '''WITH RECURSIVE tree(id) AS (
+                SELECT id FROM bounties WHERE id=? UNION ALL
+                SELECT b.id FROM bounties b JOIN tree ON b.parent_id=tree.id
+            ) SELECT b.id,b.parent_id,b.title,e.state AS status FROM bounties b JOIN tree ON b.id=tree.id
+              JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE bounty_id=b.id)
+              ORDER BY b.created_at,b.id''', (root,))
+            return {'root_id': root, 'items': rows}

@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 let user = localStorage.getItem('handoffs-user') || 'steve';
 let view = 'open', offset = 0, txOffset = 0, selected = null;
+let aiPoll;
 const pageSize = 12;
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -47,9 +48,10 @@ async function board() {
   if (!result.items.length) $('cards').append(element('div', view === 'mine' ? 'Your posted and taken bounties will appear here.' : 'A clear board. Post the first bounty and put your Gold to work.', 'empty'));
   for (const item of result.items) {
     const card = element('article', undefined, 'card');
-    const top = element('div'); top.append(element('span', item.status, 'pill'), element('span', `${item.gold} GOLD`, 'pill bounty-gold'));
+    const top = element('div'); top.append(element('span', item.status, 'pill'));
+    if (item.funded) top.append(element('span', `${item.gold} GOLD`, 'pill bounty-gold'));
     const button = element('button', 'View bounty'); button.onclick = () => run(() => show(item.id));
-    card.append(top, element('h3', item.title), element('div', `${item.creator} → ${item.claimant || item.target || 'Open'}${item.funded ? '' : ' · Historical / unfunded'}`, 'meta'), button);
+    card.append(top, element('h3', item.title), element('div', `${item.creator} → ${item.claimant || item.target || 'Open'}${item.funded ? '' : item.parent_id ? ' · Follow-up' : ' · Historical / unfunded'}`, 'meta'), button);
     $('cards').append(card);
   }
   $('previous').disabled = offset === 0; $('next').disabled = result.items.length < pageSize;
@@ -68,6 +70,7 @@ async function transactions() {
   $('tx-page').textContent = `Page ${txOffset / pageSize + 1}`;
 }
 async function navigate(nextView) {
+  clearTimeout(aiPoll);
   view = nextView; selected = null;
   for (const id of ['board', 'post', 'wallet', 'detail']) $(id).hidden = true;
   for (const button of document.querySelectorAll('nav button')) button.classList.toggle('selected', button.dataset.view === view);
@@ -91,12 +94,15 @@ async function mutate(path, body = {}) {
   }
 }
 async function show(id) {
+  clearTimeout(aiPoll);
   const data = await api('/bounties/' + encodeURIComponent(id));
   selected = id;
   for (const section of ['board', 'post', 'wallet']) $(section).hidden = true;
   const detail = $('detail'); detail.hidden = false; detail.replaceChildren();
   const back = element('button', '← Back to board'); back.onclick = () => run(() => navigate('open'));
-  const header = element('div', undefined, 'detail-head'); header.append(element('span', data.status, 'pill'), element('span', `${data.gold} GOLD`, 'pill bounty-gold'), element('h2', data.title), element('code', data.id));
+  const header = element('div', undefined, 'detail-head'); header.append(element('span', data.status, 'pill'));
+  if (data.funded) header.append(element('span', `${data.gold} GOLD`, 'pill bounty-gold'));
+  header.append(element('h2', data.title), element('code', data.id));
   detail.append(back, header, element('h3', 'Goal'), element('p', data.goal, 'content'), element('h3', 'Completion criteria'));
   const criteria = element('ul'); data.criteria.forEach(text => criteria.append(element('li', text))); detail.append(criteria);
   if (data.repository) detail.append(element('p', 'Repository: ' + data.repository, 'content'));
@@ -106,10 +112,11 @@ async function show(id) {
   const action = (label, suffix) => { const b = element('button', label); b.onclick = () => run(() => mutate(`/bounties/${id}/${suffix}`)); actions.append(b); };
   if (data.funded && data.status === 'open') {
     if (user === data.creator) action('Cancel & refund', 'cancel');
-    else if (!data.target || data.target === user) action('Take bounty', 'take');
+    else if (!data.target || data.target === user) action('Take manually', 'take');
   }
   detail.append(actions);
-  if (data.funded && data.claimant === user && ['working', 'blocked'].includes(data.status)) {
+  await aiSection(data, detail);
+  if (data.funded && !data.ai_run && data.claimant === user && ['working', 'blocked'].includes(data.status)) {
     const progress = element('form');
     const noteLabel = element('label', 'Progress note'); const note = element('textarea'); noteLabel.append(note);
     const progressButton = element('button', data.status === 'blocked' ? 'Resume work' : 'Mark blocked');
@@ -145,6 +152,113 @@ async function show(id) {
     const row = element('div', undefined, 'event'); row.append(element('span', `${event.actor} · ${event.kind}${event.data.note ? ' · ' + event.data.note : ''}`), element('span', new Date(event.created_at).toLocaleString())); detail.append(row);
   }
 }
+function sourceInput(form) {
+  const label = element('label', 'Source ZIP · focused UTF-8 files, up to 2 MB unpacked; exclude secrets and dependencies');
+  const input = element('input'); input.type = 'file'; input.accept = '.zip'; label.append(input); form.append(label);
+  return async () => {
+    if (!input.files.length) return '';
+    if (input.files[0].size > 3000000) throw new Error('Choose a focused ZIP under 3 MB.');
+    const bytes = new Uint8Array(await input.files[0].arrayBuffer());
+    let raw = ''; for (const byte of bytes) raw += String.fromCharCode(byte);
+    return btoa(raw);
+  };
+}
+
+async function aiSection(data, detail) {
+  const id = data.id;
+  const owner = data.ai_run?.actor === user;
+  const box = element('section', undefined, 'ai-panel');
+  box.append(element('h3', 'Luna workbench'));
+  if (!data.ai_run && !data.legacy && ['open', 'working', 'blocked'].includes(data.status)
+      && (!data.claimant || data.claimant === user) && (!data.target || data.target === user)) {
+    box.append(element('p', 'Give Luna the source. It investigates, asks up to three questions, and prepares a fix ZIP or follow-up proposals for your confirmation.'));
+    const form = element('form');
+    const label = element('label', 'Additional context'); const context = element('textarea'); label.append(context); form.append(label);
+    const source = sourceInput(form);
+    form.append(element('button', 'Start with Luna', 'primary'));
+    form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/start`, {context: context.value, source_zip: await source()})); };
+    box.append(form);
+  }
+  const ai = data.ai_run;
+  if (ai) {
+    const usage = ai.usage;
+    box.append(element('span', ai.status.replaceAll('_', ' '), 'pill'),
+      element('p', `${ai.model} · ${ai.question_count}/3 questions · ${usage.api_calls} API calls · ${usage.input_tokens} input / ${usage.output_tokens} output tokens · ${(usage.elapsed_ms / 1000).toFixed(1)}s`));
+    if (ai.result) box.append(element('p', ai.result.summary, 'content'));
+    for (const turn of ai.conversation) {
+      const list = element('ul');
+      for (const text of turn.questions || turn.answers) list.append(element('li', text));
+      box.append(element('strong', turn.questions ? 'Luna asked' : 'Developer answered'), list);
+    }
+    if (ai.status === 'needs_input' && owner) {
+      const form = element('form'); const answers = [];
+      for (const question of ai.conversation.at(-1).questions) {
+        const label = element('label', question); const answer = element('textarea'); answer.required = true; label.append(answer); form.append(label); answers.push(answer);
+      }
+      const source = sourceInput(form);
+      form.append(element('button', 'Send answers to Luna', 'primary'));
+      form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/answers`, {answers: answers.map(a => a.value), source_zip: await source()})); };
+      box.append(form);
+    }
+    if (ai.download_url) {
+      const button = element('button', 'Download fix ZIP', 'primary');
+      button.onclick = () => run(async () => {
+        const response = await fetch(ai.download_url, {headers: {'X-Demo-User': user}});
+        if (!response.ok) throw new Error('Could not download the fix ZIP.');
+        const url = URL.createObjectURL(await response.blob());
+        const link = element('a'); link.href = url; link.download = `bounty-${id}.zip`; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+      box.append(button, element('p', 'Drop the ZIP into a fresh Codex chat. Start with START_HERE.md. Local verification is still required.'));
+    }
+    if (ai.status === 'ready' && owner) {
+      const form = element('form'); const label = element('label', 'Local verification evidence');
+      const evidence = element('textarea'); evidence.required = true; label.append(evidence); form.append(label, element('button', 'Confirm locally verified'));
+      form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/ai/complete`, {evidence: evidence.value})); };
+      box.append(form);
+    }
+    if (ai.status === 'followups_pending') {
+      box.append(element('h3', 'Proposed follow-ups · nothing created yet'));
+      const form = element('form'); const choices = [];
+      ai.result.proposals.forEach((proposal, index) => {
+        const card = element('div', undefined, 'evidence'); const label = element('label', proposal.title);
+        const choice = element('input'); choice.type = 'checkbox'; choice.value = index; label.prepend(choice); card.append(label, element('p', proposal.goal));
+        const checks = element('ul'); proposal.criteria.forEach(text => checks.append(element('li', text))); card.append(checks); form.append(card); choices.push(choice);
+      });
+      if (owner) {
+        form.append(element('button', 'Confirm selected tasks', 'primary'));
+        form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/ai/confirm-followups`, {indices: choices.filter(c => c.checked).map(c => Number(c.value))})); };
+      } else choices.forEach(choice => { choice.disabled = true; });
+      box.append(form);
+    }
+    if (ai.status === 'failed') {
+      box.append(element('p', ai.error));
+      if (owner) {
+        const retry = element('button', 'Retry Luna'); retry.onclick = () => run(() => mutate(`/bounties/${id}/ai/retry`)); box.append(retry);
+      }
+    }
+    if (['queued', 'running'].includes(ai.status)) {
+      box.append(element('p', 'Luna is investigating. You can leave this page and return.'));
+      aiPoll = setTimeout(() => { if (selected === id) run(() => show(id)); }, 2000);
+    }
+  }
+  if (box.childElementCount > 1) detail.append(box);
+  const lineage = await api(`/bounties/${id}/lineage`);
+  const tree = element('details', undefined, 'lineage'); tree.open = true; tree.append(element('summary', 'Task history & follow-ups'));
+  const add = (parent, container) => {
+    const list = element('ul');
+    for (const node of lineage.items.filter(item => item.parent_id === parent)) {
+      const item = element('li'); const button = element('button', node.title + ' · ' + node.status);
+      button.className = node.id === id ? 'current-task' : ''; button.onclick = () => run(() => show(node.id));
+      item.append(button); add(node.id, item); list.append(item);
+    }
+    if (list.childElementCount) container.append(list);
+  };
+  const root = lineage.items.find(item => item.id === lineage.root_id);
+  const list = element('ul'); const item = element('li'); const button = element('button', root.title + ' · ' + root.status);
+  button.className = root.id === id ? 'current-task' : ''; button.onclick = () => run(() => show(root.id)); item.append(button); add(root.id, item); list.append(item); tree.append(list); detail.append(tree);
+}
+
 for (const button of document.querySelectorAll('nav button')) button.onclick = () => run(async () => { offset = 0; message(''); await navigate(button.dataset.view); });
 $('user').onchange = () => run(async () => { user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });
 $('search').oninput = () => run(async () => { offset = 0; await board(); });
