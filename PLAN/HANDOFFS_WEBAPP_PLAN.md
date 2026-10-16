@@ -27,12 +27,12 @@ Gold is the application's work currency. XP, levels, aliases, and Tavern themes 
 
 Settlement pays from the requester's reserved balance; it does not mint an additional completion reward. Monthly issuance, escrow, settlement, and refunds have explicit ledger entries and execute atomically with the corresponding bounty transition. Repeated requests cannot double-credit or double-pay; concurrent requests cannot spend the same Gold twice.
 
-### Economic decisions still open
+### Demo economic defaults under autopilot
 
-- Monthly allocation amount, eligibility, calendar timezone, and whether unused Gold rolls over. Proposed default: a configurable equal allocation, calendar months in America/New_York, and balances that roll over.
-- Payout trigger: Steve described delivering a PR. Proposed default: payment on verified delivery meeting the posted bounty terms; PR review and merge remain separate. Decide whether requester acceptance is required before payment.
-- Cancellation, abandonment, and disputes: define when escrow is refunded or reassigned, including what happens after work has begun.
-- Legacy balances: old cosmetic awards are historical data. Do not silently turn them into spendable currency; choose an explicit opening-balance policy.
+- Monthly allocation: 1000 integer Gold per demo user, configurable by HANDOFFS_MONTHLY_GOLD; America/New_York calendar; unused Gold rolls over. Wallet access/action issues the current month's grant once, without backfilling skipped months.
+- Payout: automatic when the delivery adapter reports success. The initial adapter simulates success; human review and merge remain separate.
+- Cancellation: refund an unclaimed bounty only. No automatic cancellation, reassignment or dispute arbitration after claim.
+- Legacy balances: preserve historical awards as data and issue no spendable opening currency from them.
 
 ## Prototype principles
 
@@ -249,7 +249,7 @@ The executable breakdown follows Hackwatson's `skills/common/iterative-implement
 - [Ordered steps with criteria, dependencies, targets, complexity and validation](../codex/output/iterative_implementation_items.txt).
 - [Step status and evidence](../codex/output/iterative_implementation_items_status.txt).
 
-These retained planning artifacts are included in Git at Steve's explicit request to write and review the plan. Implementation executes the earliest ready item and stops for Steve's verification after each item. The status artifact records progress; policy-dependent steps name their prerequisites. Optional integrations and game polish are excluded from the queue.
+These retained planning artifacts are included in Git at Steve's explicit request to write and review the plan. Steve subsequently authorized autopilot: implement ready items in order, self-verify each and continue. The status artifact records evidence and actual blockers. Keep modules consolidated in app/main.py, app/services.py, app/storage.py, app/adapters.py and app/importer.py for this minimal prototype. Optional integrations and game polish are excluded from the queue.
 
 ### Phase 1: runnable skeleton and domain core
 
@@ -321,7 +321,7 @@ Gate: Steve chooses integrations individually; none block the core prototype.
 3. Initial stack: FastAPI plus browser-native JavaScript, with no Node framework or build step.
 4. Cutover policy: build the service first, import packets and local database snapshots, then retire the Hackwatson prototype and leave one minimal HTTP client skill.
 5. Scope order: build the Gold economy and bounty lifecycle first; add Tavern presentation second; defer JIRA, Outlook, quota, and automated PR creation. PR delivery evidence and verification belong in the core bounty lifecycle.
-6. Resolve the economic decisions above before implementing issuance and settlement policy.
+6. The demo defaults above apply under Steve's autopilot/minimal-prototype direction and remain adjustable for real deployment.
 7. Shared service host and teammate connectivity must be chosen and verified before cutover. Begin with explicit demo identity and mocked PR verification; replace these adapters when real access is needed.
 
-Steve authorized beginning minimal implementation. Continue one ready item at a time with verification checkpoints; unresolved economic policies remain dependencies of their respective steps.
+Steve authorized continuous minimal implementation with self-verification. Team-wide legacy retirement still depends on a reachable shared service and final source reconciliation.

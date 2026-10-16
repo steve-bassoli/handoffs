@@ -7,7 +7,10 @@ name = "handoffs"
 version = "0.1.0"
 description = "HANDOFFS bounty service prototype"
 requires-python = ">=3.11"
-dependencies = ["fastapi", "uvicorn"]
+dependencies = ["fastapi", "uvicorn", "sqlalchemy", "alembic", "tzdata"]
+
+[project.optional-dependencies]
+test = ["pytest", "httpx"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

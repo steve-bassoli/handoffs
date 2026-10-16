@@ -5,11 +5,12 @@ Skill: C:\hackathon\hackwatson\skills\common\iterative-implementation\SKILL.md
 Skill source checkout HEAD inspected: 8e7a44332f9c46c86ba8936df2095d2033ce839b (working-tree instructions were read; this is not a claim the checkout is clean).
 Parent acceptance contract: PLAN/HANDOFFS_WEBAPP_PLAN.md, Acceptance criteria for the prototype.
 Artifacts are intentionally committed because Steve explicitly requested a saved, reviewable plan and its steps.
-Execution: earliest ready step only; stop for Steve's verification after each implemented step.
+Execution: Steve authorized autopilot and self-verification. Implement ready steps in order, validate each, and continue without per-item human approval. Stop only for a material unresolved blocker.
 Dependencies supplement the skill's required step fields. Every executable step is easy or medium. No high-complexity bounty is proposed.
-Policy dependencies do not stop HF-01 through HF-03. Resolve economic policy before its first dependent step; do not silently implement a proposal as a decision.
+Demo defaults under autopilot: monthly 1000 Gold per demo user, America/New_York calendar, rollover, current-month-only catch-up; mock-positive PR delivery pays automatically; cancel/refund only before claim; legacy rewards stay historical and issue no currency. These are configurable prototype choices, not a production policy.
 Optional Tavern styling, XP, quota, notifications, production auth and real GitHub integration are deferred.
 Source symbols are existing evidence; target paths/symbols remain proposed until their step is done.
+Minimal implementation consolidates domain workflows in app/services.py, routes/models in app/main.py, adapters in app/adapters.py, storage in app/storage.py and import in app/importer.py. The status artifact records actual proof and paths. A module split is not a prerequisite.
 
 id: HF-01
 criterion: A fresh clone starts locally with documented commands and no dependency on the Hackwatson checkout.
@@ -27,13 +28,13 @@ id: HF-02
 criterion: Every state change produces an immutable, ordered event with actor and timestamp.
 objective: Persist users, bounties, events and ledger data.
 source: PLAN/HANDOFFS_WEBAPP_PLAN.md, Proposed data model
-target: app/storage/models.py; app/storage/database.py; migrations/
-implementation: Create minimum SQLite schema and initial migration; unify tasks and bounties where one record suffices; append events through service operations.
+target: app/storage.py; migrations/; tests/test_storage.py
+implementation: Create minimum SQLite schema and initial migration using SQLAlchemy connections and Alembic; unify tasks and bounties; append events through service operations. Keep queries explicit; no ORM layer needed.
 complexity: medium
 validation: Apply migration to an empty database; persist and reload a task and its ordered events.
 exclusions: No generic event framework; optional tables wait for their workflow.
 depends_on: HF-01
-status: open
+status: done
 
 id: HF-03
 criterion: Mock authentication and PR verification are visible and replaceable; the prototype makes no claim of Bitcoin-like or production security.
@@ -45,7 +46,7 @@ complexity: easy
 validation: Two selectors resolve to distinct users; mock mode appears in /api/v1/me.
 exclusions: No real login, SSO, cryptography or token-provider integration.
 depends_on: HF-02
-status: open
+status: done
 
 id: HF-04
 criterion: Monthly allocations occur once per eligible user/month, including after an app restart or a missed first-of-month run.
@@ -57,7 +58,7 @@ complexity: medium
 validation: Repeat wallet access across restart and month boundary; exactly one grant per eligible month under chosen catch-up policy.
 exclusions: Do not select policy silently or add blockchain.
 depends_on: HF-02, HF-03; monthly grant policy
-status: open
+status: done
 
 id: HF-05
 criterion: Bounty posting reserves application Gold from its wallet; insufficient balance prevents funding.
@@ -69,7 +70,7 @@ complexity: medium
 validation: Funding reduces available Gold; insufficient funds writes nothing; a retry creates one bounty.
 exclusions: No free completion rewards or legacy Git writes.
 depends_on: HF-04
-status: open
+status: done
 
 id: HF-06
 criterion: Open and user-current task lists agree with derived event state.
@@ -81,7 +82,7 @@ complexity: easy
 validation: Funded open bounty appears on board; detail includes original criteria; lists omit full context.
 exclusions: No execution or claiming from preview.
 depends_on: HF-05
-status: open
+status: done
 
 id: HF-07
 criterion: Concurrent funding and settlement cannot overspend wallets or duplicate payouts; cancellation follows the agreed refund policy.
@@ -93,7 +94,7 @@ complexity: medium
 validation: Two claim attempts yield one claimant; another user cannot change claimant progress; concurrent funding cannot overspend.
 exclusions: No automatic AI executor, reassignment or token sharing.
 depends_on: HF-05, HF-06
-status: open
+status: done
 
 id: HF-08
 criterion: Completion evidence remains immutable and acceptance remains a separate explicit event.
@@ -105,7 +106,7 @@ complexity: medium
 validation: Delivery survives reload; later evidence appends rather than overwrites; verification is visibly mocked; acknowledgement is not acceptance.
 exclusions: No GitHub API calls, PR creation, merge or inferred human acceptance.
 depends_on: HF-07
-status: open
+status: done
 
 id: HF-09
 criterion: A delivered PR meeting the agreed payment terms transfers escrow once to the worker, who can spend it on another bounty.
@@ -117,7 +118,7 @@ complexity: medium
 validation: A funds bounty, B delivers, B receives payment once and funds a new bounty; settlement preserves total issued supply.
 exclusions: No payout condition guessed; no merge prerequisite unless chosen.
 depends_on: HF-08; payout policy
-status: open
+status: done
 
 id: HF-10
 criterion: Concurrent funding and settlement cannot overspend wallets or duplicate payouts; cancellation follows the agreed refund policy.
@@ -129,7 +130,7 @@ complexity: medium
 validation: Permitted cancellation refunds once; settlement/cancellation conflict cannot both consume escrow.
 exclusions: No arbitration or automated abandonment process.
 depends_on: HF-09; cancellation policy
-status: open
+status: done
 
 id: HF-11
 criterion: One minimal Hackwatson skill can list/post bounties and show authoritative stats through the same API as the browser.
@@ -141,7 +142,7 @@ complexity: medium
 validation: Use two demo users through PowerShell to list, post, take and deliver; stats match database-backed API results.
 exclusions: No installation into Hackwatson yet; no local ledger or packet fallback.
 depends_on: HF-06, HF-09, HF-10
-status: open
+status: done
 
 id: HF-12
 criterion: A user can create, view, assign or claim, update, complete, acknowledge, and review a task through the web app.
@@ -153,7 +154,7 @@ complexity: medium
 validation: Browser walkthrough: grant, post, take, progress, deliver, review, settle, repost; compare API/skill balances.
 exclusions: No frontend framework, Tavern animation or extra game systems.
 depends_on: HF-11
-status: open
+status: done
 
 id: HF-13
 criterion: The legacy importer is read-only, repeatable, provenance-preserving, and reports malformed or incomplete source data.
@@ -165,7 +166,7 @@ complexity: medium
 validation: Import small disposable packet fixtures twice; same counts/history; malformed input reported; source tree unchanged.
 exclusions: No import from uncommitted source; no legacy bounty Gold minted.
 depends_on: HF-02, HF-08
-status: open
+status: done
 
 id: HF-14
 criterion: The legacy importer is read-only, repeatable, provenance-preserving, and reports malformed or incomplete source data.
@@ -177,7 +178,7 @@ complexity: medium
 validation: Fixture snapshot imports repeatably; conflicting identity rows reported; historical awards do not become currency without approved mapping.
 exclusions: No personal database snapshots or emails committed to Git.
 depends_on: HF-13; database access and opening-balance policy
-status: open
+status: done
 
 id: HF-15
 criterion: Two demo user sessions use the shared service with distinct user records and consistent balances/state; the demo selector is explicitly simulated authentication.
@@ -201,7 +202,7 @@ complexity: medium
 validation: Final path/reference audit; old packet/DB writers absent; minimal skill round trip succeeds; checkpoint and migrated counts recorded.
 exclusions: No broad deletion or unrelated Watson changes; unresolved migration/worktree conflicts stop retirement.
 depends_on: HF-15; reconciled final import and clean scoped publication
-status: open
+status: blocked
 
 id: HF-17
 criterion: A delivered PR meeting the agreed payment terms transfers escrow once to the worker, who can spend it on another bounty.

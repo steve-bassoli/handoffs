@@ -1,28 +1,28 @@
 # HANDOFFS iterative implementation status
 
-HF-01 implemented and runtime-verified on October 16, 2026. HF-02 through HF-17 remain open.
-Dependencies and policies are tracked in the queue. Stop for Steve's HF-01 verification before HF-02.
+Steve authorized autopilot and self-verification October 16, 2026. No per-step confirmation required.
 
-HF-01 | done | Python 3.13.1 fresh venv; pip install -e . exit 0; real uvicorn HTTP GET /health returned 200 and {"status":"ok"}; validation process exit 0 and server terminated after check.
-HF-02 | open | Planned only; no execution evidence.
-HF-03 | open | Planned only; no execution evidence.
-HF-04 | open | Planned only; no execution evidence.
-HF-05 | open | Planned only; no execution evidence.
-HF-06 | open | Planned only; no execution evidence.
-HF-07 | open | Planned only; no execution evidence.
-HF-08 | open | Planned only; no execution evidence.
-HF-09 | open | Planned only; no execution evidence.
-HF-10 | open | Planned only; no execution evidence.
-HF-11 | open | Planned only; no execution evidence.
-HF-12 | open | Planned only; no execution evidence.
-HF-13 | open | Planned only; no execution evidence.
-HF-14 | open | Planned only; no execution evidence.
-HF-15 | open | Planned only; no execution evidence.
-HF-16 | open | Planned only; no execution evidence.
-HF-17 | open | Planned only; no execution evidence.
+HF-01 | done | Fresh venv and live health check verified in prior checkpoint.
+HF-02 | done | Repeatable Alembic migration and persisted row test passed.
+HF-03 | done | Distinct demo identities and unknown-user check passed.
+HF-04 | done | Monthly grant, restart, rollover and current-month-only catch-up checks passed.
+HF-05 | done | Funding, retry, insufficient balance rollback and concurrent spend checks passed.
+HF-06 | done | Metadata board, detail, search and pagination implemented; targeted legacy work included.
+HF-07 | done | Competing claims, ownership, self-claim restriction and block/resume tests passed.
+HF-08 | done | Immutable delivery with mock flag; failed verification does not pay; human review separate.
+HF-09 | done | A funds, B delivers/earns/reposts; double-pay rejected and ledger conserved.
+HF-10 | done | Unclaimed cancellation refunds once; no cancellation after claim.
+HF-11 | done | Skill/parser checks pass; live PowerShell post/retry/take/deliver/stats credited exactly 200 Gold.
+HF-12 | done | Browser post/take/deliver verified: 150 Gold moved from Steve to Nate; wallet 1150.
+HF-13 | done | All 30 published packets imported at 3102a142b1fbf21c112d5f8de377cd7421e2eb9e without packet gaps; fixture retry/conflict checks pass.
+HF-14 | done | Consistent read-only snapshot preserved 5 profiles/2 capacity records; absent relations table reported; no spendable currency imported.
+HF-15 | open | Loopback browser and client sessions verified; canonical launch/restart pending; team host not selected.
+HF-16 | blocked | Hackwatson is dirty, ahead 1/behind 7, with modified start skill and unpublished quest. Final source reconciliation/shared host required before retirement.
+HF-17 | open | Domain/API suite: 13 passed; canonical runtime and cutover acceptance pending.
 
-Unresolved policies: monthly amount/eligibility/rollover/catch-up; payout gate; cancellation after claim; legacy opening balances; shared host.
+Demo defaults: 1000 Gold/month; Eastern calendar; rollover; grant current month only; mock-positive delivery pays automatically; refund only before claim; legacy rewards stay historical.
+Target consolidation: app/services.py contains domain workflows; app/main.py contains routes/models; app/storage.py contains SQLAlchemy connections; app/adapters.py contains mock boundaries; app/importer.py contains read-only source import. This replaces the originally proposed multi-file split to keep the prototype small.
+Validation: .venv/Scripts/python.exe -m pytest -q => 13 passed, exit 0; upstream Starlette/httpx deprecation warning recorded. PowerShell parser and skill-creator quick_validate.py pass. Browser/PowerShell live cycle verified on persistent validation DB, separate from imported history.
+Scope conformance: changed application paths implement the queued API, ledger, lifecycle, frontend, client and import criteria only; retained plans record progress and minimal target consolidation.
+Source safety: no legacy packet writes; no PR created; no teammate messages. Historical personal data remains only in ignored local SQLite.
 Bounty proposals: none.
-
-HF-01 scope conformance: pyproject.toml, app/__init__.py, app/main.py, .gitignore and README.md implement dependency setup, package discovery, health endpoint and documented startup only. Plan/status changes record execution and the Python 3.11+ runtime adjustment. Every changed path and behavior maps to HF-01 or its retained artifacts; no application-domain work added.
-Validation commands: python -m venv .venv; .\.venv\Scripts\python.exe -m pip install --timeout 20 --retries 1 -e .; live subprocess check launching .\.venv\Scripts\python.exe -m uvicorn app.main:app on an available loopback port and asserting HTTP 200 /health JSON; git diff --check. All final checks exit 0. Initial sandbox pip attempt stalled and was interrupted; successful installation used approved execution outside sandbox.
