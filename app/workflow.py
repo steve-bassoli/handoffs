@@ -53,3 +53,41 @@ ROLES = {
     'Maker': 'Implement only the approved LOW criteria; no independent acceptance claim.',
     'Breaker': 'Challenge the supplied proof against the criteria; fail or abstain when insufficient.',
 }
+
+
+def dependencies(events):
+    return next((event['data']['depends_on'] for event in reversed(events) if event['kind'] == 'dependencies_set'), [])
+
+
+def constellation(nodes):
+    """Edges point from an outcome to required child work or a shared prerequisite."""
+    edges = []
+    for node in nodes:
+        if node.get('parent_id'):
+            edges.append({'from': node['parent_id'], 'to': node['id'], 'kind': 'child'})
+        edges.extend({'from': node['id'], 'to': target, 'kind': 'prerequisite'} for target in node.get('depends_on', []))
+    return {'nodes': nodes, 'edges': edges}
+
+
+def validate_dependencies(nodes, source, targets):
+    ids = {node['id'] for node in nodes}
+    if source not in ids or len(targets) != len(set(targets)) or any(target not in ids for target in targets):
+        raise ValueError('Use distinct existing prerequisite bounty IDs')
+    updated = [{**node, 'depends_on': targets if node['id'] == source else node.get('depends_on', [])} for node in nodes]
+    graph = {identifier: [] for identifier in ids}
+    for edge in constellation(updated)['edges']:
+        graph[edge['from']].append(edge['to'])
+    active, visited = set(), set()
+    def visit(identifier):
+        if identifier in active:
+            raise ValueError('A prerequisite cannot create a cycle through task ancestry or dependencies')
+        if identifier in visited:
+            return
+        active.add(identifier)
+        for target in graph[identifier]:
+            visit(target)
+        active.remove(identifier)
+        visited.add(identifier)
+    for identifier in ids:
+        visit(identifier)
+    return targets
