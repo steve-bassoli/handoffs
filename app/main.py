@@ -110,7 +110,7 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         finally:
             db.engine.dispose()
 
-    app = FastAPI(title='HANDOFFS', lifespan=lifespan)
+    app = FastAPI(title='The Commons', lifespan=lifespan)
 
     @app.exception_handler(RuleError)
     async def rule_error(request: Request, error: RuleError):

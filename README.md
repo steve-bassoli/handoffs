@@ -1,9 +1,14 @@
-# HANDOFFS
+# The Commons
 
-Standalone prototype for creating, assigning, tracking, and completing AI-assisted work handoffs.
+Ask freely. Share freely. Build together.
 
-The [Watson AI Driven Modernization Charter](PROJECT_CHARTER.md) defines the
-Watson REST/MCP, Gremlins and HANDOFFS target, the rule of three, and one sufficient
+Human-guided AI software development through voluntary contribution and shared
+learning. Formerly HANDOFFS; the existing `handoffs` package, `HANDOFFS_*`
+configuration, MCP names, API routes, database and artifact identifiers remain
+unchanged. This is a public-identity update, not an economic or data migration.
+
+The [project charter](PROJECT_CHARTER.md) defines the
+Watson REST/MCP, Gremlins and The Commons target, the rule of three, and one sufficient
 proof artifact before LOW completion. It distinguishes the target from current
 prototype enforcement.
 
@@ -11,7 +16,8 @@ The [empowerment constitution](PLAN/EMPOWERMENT_CONSTITUTION.md) establishes the
 human purpose: voluntary Opportunities, unconditional daily Credits with a
 protected reserve, reusable Knowledge and nonspendable Growth. No punitive resource
 loss or work requirement for basic allocation. This is adopted design policy;
-the current Gold/monthly-grant service and bounty terminology have not migrated.
+the current Gold/monthly-grant behavior and legacy technical identifiers remain
+unchanged. No-obligation resource sharing and Growth recognition remain targets.
 
 Requires Python 3.11 or newer. Run these setup commands from the repository root in PowerShell:
 
@@ -34,7 +40,7 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 
 Open <http://127.0.0.1:8000> for the web app or <http://127.0.0.1:8000/docs> for the API. Health returns `{"status":"ok","mode":"demo"}`.
 
-The app provides Board, My Work, Post Bounty, Gremlins, and Wallet/Stats. Choose Steve, Nate, or Will as a demo user. Claim a bounty, pin context, submit one sufficient proof and request AI review. Explicit human LOW verification is required before completion releases reserved demo Gold. A PR link cannot bypass this gate. Requester PR review remains separate.
+The app provides Opportunities, My Work, Post Opportunity, Gremlins, and Wallet/Stats. Choose Steve, Nate, or Will as a demo user. Volunteer for an opportunity, pin context, submit one sufficient proof and request AI review. Explicit human LOW verification is required before completion releases reserved demo Gold. A PR link cannot bypass this gate. Requester PR review remains separate.
 
 Defaults: 1,000 Gold per month, Eastern calendar, rollover, and current-month-only grants on wallet access/action. Cancellation refunds only an unclaimed bounty. `HANDOFFS_MONTHLY_GOLD` overrides the grant; `HANDOFFS_DB` overrides the database path (default `.data/handoffs.sqlite` relative to the working directory). Identity and PR checks are explicitly simulated. The server binds to loopback by default; a team host is a later deployment choice.
 

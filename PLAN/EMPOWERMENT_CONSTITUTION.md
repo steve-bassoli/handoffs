@@ -1,6 +1,9 @@
-# HANDOFFS empowerment constitution
+# The Commons empowerment constitution
 
-Adopted project direction, October 16, 2026. HANDOFFS exists to enrich and empower
+Ask freely. Share freely. Build together.
+
+Adopted project direction, October 16, 2026. The Commons, formerly HANDOFFS, exists
+to enrich and empower
 people through voluntary contribution, shared learning and self-guidance. People
 do not owe the platform labor to remain secure. These are governing design
 commitments; the resource mechanics below are not yet runtime enforcement.
@@ -8,7 +11,7 @@ commitments; the resource mechanics below are not yet runtime enforcement.
 ## Human guided AI development
 
 The user entrusts AI with choosing and carrying out humane implementation details
-within approved HANDOFFS outcomes. This is standing, revocable delegation, not a
+within approved work on The Commons. This is standing, revocable delegation, not a
 transfer of human agency to the software. Three responsibilities remain distinct:
 
 1. Humans set purpose, supply domain guidance and retain consequential choices.
@@ -119,6 +122,21 @@ shame. Existing contributor permissions, privacy boundaries and promised rewards
 must survive a migration. Safety and Watson access restrictions still apply;
 voluntary participation does not grant privileged access.
 
+## Resource sharing outcome
+
+A person can request a resource and someone else may freely provide it. Receiving
+help creates no repayment, labor, gratitude, endorsement, public-story or future
+reciprocity obligation. Shared access is not an IOU; a gift is not a disguised
+loan. A person may contribute later solely because they choose to.
+
+The intended outcome is verified fulfillment of the request, Growth recognition
+for the helpful contribution, and a private auditable delivery record. Recognize
+the useful outcome rather than wealth or the amount transferred. Record a reward
+once; do not mint extra Credits merely because Credits move between people.
+Verify delivery through appropriate evidence without requiring the recipient to
+perform gratitude or disclose their circumstances. This resource-request flow and
+Growth recognition are not implemented by the identity/wording update.
+
 ## Good conduct and three approaches
 
 Good is the only supported conduct objective: help without exploitation, respect
@@ -158,7 +176,7 @@ the same reserve protections rather than a hidden bypass.
 
 ## Resource ownership and implementation architecture
 
-Maintaining HANDOFFS does not confer ownership of participants' resources. The
+Maintaining The Commons does not confer ownership of participants' resources. The
 implementation direction has three boundaries, each requiring actual validation:
 
 1. **Consent.** Replace demo identity with authenticated identity. Bind each debit
@@ -217,11 +235,13 @@ preserved autonomy and reusable learning rather than maximizing work or spending
 ## Adoption boundary
 
 The current service still uses Gold, monthly allocations and existing bounty
-UI/API names. It prevents overdrafts but does not enforce a positive protected
+API/data identifiers; the web UI now calls the work Opportunities. It prevents
+overdrafts but does not enforce a positive protected
 reserve. It has artifacts, not the Knowledge/Growth resource model described
 here. Authenticated identity, consent-bound debit authorization, an isolated ledger
 authority and independent verification are not implemented by this policy change.
-It does not migrate wallets, create daily grants, rename the UI, deploy blockchain
+It does not migrate wallets, create daily grants, implement resource fulfillment,
+deploy blockchain
 or claim a tested moral or operator-resistance guarantee.
 
 Before implementing the economy, explicitly set the daily Credit amount, protected

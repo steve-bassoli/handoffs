@@ -1,17 +1,24 @@
-# Watson AI Driven Modernization Charter
+# The Commons Project Charter
+
+Ask freely. Share freely. Build together.
+
+The Commons is the public project name, formerly HANDOFFS. Existing `handoffs`
+package names, `HANDOFFS_*` configuration, MCP connection names, API routes and
+stored identifiers remain compatible. Renaming the product does not migrate its
+economy or rewrite its history.
 
 Decision recorded October 16, 2026. This charter governs the modernization target
 and development workflow. It does not certify that the prototype already meets it.
 
 The goal is seamless AI integration of Watson maintenance and usability through
-three cooperating systems: Watson services, Gremlins, and HANDOFFS. AI performs
+three cooperating systems: Watson services, Gremlins, and The Commons. AI performs
 investigation, decomposition, implementation and evidence preparation. Humans use
 the Watson application to verify LOW bounties, rather than to drive routine work.
 Human authority over policy, access, task creation and deployment remains intact.
 
 ## Human purpose and resource commitments
 
-HANDOFFS exists to enrich and empower people, not to make them earn the right to
+The Commons exists to enrich and empower people, not to make them earn the right to
 participate. The governing [empowerment constitution](PLAN/EMPOWERMENT_CONSTITUTION.md)
 adopts three resources: Credits for unconditional daily provision and voluntary
 support, Knowledge for reusable learning, and Growth for nonspendable recognition.
@@ -30,13 +37,13 @@ direction. Existing bounty/Gold technical names remain until an explicit migrati
 their use below describes current contracts, not a punitive philosophy. The rule
 of three is a design discipline, not an incorruptibility guarantee. Unsafe changes
 must reject the affected operation rather than crash the system. The daily
-allocation, positive reserve, resource model and terminology migration are
-adopted targets, not currently implemented wallet behavior.
+allocation, positive reserve and resource model are adopted targets, not currently
+implemented wallet behavior. Legacy technical identifiers remain compatible.
 
 ## Human guidance and AI implementation
 
 The user delegates routine technical decisions and implementation to AI within
-approved HANDOFFS outcomes. AI investigates, decomposes, implements and validates
+approved work on The Commons. AI investigates, decomposes, implements and validates
 the smallest sufficient change, continuing ready LOW steps without repeated
 permission requests. Humans supply purpose, domain knowledge and consequential
 choices; explicit human LOW verification and participant consent remain real
@@ -81,9 +88,9 @@ Harness availability, a generated test, a proposed command or a simulator pass
 does not establish live Watson compatibility. Do not perform production writes,
 weaken security or obtain new access merely to make a test pass.
 
-## 3 HANDOFFS
+## 3 The Commons
 
-HANDOFFS already has an MCP server. It coordinates AI-driven maintenance and
+The Commons already has an MCP server. It coordinates AI-driven maintenance and
 provides a navigable audit trail from HIGH inception through decomposition,
 dependencies, implementation, verification and completion. Preserve revisions,
 failed attempts and prior evidence. Link shared prerequisites instead of creating

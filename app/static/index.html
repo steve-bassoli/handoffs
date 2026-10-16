@@ -3,25 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HANDOFFS · Put Gold to work</title>
+  <title>The Commons · Ask freely. Share freely. Build together.</title>
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/app.js" defer></script>
 </head>
 <body>
   <header>
-    <a class="brand" href="/" aria-label="Thermo Fisher Scientific HANDOFFS home"><img class="brand-logo" src="/static/thermo-fisher-logo.svg" alt="Thermo Fisher Scientific" width="160" height="35"><span class="brand-copy">HANDOFFS<small>Put Gold to work.</small></span></a>
+    <a class="brand" href="/" aria-label="Thermo Fisher Scientific The Commons home"><img class="brand-logo" src="/static/thermo-fisher-logo.svg" alt="Thermo Fisher Scientific" width="160" height="35"><span class="brand-copy">The Commons<small>Human-guided AI development</small></span></a>
     <label class="identity">Demo user <select id="user" aria-label="Demo user"></select></label>
   </header>
   <div class="demo">Prototype · Demo identity and PR verification · Gold is application credit</div>
   <main>
-    <section class="intro"><div><p class="eyebrow">A SHARED WORK BENCH</p><h1>Your next handoff<br>starts here.</h1><p>Post a bounty. Pick up useful work. Earn Gold for your next idea.</p></div>
+    <section class="intro"><div><p class="eyebrow">THE COMMONS</p><h1>Ask freely. Share freely. Build together.</h1><p>Share what you know. Choose useful work. Create software with human guidance and AI.</p></div>
       <div class="balance"><span>Available Gold</span><strong id="gold">—</strong><small id="reserved">Loading wallet…</small></div></section>
-    <nav aria-label="Workspace"><button data-view="open" class="selected">Board</button><button data-view="mine">My Work</button><button data-view="post">Post Bounty</button><button data-view="gremlins">Gremlins</button><button data-view="wallet">Wallet & Stats</button></nav>
+    <nav aria-label="Workspace"><button data-view="open" class="selected">Opportunities</button><button data-view="mine">My Work</button><button data-view="post">Post Opportunity</button><button data-view="gremlins">Gremlins</button><button data-view="wallet">Wallet & Stats</button></nav>
     <p id="notice" role="status"></p>
-    <section id="board"><div class="section-title"><h2 id="board-title">Open bounties</h2><input id="search" type="search" placeholder="Find a bounty" aria-label="Search bounties"></div><div id="cards"></div><div class="paging"><button id="previous">Previous</button><span id="page-label"></span><button id="next">Next</button></div></section>
-    <section id="post" hidden><h2>Fund a bounty</h2><p>Gold is reserved when you post. Another user does the work using their own tokens. Every decomposition has exactly three children.</p>
+    <section id="board"><div class="section-title"><h2 id="board-title">Open opportunities</h2><input id="search" type="search" placeholder="Find an opportunity" aria-label="Search opportunities"></div><div id="cards"></div><div class="paging"><button id="previous">Previous</button><span id="page-label"></span><button id="next">Next</button></div></section>
+    <section id="post" hidden><h2>Support an opportunity</h2><p>This prototype reserves Gold when you post. A contributor chooses whether to volunteer; AI calls use separately configured provider access. Every decomposition has exactly three children.</p>
       <label>Work type<select name="work_type" form="post-form"><option value="implementation">Implementation · one minimal commit per LOW</option><option value="verification">Verification · evidence, no forced commit</option></select></label>
-      <form id="post-form"><label>Title<input name="title" required maxlength="160" placeholder="What needs doing?"></label><label>Goal<textarea name="goal" required></textarea></label><label>Completion criteria · one per line<textarea name="criteria" required></textarea></label><label>Complexity<select name="complexity"><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label><label>Source repository<input name="repository" placeholder="Repository URL"></label><label>Context links · one per line<textarea name="context_links"></textarea></label><div class="fields"><label>Bounty · Gold<input name="gold" type="number" min="1" step="1" value="150" required></label><label>Target<select name="target"><option value="">Anyone else</option></select></label></div><button class="primary" type="submit">Reserve Gold & post</button></form>
+      <form id="post-form"><label>Title<input name="title" required maxlength="160" placeholder="What needs doing?"></label><label>Goal<textarea name="goal" required></textarea></label><label>Completion criteria · one per line<textarea name="criteria" required></textarea></label><label>Complexity<select name="complexity"><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label><label>Source repository<input name="repository" placeholder="Repository URL"></label><label>Context links · one per line<textarea name="context_links"></textarea></label><div class="fields"><label>Contribution reward · Gold<input name="gold" type="number" min="1" step="1" value="150" required></label><label>Offer to<select name="target"><option value="">Anyone else</option></select></label></div><button class="primary" type="submit">Reserve Gold & post</button></form>
     </section>
     <section id="wallet" hidden><h2>Your wallet</h2><div id="stats" class="stats"></div><h3>Transaction history</h3><div id="transactions"></div><div class="paging"><button id="tx-previous">Previous</button><span id="tx-page"></span><button id="tx-next">Next</button></div></section>
     <section id="detail" hidden></section>
@@ -34,6 +34,6 @@
       <pre id="gremlins-output" class="proof-text" aria-live="polite"></pre><button id="gremlins-download" hidden>Download report</button>
     </section>
   </main>
-  <footer>Monthly Gold gives everyone a starting point. Useful work keeps it moving.</footer>
+  <footer>Participation is voluntary. Shared knowledge makes the next step easier.</footer>
 </body>
 </html>
