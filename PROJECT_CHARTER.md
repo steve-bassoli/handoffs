@@ -9,6 +9,30 @@ investigation, decomposition, implementation and evidence preparation. Humans us
 the Watson application to verify LOW bounties, rather than to drive routine work.
 Human authority over policy, access, task creation and deployment remains intact.
 
+## Human purpose and resource commitments
+
+HANDOFFS exists to enrich and empower people, not to make them earn the right to
+participate. The governing [empowerment constitution](PLAN/EMPOWERMENT_CONSTITUTION.md)
+adopts three resources: Credits for unconditional daily provision and voluntary
+support, Knowledge for reusable learning, and Growth for nonspendable recognition.
+The three commitments are security without earning it, choice without coercion,
+and contribution without domination.
+
+Neither spending nor giving may breach a protected Credit reserve. No fines,
+debt, punitive deductions, inactivity decay or compulsory work to retain basic
+allocation. Good is a conduct objective, not a score assigned to people. Lawful,
+adaptable and experimental approaches remain equally welcome within consent,
+privacy and safety boundaries. Rewards never authorize harm or remove the need
+for evidence. Disputes require explanation and a review path.
+
+Use Opportunities, Volunteer and Verified contribution as the product-language
+direction. Existing bounty/Gold technical names remain until an explicit migration;
+their use below describes current contracts, not a punitive philosophy. The rule
+of three is a design discipline, not an incorruptibility guarantee. Unsafe changes
+must reject the affected operation rather than crash the system. The daily
+allocation, positive reserve, resource model and terminology migration are
+adopted targets, not currently implemented wallet behavior.
+
 ## 1 Watson Services
 
 Replace Watson's legacy application face with REST and MCP interfaces, migrating

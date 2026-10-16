@@ -7,6 +7,12 @@ Watson REST/MCP, Gremlins and HANDOFFS target, the rule of three, and one suffic
 proof artifact before LOW completion. It distinguishes the target from current
 prototype enforcement.
 
+The [empowerment constitution](PLAN/EMPOWERMENT_CONSTITUTION.md) establishes the
+human purpose: voluntary Opportunities, unconditional daily Credits with a
+protected reserve, reusable Knowledge and nonspendable Growth. No punitive resource
+loss or work requirement for basic allocation. This is adopted design policy;
+the current Gold/monthly-grant service and bounty terminology have not migrated.
+
 Requires Python 3.11 or newer. Run these setup commands from the repository root in PowerShell:
 
 ```powershell

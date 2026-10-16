@@ -1,0 +1,170 @@
+# HANDOFFS empowerment constitution
+
+Adopted project direction, October 16, 2026. HANDOFFS exists to enrich and empower
+people through voluntary contribution, shared learning and self-guidance. People
+do not owe the platform labor to remain secure. These are governing design
+commitments; the resource mechanics below are not yet runtime enforcement.
+
+## Three commitments
+
+1. **Security without earning it.** Every participant receives an unconditional
+   daily allocation of application Credits and retains a protected reserve.
+   Inactivity, mistakes, disagreement and declining work do not remove that right.
+2. **Choice without coercion.** People choose their opportunities and may pause,
+   decline or leave without fines, debt, humiliation or loss of basic allocation.
+   Consent to participate is not blanket consent to spend resources or publish data.
+3. **Contribution without domination.** Verified work and learning earn recognition;
+   useful knowledge becomes reusable with the contributor's permission. Rewards
+   must not become instruments for purchasing authority over other people.
+
+The rule of three organizes responsibilities and exposes missing safeguards. It
+is not a mathematical proof of morality or immunity to corruption. Evidence,
+consent, privacy and the ability to challenge decisions take precedence over
+producing a particular count. One sufficient proof remains one proof.
+
+## Three resources
+
+| Resource | Purpose | Protection |
+| --- | --- | --- |
+| Credits | Unconditional daily provision plus voluntarily earned support for useful work. | Spendable only above the protected reserve; no debt, punitive deductions, inactivity decay or compulsory giving. |
+| Knowledge | Source-backed discoveries, explanations and reusable artifacts in a shared library. | Sharing does not consume the original. Sharing scope requires consent; essential learning is not gated by rank or payment. |
+| Growth | Personal experience recognizing demonstrated learning, mentoring and verified contributions. | Nonspendable, nontransferable and never deducted as punishment. Not a moral score, purchasable privilege or measure of human worth. |
+
+Only Credits is a spendable currency. Knowledge and Growth are persistent forms
+of value, not artificial scarcity meters or conversion tokens. Do not fabricate
+experience from login streaks, task counts, tokens consumed or document volume.
+Recognize demonstrated outcomes, including a useful discovery that a proposed
+change is unnecessary. A daily allocation does not require a contribution.
+
+Knowledge may be corrected, superseded or removed for privacy and safety without
+financial punishment. Preserve appropriate provenance without retaining sensitive
+content merely to make the archive permanent. Recognition claims can be marked
+disputed or corrected with reasons and a review path; do not silently rewrite
+history, claw back basic provision or invent a debt. Unverified claims need not
+receive a new reward. Corrections change the evidentiary status, not human worth.
+
+## Protected reserve and daily allocation
+
+Let B be a person's available Credit balance, excluding existing escrow, and F
+their protected reserve. Voluntary spending capacity is max(0, B - F). A proposed
+debit a must atomically satisfy B - a >= F. Funding an opportunity, giving Credits,
+reserving escrow, fees, bulk actions and administrative paths must use the same
+rule. Reserving funds is already a debit for this check; later release of that
+existing escrow must not charge the person again.
+
+An action may leave exactly F, never less. If a balance is already below F, reject
+new outflows while allowing grants and other legitimate incoming Credits. Spending
+above the reserve with informed consent is a choice, not punishment. Seizing
+resources to discipline someone is prohibited. No implicit overdrafts, loans,
+penalties for withdrawing or automatic personal-wallet top-ups of an AI run.
+
+Allocate once per participant per calendar day under an explicit time-zone
+policy. An offline or missed-login day must not become a forfeited entitlement:
+owed allocations can be materialized later without double-crediting a date.
+Accrual begins at enrollment, not an arbitrary backdated claim. Retry, concurrency,
+restart and clock-boundary handling must not duplicate or erase entitlements.
+Daily provision is not conditional on accepting work, earning Growth, receiving
+votes or adopting a style label. No maximum balance is implied by the minimum
+rule; any future cap needs a separate decision and must not confiscate holdings.
+
+These Credits are application credits, not a promise of money, wages, subsistence
+or unlimited external compute. Display provider costs separately. Before paid AI
+work, the proposed execution design must obtain an explicit usage budget and stop
+before exceeding it; Credit reserves alone do not protect an external API bill.
+Technical usage limits are not a fourth player resource. Lack of compute funding
+must not silently consume the protected reserve or revoke basic participation.
+
+## Opportunities and consent
+
+The product language becomes **Opportunities**, **Volunteer** and **Verified
+contribution** instead of bounty, claim and payout. Keep Posted, Claimed and Closed
+as existing technical lifecycle values until an explicit migration; language
+changes must not rewrite identifiers, erase commitments or invalidate old links.
+
+An opportunity offers a bounded outcome, its evidence criteria, expected effort
+and any committed reward. Choosing it is voluntary. Before a consequential action,
+show the resources affected, remaining safe capacity, sharing scope and the exact
+operation to confirm. AI may propose opportunities and three-way decompositions;
+it cannot consent, volunteer a person or spend on their behalf by inference.
+
+Someone who withdraws can retain and export their own work. Record unfinished
+work honestly, release unspent reservations under the disclosed terms, and ask
+before reassignment. Do not turn incomplete work into personal debt or public
+shame. Existing contributor permissions, privacy boundaries and promised rewards
+must survive a migration. Safety and Watson access restrictions still apply;
+voluntary participation does not grant privileged access.
+
+## Good conduct and three approaches
+
+Good is the only supported conduct objective: help without exploitation, respect
+consent and preserve safety. It is not a label the platform assigns to people's
+character. Do not implement an Evil class, neutrality penalty, ideological test
+or moral leaderboard.
+
+People may optionally choose Lawful Good, Neutral Good or Chaotic Good as working
+styles: structured, adaptable or experimental. Neutral here describes method,
+not indifference to harm. Styles are equally supported, can change freely and
+carry no multiplier, access advantage or resource penalty. Experimental never
+means bypassing proof, authorization or another person's choice.
+
+## Accountability without punishment
+
+An unsafe operation is rejected with a reason and a safe alternative. Rejection
+does not deduct resources or suppress future basic allocation. A failed proof
+means the outcome remains unverified, not that the contributor deserves a fine.
+Disputes receive an accessible explanation, a chance to supply context and a
+review by someone other than the original automated decision maker. Private
+feedback is the default; public recognition is optional.
+
+Protect people from harmful actions without turning protection into retaliation.
+Restrict an unsafe operation when necessary, retain only appropriate audit data,
+and preserve safe access and entitlements. Never award harmful behavior merely
+because rewards are preferred to punishment. There is no guarantee that every
+requested action is permitted or every claim earns recognition.
+
+Changes to protected rules follow propose, simulate and explicitly approve.
+Consider affected participants, maintainers and an independent reviewer; do not
+invent three signatures for every routine edit. Version policy decisions, retain
+their reasons and test the invariants across UI, API, MCP and background workers.
+A violation must fail the affected mutation closed, not crash the entire system
+or strand people. There is no unrestricted administrator deduction exception.
+Migration and incident repair need explicit authority, auditable correction and
+the same reserve protections rather than a hidden bypass.
+
+## Further design proposals
+
+Three home surfaces could make the values visible: **My security** for allocation
+and safe spending capacity, **Our library** for consented reusable knowledge, and
+**My growth** for private learning milestones. None should display countdowns to
+destitution, competitive moral rankings or loss-framed engagement prompts.
+
+Three useful opportunity types are **Discover**, **Create** and **Verify**.
+Discover can conclude that no implementation is warranted. Create remains bounded
+by the approved LOW criteria. Verify retains one sufficient proof and honest
+pass, fail or inconclusive findings. These are proposed work purposes, not a
+replacement for HIGH/MEDIUM/LOW, implementation/verification contracts or evidence
+gates. A negative finding can be a successful contribution when it answers the
+declared question.
+
+Mentoring and cooperative credit should recognize contribution without requiring
+competition for a single winner. Joint credit and any split of a committed reward
+must be disclosed and agreed before the work, never deducted from someone else's
+earned reward afterward. Measures of success should examine useful outcomes,
+preserved autonomy and reusable learning rather than maximizing work or spending.
+
+## Adoption boundary
+
+The current service still uses Gold, monthly allocations and existing bounty
+UI/API names. It prevents overdrafts but does not enforce a positive protected
+reserve. It has artifacts, not the Knowledge/Growth resource model described
+here. This change establishes policy and design; it does not migrate wallets,
+create daily grants, rename the UI or claim a tested moral guarantee.
+
+Before implementing the economy, explicitly set the daily Credit amount, protected
+reserve and calendar/catch-up policy. Preserve balances, earned rewards and open
+escrow; preview migration without mutating live accounts. In isolated tests prove
+that exact-floor spending succeeds, below-floor spending fails without partial
+changes, and retries or concurrent daily grants allocate only once. Also prove
+that declining work leaves basic allocation unchanged and no alternate interface
+can bypass consent or the reserve. User approval and deployment authority remain
+separate from this adopted policy.
