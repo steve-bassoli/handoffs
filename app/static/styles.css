@@ -4,17 +4,22 @@
     color: #212529;
     background: #fff;
     font-synthesis: none;
-    --accent: #1e8ae7;
-    --accent-hover: #1472c3;
+    --brand-red: #f23f2c;
+    --accent: #c53024;
+    --accent-hover: #a8281e;
+    --accent-tint: #fff2f0;
     --muted: #54545c;
     --line: #eee;
     --surface: #f7f7f7;
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
-header { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 8px 32px; background: #fff; border-bottom: 1px solid var(--line); box-shadow: 0 2px 5px #0000000d; }
-.brand { font-size: 20px; font-weight: 600; color: #222; text-decoration: none; }
-.brand span { display: block; font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 3px; }
+header { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 32px; background: #fff; border-top: 3px solid var(--brand-red); border-bottom: 1px solid var(--line); box-shadow: 0 2px 5px #0000000d; }
+.brand { display: flex; align-items: center; gap: 24px; color: #222; text-decoration: none; }
+.brand:hover { color: #222; }
+.brand-logo { display: block; width: 160px; height: auto; flex-shrink: 0; }
+.brand-copy { display: block; border-left: 1px solid #ddd; padding-left: 24px; font-size: 20px; font-weight: 500; }
+.brand-copy small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 3px; }
 .identity { display: flex; align-items: center; gap: 12px; margin: 0; white-space: nowrap; }
 .identity select { width: 130px; margin: 0; }
 .demo { background: var(--surface); color: var(--muted); text-align: center; padding: 8px 16px; font-size: 12px; }
@@ -30,7 +35,7 @@ p { color: var(--muted); line-height: 1.5; }
 .balance strong { display: block; color: #222; font-size: 32px; font-weight: 500; margin: 8px 0; }
 nav { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #ddd; }
 button { border: 1px solid #ccc; border-radius: 3px; padding: 9px 16px; background: #fff; color: var(--accent); font: inherit; line-height: 1.4; cursor: pointer; }
-button:hover { border-color: var(--accent); background: #f2f8fe; }
+button:hover { border-color: var(--accent); background: var(--accent-tint); }
 button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 nav button { background: transparent; color: var(--muted); border: 0; border-radius: 0; border-bottom: 3px solid transparent; padding: 12px 20px; margin-bottom: -1px; }
@@ -45,7 +50,7 @@ nav button.selected { color: var(--accent); border-bottom-color: var(--accent); 
 .card h3 { font-size: 26px; margin: 20px 0; }
 .card .meta { font-size: 12px; color: var(--muted); margin-top: auto; margin-bottom: 20px; }
 .pill { display: inline-block; background: #f1f1f1; color: var(--muted); border-radius: 3px; padding: 4px 8px; font-size: 12px; }
-.bounty-gold { margin-left: 8px; color: #266a9f; background: #edf5fc; }
+.bounty-gold { margin-left: 8px; color: var(--accent); background: var(--accent-tint); }
 .empty { padding: 32px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); grid-column: 1 / -1; }
 .paging { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin: 24px 0; font-size: 12px; color: var(--muted); }
 label { display: block; color: var(--muted); margin: 16px 0; }
@@ -77,13 +82,16 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
 .lineage ul { list-style: none; border-left: 2px solid #ddd; margin: 12px 0 0 8px; padding-left: 18px; }
 .lineage li { margin: 8px 0; }
 .lineage button { text-align: left; font-weight: 400; }
-.lineage .current-task { border-color: var(--accent); font-weight: 500; background: #edf5fc; }
+.lineage .current-task { border-color: var(--accent); font-weight: 500; background: var(--accent-tint); }
 [hidden] { display: none !important; }
 @media (max-width: 640px) {
-    header { padding: 12px 18px; gap: 12px; }
-    .brand { font-size: 18px; }
-    .identity { font-size: 12px; gap: 6px; }
-    .identity select { width: 100px; }
+    header { padding: 12px 18px; gap: 12px; flex-wrap: wrap; }
+    .brand { gap: 12px; }
+    .brand-logo { width: 120px; }
+    .brand-copy { font-size: 16px; padding-left: 12px; }
+    .brand-copy small { display: none; }
+    .identity { font-size: 0; gap: 0; margin-left: auto; }
+    .identity select { width: 90px; font-size: 14px; }
     main { padding: 24px 18px; }
     .intro { flex-direction: column; align-items: stretch; margin: -24px -18px 24px; padding: 24px 18px; gap: 16px; }
     .balance { min-width: 0; }
