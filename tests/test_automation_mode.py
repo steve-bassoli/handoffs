@@ -61,7 +61,7 @@ def test_light_mode_is_one_sol_over_three_terra_and_rejects_more(tmp_path):
     session.mkdir()
     Tree(plan, session, 30, transport=recorder(seen), mode='light').run()
     assert {(name, model) for name, model, _, _ in seen} == {
-        ('coordinator', 'gpt-6.1-sol'), ('w0', 'gpt-5.6-terra'), ('w1', 'gpt-5.6-terra'), ('w2', 'gpt-5.6-terra')}
+        ('coordinator', 'gpt-6-astra'), ('w0', 'gpt-5.6-terra'), ('w1', 'gpt-5.6-terra'), ('w2', 'gpt-5.6-terra')}
     with pytest.raises(ValueError):
         Tree(thirteen(tmp_path), tmp_path, 30, mode='light')
 
@@ -107,7 +107,7 @@ def test_bob_naming_for_light_and_heavy_trees(tmp_path):
     session.mkdir()
     summary = Tree(light, session, 30, transport=recorder(seen), mode='light').run()
     assert {name for name, *_ in seen} == {'bob', 'bob-2', 'bob-3', 'bob-4'}
-    assert dict((name, model) for name, model, _, _ in seen)['bob'] == 'gpt-6.1-sol'
+    assert dict((name, model) for name, model, _, _ in seen)['bob'] == 'gpt-6-astra'
     assert summary['turns'][0]['agent'] == 'bob'
     heavy_seen = []
     heavy_session = tmp_path / 'heavy'
