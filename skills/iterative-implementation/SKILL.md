@@ -103,6 +103,14 @@ included in the commit body, but it does not replace the retained artifacts.
    for the same leaf/plan fingerprint. It records that receipt and serializes
    managed commits. Keep the approved plan immutable; changing it to evade a
    receipt is prohibited. This is not a global Git hook or publication permission.
+6. For authorized Commons implementation work, finish STAGE, COMMIT, PUSH under
+   the charter's standing Git publication policy. After the managed commit, push
+   to the verified intended remote/branch only when tests and the entire outgoing
+   history are cleared for that destination. Confirm remote delivery by SHA.
+   A local commit or deployment is not a completed push. Preserve unrelated work;
+   do not force-push, silently merge/rebase, create filler commits or bypass a
+   prior publication rejection. Retain/report a specific blocker when unsafe,
+   unauthorized or rejected. This does not supply human proof acceptance.
 
 For verification-only work, retain source locators, exact checks, observed results
 and unexecuted commands separately. An API-generated report is prepared evidence,

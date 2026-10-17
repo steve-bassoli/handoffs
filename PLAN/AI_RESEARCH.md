@@ -463,6 +463,12 @@ privately in the independent inquiry artifact directory, not publicly published.
 
 ## PRESSURE: urgency without wider authority
 
+The Git workflow now has an explicit finish line: stage, managed LOW commit,
+push, then verify remote delivery. Merely recording a local SHA did not satisfy
+the user's expectation of publication. That correction does not clear private
+outgoing history or turn a commit into human verification. No public push is
+claimed while the retained disclosure review remains unresolved.
+
 Recorded October 17, 2026. The user introduced PRESSURE as a tenet and answered
 `ro3` after the boundary was proposed: priority and pacing may change, but consent,
 spending authority, verification and honest reporting do not. The implementation

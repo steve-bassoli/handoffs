@@ -196,6 +196,21 @@ by the registry. An execution bridge must use these gates before it is enabled.
 These are controlled-engine checks, not proof against processes or credentials
 outside that engine. Never describe a permitted tree as an already running tree.
 
+## Git finish line: stage, commit, push
+
+For authorized implementation work, the default Git finish line is STAGE, COMMIT,
+PUSH. Stage only the planned LOW paths, use its single managed commit, then push
+to the verified intended remote and branch after tests and outgoing-history
+review. Confirm remote delivery by SHA. A local commit or local deployment is
+not publication; report each state accurately. This is standing routine push
+authority within the approved work, not permission to publish private material.
+
+Preserve unrelated work. Do not force-push, silently merge/rebase, manufacture
+commits or bypass an approval rejection. Review the actual destination visibility
+and all outgoing history, not only HEAD. If publication is unsafe, unauthorized
+or rejected, retain the specific blocker and the local receipt; never claim the
+finish line was reached. Explicit human LOW verification remains separate.
+
 ## Routine local deployment
 
 The user explicitly authorizes automatic deployment of completed, verified change
@@ -212,6 +227,8 @@ migration. This standing instruction does not authorize remote Git pushes, publi
 hosting, new network exposure, destructive data changes, resource spending or
 claims of peer connectivity without an actual peer check. Broader deployments
 and material changes to access or protected policy remain separate decisions.
+Git publication follows the standing finish-line policy above, not deployment
+permission alone.
 
 ## 1 Watson Services
 
