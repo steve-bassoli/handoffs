@@ -4,7 +4,7 @@ import json
 import httpx
 import pytest
 
-from app.agent_conduit import MISSION, digest, execute
+from app.agent_conduit import MISSION, digest, execute, json_object
 
 
 @pytest.fixture
@@ -214,3 +214,12 @@ def test_default_has_no_artificial_request_or_aggregate_token_cap(manifest, tmp_
     assert authority['total_output_tokens'] is None and authority['per_request_output_tokens'] is None
     attempt = json.loads((run / 'request-01-attempt.json').read_text())
     assert attempt['max_output_tokens'] is None and attempt['reserved_output_ceiling'] == 128000
+
+
+def test_json_object_tolerates_prose_preamble_only():
+    assert json_object('{"a": 1}') == {'a': 1}
+    assert json_object('PRESSURE 1. Notes first. {"a": {"b": [1, 2]}, "c": "}"}') == {'a': {'b': [1, 2]}, 'c': '}'}
+    with pytest.raises(ValueError):
+        json_object('no object here')
+    with pytest.raises(ValueError):
+        json_object('preamble {"a": ')

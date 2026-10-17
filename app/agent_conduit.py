@@ -155,6 +155,18 @@ def request(client, payload, run, ordinal, transport=None):
     return result, receipt
 
 
+
+def json_object(text):
+    """The reply's JSON object; tolerates a short prose preamble before it, never invents content."""
+    try:
+        return json.loads(text)
+    except ValueError:
+        start = text.find('{')
+        if start < 0:
+            raise
+        value, _ = json.JSONDecoder().raw_decode(text, start)
+        return value
+
 def converse(client, run, history, sources, max_requests, total_budget=None, per_request=None, transport=None,
              instructions=MISSION, first_ordinal=1, candidate_name='candidate.json', answer_by=None, stop_at=None, clock=time.monotonic):
     """One bounded tool loop over a pinned shelf. answer_by/stop_at are monotonic times: answer now / dispatch nothing."""
@@ -222,7 +234,7 @@ def converse(client, run, history, sources, max_requests, total_budget=None, per
         try:
             text = ''.join(part.get('text', '') for item in output if item.get('type') == 'message'
                 for part in item.get('content', []) if part.get('type') == 'output_text')
-            parsed = json.loads(text)
+            parsed = json_object(text)
             if not isinstance(parsed, dict):
                 raise ValueError('Expected a JSON object')
             candidate = parsed
