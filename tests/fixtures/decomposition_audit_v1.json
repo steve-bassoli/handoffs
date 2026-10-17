@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "source": "Service.hierarchy_violations",
+  "checked_at": "2026-01-01T00:00:00Z",
+  "scope": "Authorized synthetic fixture tickets only",
+  "status": "findings",
+  "violations": [
+    {"ticket_id": "fixture-high", "message": "HIGH has mixed HIGH and MEDIUM children."},
+    {"ticket_id": "fixture-low", "message": "LOW has children."}
+  ],
+  "error": null,
+  "limitations": [
+    "Service.detail defaults missing complexity to HIGH."
+  ]
+}
