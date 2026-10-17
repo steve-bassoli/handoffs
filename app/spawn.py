@@ -8,14 +8,18 @@ import json
 from uuid import uuid4
 
 from app.adapters import DemoDeliveryVerifier
+from app.complexity import validate_bounty_split
 from app.services import RuleError, Service, encode, now
 from app.storage import Database
 
 
 def spawn_children(database, parent_id, children, actor, source):
-    """children: 2-3 dicts with title, goal, criteria (list), complexity (MEDIUM or LOW), work_type."""
-    if not 2 <= len(children) <= 3:
-        raise ValueError('A decomposition has two or three children')
+    """children: 2-9 dicts with title, goal, criteria (list), complexity, work_type.
+
+    HIGH SIGNAL decomposition rule: a HIGH splits into two or more HIGHs or two or more MEDIUMs (never mixed); a MEDIUM into two or more LOWs.
+    """
+    if not 2 <= len(children) <= 9:
+        raise ValueError('A decomposition has two to nine children')
     db = Database(database)
     try:
         service = Service(db, DemoDeliveryVerifier())
@@ -23,8 +27,7 @@ def spawn_children(database, parent_id, children, actor, source):
             parent = service.detail(c, parent_id)
             if parent['status'] != 'open' or parent['complexity'] not in ('HIGH', 'MEDIUM'):
                 raise RuleError('Spawn only from an open HIGH or MEDIUM ticket')
-            if any(child['complexity'] not in ('MEDIUM', 'LOW') for child in children):
-                raise ValueError('Children must be MEDIUM or LOW')
+            validate_bounty_split(parent['complexity'], [child['complexity'] for child in children])
             created = []
             for index, child in enumerate(children):
                 if not child.get('title') or not child.get('goal') or not child.get('criteria'):

@@ -377,6 +377,22 @@ class Service:
     def do_ai_proof_complete(self, c, actor, payload):
         return self.proofs.complete(c, actor, payload)
 
+    def hierarchy_violations(self):
+        """Audit every parent and its children against the HIGH SIGNAL decomposition rule (read-only)."""
+        from app.complexity import validate_bounty_split
+        found = []
+        with self.db.engine.connect() as c:
+            parents = all_rows(c, 'SELECT parent_id, GROUP_CONCAT(id) AS children FROM bounties WHERE parent_id IS NOT NULL GROUP BY parent_id')
+            for row in parents:
+                parent = self.detail(c, row['parent_id'])
+                kids = [self.detail(c, child) for child in row['children'].split(',')]
+                try:
+                    validate_bounty_split(parent['complexity'], [kid['complexity'] for kid in kids])
+                except ValueError as error:
+                    found.append({'parent': parent['id'], 'parent_level': parent['complexity'],
+                                  'children': {kid['id']: kid['complexity'] for kid in kids}, 'reason': str(error)})
+        return found
+
     def lineage(self, bounty_id):
         with self.db.engine.connect() as c:
             task = self.detail(c, bounty_id)

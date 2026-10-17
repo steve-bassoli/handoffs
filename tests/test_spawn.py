@@ -41,10 +41,65 @@ def test_spawn_refuses_bad_shapes(tmp_path):
         with pytest.raises(ValueError):
             spawn_children(database, parent, specs(1), 'steve', 'x')
         with pytest.raises(ValueError):
-            spawn_children(database, parent, specs(4), 'steve', 'x')
+            spawn_children(database, parent, specs(10), 'steve', 'x')
         low = write(client, '/bounties', {'title': 'L', 'goal': 'g', 'criteria': ['c'], 'gold': 5, 'complexity': 'LOW'}).json()['id']
         with pytest.raises(RuleError):
             spawn_children(database, low, specs(), 'steve', 'x')
         spawn_children(database, parent, specs(2), 'steve', 'x')
         with pytest.raises(RuleError):
             spawn_children(database, parent, specs(2), 'steve', 'x')
+
+
+def high(client, title='Big goal'):
+    return write(client, '/bounties', {'title': title, 'goal': 'g', 'criteria': ['c'], 'gold': 5, 'complexity': 'HIGH'}).json()['id']
+
+
+def child(complexity, n):
+    return {'title': f'{complexity} {n}', 'goal': 'do it', 'criteria': ['works'], 'complexity': complexity}
+
+
+def test_high_may_split_into_several_highs_or_several_mediums_but_never_mixed(tmp_path):
+    database = tmp_path / 'test.sqlite'
+    with TestClient(create_app(database)) as client:
+        first, second, third = high(client, 'A'), high(client, 'B'), high(client, 'C')
+        assert len(spawn_children(database, first, [child('HIGH', 1), child('HIGH', 2)], 'steve', 'x')) == 2
+        assert len(spawn_children(database, second, [child('MEDIUM', 1), child('MEDIUM', 2), child('MEDIUM', 3), child('MEDIUM', 4)], 'steve', 'x')) == 4
+        with pytest.raises(ValueError):
+            spawn_children(database, third, [child('HIGH', 1), child('MEDIUM', 2)], 'steve', 'x')
+        with pytest.raises(ValueError):
+            spawn_children(database, third, [child('LOW', 1), child('LOW', 2)], 'steve', 'x')
+        medium_child = client.get(f'/api/v1/bounties/{first}', headers={'X-Demo-User': 'steve'}).json()['events'][-1]['data']['children'][0]
+        assert len(spawn_children(database, medium_child, [child('HIGH', 3), child('HIGH', 4)], 'steve', 'x')) == 2, 'A spawned HIGH can split again'
+
+
+def test_every_child_creating_path_enforces_the_decomposition_rule():
+    """Structural guard: any app module that inserts a ticket with a parent_id must call the validator."""
+    from pathlib import Path
+    from app.complexity import DECOMPOSITION, MIN_CHILDREN
+    assert DECOMPOSITION == {'HIGH': ('HIGH', 'MEDIUM'), 'MEDIUM': ('LOW',), 'LOW': ()} and MIN_CHILDREN == 2
+    for path in sorted(Path('app').glob('*.py')):
+        text = path.read_text(encoding='utf-8')
+        if 'INSERT INTO bounties' in text and 'parent_id)' in text:
+            assert 'validate_bounty_split' in text or 'validate_proposals' in text, f'{path} creates children without the decomposition rule'
+
+
+def test_audit_finds_violations_and_passes_valid_trees(tmp_path):
+    from app.services import Service
+    from app.adapters import DemoDeliveryVerifier
+    from app.storage import Database
+    database = tmp_path / 'test.sqlite'
+    with TestClient(create_app(database)) as client:
+        parent = high(client, 'Root')
+        spawn_children(database, parent, [child('HIGH', 1), child('HIGH', 2)], 'steve', 'x')
+        db = Database(database)
+        try:
+            service = Service(db, DemoDeliveryVerifier())
+            assert service.hierarchy_violations() == []
+            with db.write() as c:  # Simulate a bypass: an extra LOW child slipped under a HIGH.
+                c.exec_driver_sql("INSERT INTO bounties(id,title,goal,criteria,repository,context_links,creator,target,gold,created_at,funded,parent_id) "
+                                  "VALUES ('bad','Bad','g','[\"c\"]','','[]','steve',NULL,1,'2026-01-01',0,?)", (parent,))
+                service.event(c, 'bad', 'followup_confirmed', 'steve', 'open', {'parent_id': parent, 'complexity': 'LOW'})
+            violations = service.hierarchy_violations()
+            assert len(violations) == 1 and violations[0]['parent'] == parent and violations[0]['children']['bad'] == 'LOW'
+        finally:
+            db.engine.dispose()

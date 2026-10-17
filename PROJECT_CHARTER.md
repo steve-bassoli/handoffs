@@ -322,6 +322,10 @@ the user hunt through transcripts or artifact directories.
 
 ### Grounded decomposition; three when it fits
 
+**HIGH SIGNAL: the decomposition rule.** A HIGH splits into more than one HIGH, or more than one MEDIUM, never a mix; a MEDIUM splits into more than one LOW;
+a LOW never splits. Every level of a HIGH-to-HIGH split is itself a HIGH that may split again until MEDIUMs, then LOWs, appear. Two children is enough; there is no
+fixed count. The launcher's spawn tool and the AI follow-up path both enforce it, and every planning agent is told it.
+
 HIGH decomposes into multiple HIGHs or multiple MEDIUMs, without mixed levels.
 HIGH branches eventually reach MEDIUM; each MEDIUM decomposes into multiple LOWs.
 A decomposition has at least two meaningful children, not a prescribed total.

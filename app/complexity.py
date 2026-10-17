@@ -7,12 +7,17 @@ import re
 import subprocess
 
 
+# HIGH SIGNAL decomposition rule, enshrined as data (PROJECT_CHARTER.md, "Grounded decomposition"):
+# a HIGH splits into two or more HIGHs OR two or more MEDIUMs (never mixed); a MEDIUM into two or more LOWs; a LOW never splits.
+# A HIGH-to-HIGH split is itself a HIGH that may split again. Every code path that creates child tickets must call validate_bounty_split.
+DECOMPOSITION = {'HIGH': ('HIGH', 'MEDIUM'), 'MEDIUM': ('LOW',), 'LOW': ()}
+MIN_CHILDREN = 2
+
+
 def validate_bounty_split(parent, levels):
-    if parent == 'HIGH' and len(levels) >= 2 and (all(level == 'HIGH' for level in levels) or
-                                                all(level == 'MEDIUM' for level in levels)):
+    allowed = DECOMPOSITION.get(parent, ())
+    if len(levels) >= MIN_CHILDREN and len(set(levels)) == 1 and levels[0] in allowed:
         return levels[0]
-    if parent == 'MEDIUM' and len(levels) >= 2 and all(level == 'LOW' for level in levels):
-        return 'LOW'
     raise ValueError('HIGH needs multiple HIGHs or MEDIUMs without mixed levels; MEDIUM needs multiple LOWs; LOW cannot decompose')
 
 
