@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-17T17:00:00Z",
+  "sources": {
+    "roster": {"status":"available","observed_at":"2026-10-17T17:00:00Z","event_at":null},
+    "mode": {"status":"unavailable","observed_at":"2026-10-17T17:00:00Z","event_at":null},
+    "plan": {"status":"available","observed_at":"2026-10-17T17:00:00Z","event_at":null},
+    "board": {"status":"missing","observed_at":"2026-10-17T17:00:00Z","event_at":null},
+    "summary": {"status":"missing","observed_at":"2026-10-17T17:00:00Z","event_at":null}
+  },
+  "agents": [
+    {"id":"<img src=x onerror=alert(1)>","reported_activity":"<script>unsafe()</script>","live_confirmed":null,"interrupted_occupied_lease":null,"pressure":null,"source":"roster","event_at":null},
+    {"id":"reported-only","reported_activity":"active","live_confirmed":null,"interrupted_occupied_lease":null,"pressure":1,"source":"roster","event_at":"2026-10-17T16:59:00Z"},
+    {"id":"stopped-lease","reported_activity":"stopped","live_confirmed":false,"interrupted_occupied_lease":true,"pressure":3,"source":"roster","event_at":null}
+  ],
+  "mode": {"value":null,"agents":null,"automated_writes":null,"source":"mode"},
+  "session": {
+    "id":"synthetic-unfinished",
+    "plan":{"agents":[{"name":"reported-only","level":"LOW","parent":null}]},
+    "board":null,
+    "summary":null
+  }
+}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mission control</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <script src="/static/dashboard-live.js" defer></script>
+</head>
+<body>
+  <main id="dashboard" aria-labelledby="dashboard-title">
+    <header>
+      <h1 id="dashboard-title">Mission control</h1>
+      <p>Read-only observations. Unknown is not confirmation.</p>
+      <p data-dashboard-status role="status" aria-live="polite">Not configured — no requests</p>
+      <div class="controls" aria-label="Refresh controls">
+        <button type="button" data-dashboard-pause>Pause refresh</button>
+        <button type="button" data-dashboard-resume>Resume refresh</button>
+      </div>
+    </header>
+    <section aria-labelledby="live-title">
+      <h2 id="live-title">Live · agents and freshness</h2>
+      <div data-dashboard-slot="live"><p>No observations received.</p></div>
+    </section>
+    <section aria-labelledby="flow-title">
+      <h2 id="flow-title">Flow · session metadata</h2>
+      <div data-dashboard-slot="flow"><p>No observations received.</p></div>
+    </section>
+    <section aria-labelledby="ops-title">
+      <h2 id="ops-title">Ops · mode and sources</h2>
+      <div data-dashboard-slot="ops"><p>No observations received.</p></div>
+    </section>
+    <footer>Receipt time is local browser time, not source event freshness. Integration must explicitly configure the read endpoint and authorized identity.</footer>
+  </main>
+</body>
+</html>
