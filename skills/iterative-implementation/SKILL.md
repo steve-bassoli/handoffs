@@ -51,7 +51,10 @@ Retain a JSON plan with `steps`; each item has a unique `id`, bounded `title`,
 LOW items declare `work_type`: `implementation` or `verification`; verification
 leaves have empty commit files. Retain
 criterion mapping and implementation/validation notes on the same items. Run
-`python scripts/complexity.py validate --plan <plan-file>` before execution.
+`python -m app.complexity validate --plan <plan-file>` from The Commons checkout
+before execution. Exported fix ZIPs include `tools/complexity.py`; there use
+`python tools/complexity.py` for the same validation and commit actions instead.
+Do not assume another target repository contains the Commons module.
 This replaces the previous easy/medium-only and automatic HIGH-bounty rule.
 
 A bounty proposal is not a task. Do not create or publish a quest, mutate Git,
@@ -93,7 +96,7 @@ included in the commit body, but it does not replace the retained artifacts.
    criteria. Remove any change that is not required.
 5. For implementation only, stage that LOW leaf's declared files. Commit its minimal change
    and necessary focused tests through the managed gate:
-   `python scripts/complexity.py commit --plan <plan-file> --step <low-id>
+   `python -m app.complexity commit --plan <plan-file> --step <low-id>
    --repository <checkout> --message <subject>`. Never use direct `git commit`
    to bypass this workflow. The gate rejects parents, malformed trees, and
    staged files outside the selected leaf, verification leaves, and repeat commits
