@@ -20,6 +20,7 @@ from app.workflow import Profile
 from app.proofs import Proofs, ProofUpload
 from app.proof_reviewer import ProofReviewer
 from app.gremlins import Comparison, compare, sabotage, witness
+from app.agent_roster import roster
 
 
 RESEARCH_PATH = Path(__file__).resolve().parents[1] / 'PLAN' / 'AI_RESEARCH.md'
@@ -183,6 +184,10 @@ this page does not query the live Codex quota meter.</p>
         from app.storage import all_rows
         with request.app.state.service.db.engine.connect() as c:
             return all_rows(c, 'SELECT * FROM users ORDER BY id')
+
+    @app.get('/api/v1/agents')
+    def agents(user=Depends(actor)):
+        return JSONResponse(roster(), headers={'Cache-Control': 'no-store'})
 
     @app.post('/api/v1/gremlins/{breed}')
     def gremlins(breed: Literal['mimic', 'saboteur', 'witness'], payload: Comparison, user=Depends(actor)):

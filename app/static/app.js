@@ -78,16 +78,36 @@ async function transactions() {
   $('tx-previous').disabled = txOffset === 0; $('tx-next').disabled = rows.length < pageSize;
   $('tx-page').textContent = `Page ${txOffset / pageSize + 1}`;
 }
+async function agentRoster() {
+  $('agents-refresh').disabled = true;
+  $('agents-summary').textContent = 'Loading registered agents…';
+  $('agent-rows').replaceChildren();
+  try {
+    const data = await api('/agents');
+    if (view !== 'agents') return;
+    $('agents-summary').textContent = !data.available ? 'Agent registry unavailable.' :
+      data.items.length ? `${data.items.length} registered runs · refresh to check for changes` : 'No registered Astra runs yet.';
+    for (const agent of data.items) {
+      const row = element('tr');
+      const name = element('td', `Astra ${agent.id.slice(0, 8)}`); name.title = agent.id;
+      name.append(element('small', `${agent.role} · level ${agent.level}`)); row.append(name);
+      row.append(element('td', {active: 'Working?', released: 'Resting', failed: 'Stopped'}[agent.state] || '?'));
+      for (const stat of ['pressure', 'credits', 'admiration', 'growth']) row.append(element('td', agent[stat] ?? '?'));
+      $('agent-rows').append(row);
+    }
+  } finally { $('agents-refresh').disabled = false; }
+}
 async function navigate(nextView) {
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   view = nextView; selected = null;
-  history.replaceState(null, '', location.pathname + location.search);
-  for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins']) $(id).hidden = true;
+  history.replaceState(null, '', location.pathname + location.search + (view === 'agents' ? '#agents' : ''));
+  for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents']) $(id).hidden = true;
   for (const button of document.querySelectorAll('nav button')) button.classList.toggle('selected', button.dataset.view === view);
   await stats();
   if (view === 'post') $('post').hidden = false;
   else if (view === 'gremlins') $('gremlins').hidden = false;
+  else if (view === 'agents') { $('agents').hidden = false; await agentRoster(); }
   else if (view === 'wallet') { $('wallet').hidden = false; await transactions(); }
   else { $('board').hidden = false; $('board-title').textContent = view === 'mine' ? 'My work' : 'Open opportunities'; await board(); }
 }
@@ -111,7 +131,7 @@ async function show(id) {
   const data = await api('/bounties/' + encodeURIComponent(id));
   selected = id;
   history.replaceState(null, '', '#opp=' + encodeURIComponent(id));
-  for (const section of ['board', 'post', 'wallet', 'gremlins']) $(section).hidden = true;
+  for (const section of ['board', 'post', 'wallet', 'gremlins', 'agents']) $(section).hidden = true;
   const current = $('detail');
   const refreshing = !current.hidden && current.querySelector('.detail-head code')?.textContent === id;
   const detail = element('div');
@@ -520,6 +540,7 @@ $('gremlins-form').onsubmit = event => { event.preventDefault(); run(async () =>
   const text = JSON.stringify(result, null, 2); $('gremlins-output').textContent = text;
   $('gremlins-download').hidden = false; $('gremlins-download').onclick = () => { const url = URL.createObjectURL(new Blob([text], {type: 'application/json'})); const link = element('a'); link.href = url; link.download = 'gremlins-sim-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
 }); };
+$('agents-refresh').onclick = () => run(agentRoster);
 for (const button of document.querySelectorAll('nav button')) button.onclick = () => run(async () => { offset = 0; message(''); await navigate(button.dataset.view); });
 $('user').onchange = () => run(async () => { user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });
 $('search').oninput = () => run(async () => { offset = 0; await board(); });
@@ -542,6 +563,7 @@ $('post-form').onsubmit = e => {
 run(async () => {
   const link = new URLSearchParams(location.hash.slice(1));
   const linkedOpportunity = link.get('opp') || link.get('bounty');
+  const linkedAgents = location.hash === '#agents';
   const users = await api('/users');
   if (!users.some(item => item.id === user)) user = 'steve';
   for (const item of users) {
@@ -549,6 +571,6 @@ run(async () => {
     const targetOption = option.cloneNode(true); document.querySelector('[name=target]').append(targetOption);
   }
   $('user').value = user;
-  await navigate('open');
+  await navigate(linkedAgents ? 'agents' : 'open');
   if (linkedOpportunity) await show(linkedOpportunity);
 });
