@@ -69,6 +69,15 @@ privacy, transparent usage and meaningful access when compute is unavailable.
 Optimize verified usefulness and reduced human effort, not tokens spent. Shared
 enterprise allocation and fair scheduling are targets, not implemented guarantees.
 
+AI capability must spread, not become an early-adopter monopoly. Help people catch
+up through accessible compute, understandable opportunities, reusable artifacts
+and voluntary mentoring. Success means more people can act independently, not
+that a few experts accumulate irreplaceable control. Do not hold capable people
+back, seize their resources or require their labor; widen others' opportunity to
+participate. Token wealth and AI fluency do not purchase authority over people.
+This commitment has no required numerical shape. Its motivating observation is
+retained in [AI research](PLAN/AI_RESEARCH.md#sharing-capability-without-concentrating-power).
+
 The Commons improves itself through ordinary opportunities: a bounded outcome,
 pinned source, an inspectable patch and recorded checks. AI may prepare the work;
 it must not approve its own proof, publish unconfirmed child opportunities, or

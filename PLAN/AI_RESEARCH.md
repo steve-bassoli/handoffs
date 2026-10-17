@@ -130,3 +130,35 @@ This is one observed interaction, not a controlled study or a universal claim
 about models. The guardrail is adopted in the charter. This documentation change
 does not implement a runtime context audit, repair the provider flow, complete
 Nate's opportunity or prove that future agents will comply.
+
+## Sharing capability without concentrating power
+
+Recorded October 16, 2026, using the user's America/New_York date. The user asked
+to enshrine an attached conversation image containing the statement:
+
+> this is why we need to have others catch up with this eco system, people like me and Nate cannot be allowed to run away with this power
+
+The image also shows a Monthly usage-remaining indicator of 11% and the caption
+“-1% for an hour of auto AI.” This is a user-supplied anecdote. It does not identify
+a controlled start/end measurement, workload, billing basis or API cost. Do not
+treat it as verified hourly consumption, extrapolate an account budget, or equate
+the displayed monthly allowance with the project's API billing.
+
+The design concern is that early access and AI fluency may compound into a
+capability gap. The response adopted here is to help others catch up through
+usable access, context continuity, permissioned reusable artifacts and voluntary
+help, not to penalize proficient participants. “Cannot be allowed to run away”
+does not authorize restricting a person's growth, taking resources or assigning
+compulsory work. The aim is wider independent agency, not a new gatekeeper class.
+
+Research should examine whether newcomers can understand and complete real
+opportunities without expert relay, whether consented artifacts reduce repeated
+effort, and whether sponsored compute reaches people without personal quota.
+Measure actual access barriers, mediation effort and verified outcomes before
+claiming improvement. These are candidate research questions, not collected
+results or a mandatory trio. The observed screenshot does not establish that
+capability concentration has already occurred or that distribution is solved.
+
+This commitment is adopted in the project charter and empowerment constitution.
+No wallet, access-control, quota-allocation or runtime behavior changes are made
+by recording it. Sharing remains bounded by privacy, safety and sponsor consent.

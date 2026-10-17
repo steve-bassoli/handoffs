@@ -120,6 +120,27 @@ fair scheduling and enterprise isolation need implementation and evidence before
 they can be promised. Self-improvement uses the same opportunity, consent and proof
 boundaries as any other contribution; an AI cannot grant itself greater authority.
 
+### Sharing capability without concentrating power
+
+Help people catch up with the AI ecosystem rather than allowing access, expertise
+and automation to compound into exclusive control by early adopters. Make useful
+work approachable, preserve understandable context, share reusable knowledge with
+permission and support voluntary mentoring and sponsored compute. People should
+gain independent agency, not become permanently dependent on a few intermediaries.
+
+This is a commitment to widen access, not to punish expertise or ambition. Do not
+cap someone's growth, confiscate resources, compel mentoring or make recipients
+owe labor or gratitude. Skill, token holdings and contribution volume confer no
+ownership of another person's choices or basic participation. Safety and privacy
+boundaries still apply to sharing; broader access is not unrestricted access.
+
+Assess who can meaningfully participate and complete useful work with less
+specialist mediation. A quota screenshot or rapid autonomous session can motivate
+research, but cannot establish general efficiency, fair distribution or a safe
+enterprise operating model. No resource count, participant count or design must
+be forced to three. These are governing design commitments, not claims that
+fair scheduling, enterprise isolation or distribution safeguards are implemented.
+
 The product language becomes **Opportunities**, **Volunteer** and **Verified
 contribution** instead of bounty, claim and payout. Keep Posted, Claimed and Closed
 as existing technical lifecycle values until an explicit migration; language
