@@ -182,3 +182,27 @@ def test_every_tree_message_names_json_for_json_object_output(tmp_path):
     session.mkdir()
     Tree(thirteen(tmp_path), session, 30, transport=tree_mock(seen, done_round=2)).run()
     assert seen and all(content['reply_format'] == 'one JSON object' for _, _, content in seen)
+
+
+def test_every_request_is_recorded_with_its_ticket_at_the_moment_of_spend(tmp_path):
+    source = tmp_path / 'source.txt'
+    source.write_text('source', encoding='utf-8')
+    shelf = {'source': str(source)}
+    low_id = '11111111-2222-3333-4444-555555555555'
+    plan = {'goal': 'g', 'authority': 'a', 'ticket': 'root-ticket', 'coordinator': {'shelf': shelf},
+            'children': [{'name': 'w1', 'role': f'LOW {low_id}: do it', 'shelf': shelf, 'max_requests': 1},
+                         {'name': 'w2', 'role': 'no id here', 'shelf': shelf, 'max_requests': 1, 'ticket': 'declared-ticket'},
+                         {'name': 'w3', 'role': 'also none', 'shelf': shelf, 'max_requests': 1}]}
+    session = tmp_path / 'session'
+    session.mkdir()
+    Tree(plan, session, 30, transport=tree_mock([], done_round=1)).run()
+    rows = [json.loads(line) for line in (session / 'usage.jsonl').read_text(encoding='utf-8').splitlines()]
+    by_agent = {}
+    for row in rows:
+        by_agent.setdefault(row['agent'], row)
+    assert by_agent['coordinator']['ticket'] == 'root-ticket' and by_agent['coordinator']['attribution'] == 'declared'
+    assert by_agent['w1']['ticket'] == low_id and by_agent['w1']['attribution'] == 'parsed_from_role'
+    assert by_agent['w2']['ticket'] == 'declared-ticket'
+    assert by_agent['w3']['ticket'] is None and by_agent['w3']['attribution'] == 'unattributed'
+    assert all(row['model'] and row['input_tokens'] == 5 and row['output_tokens'] == 5 and row['usage_state'] == 'reported' for row in rows)
+    assert len(rows) >= 4

@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
 import json
 import os
+import re
 from pathlib import Path
 import threading
 import time
@@ -91,7 +92,7 @@ class Tree:
             raise ValueError('Plan model must be one of ' + ', '.join(MODELS))
         self.deadline = self.started + minutes * 60
         self.root = plan.get('root_name', 'coordinator')  # The agent the human talks to (for example bob).
-        self.nodes = {self.root: {'role': 'Coordinates the tree.', 'shelf': plan['coordinator']['shelf'],
+        self.nodes = {self.root: {'role': 'Coordinates the tree.', 'shelf': plan['coordinator']['shelf'], 'ticket': plan.get('ticket'),
                                       'parent': None, 'level': 1, 'max_requests': 3, 'children': []}}
         self.add(self.root, plan.get('children', plan.get('workers', [])))
         if len(self.nodes) > 13:
@@ -119,11 +120,34 @@ class Tree:
             name = child['name']
             if name in self.nodes or name in ('all', 'parent', 'children', 'siblings'):
                 raise ValueError('Agent names must be unique and not a message group')
-            self.nodes[name] = {'role': child['role'], 'shelf': child['shelf'], 'parent': parent, 'level': level,
+            self.nodes[name] = {'role': child['role'], 'shelf': child['shelf'], 'parent': parent, 'level': level, 'ticket': child.get('ticket'),
                                 'max_requests': child.get('max_requests', 6 if level == 3 or not child.get('children') else 4),
                                 'children': []}
             self.nodes[parent]['children'].append(name)
             self.add(name, child.get('children', []))
+
+    def ticket_of(self, name):
+        """(ticket id, how we know): declared in the plan, parsed from the role text, or honestly unattributed."""
+        node = self.nodes[name]
+        if node.get('ticket'):
+            return node['ticket'], 'declared'
+        found = re.search(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', node.get('role', ''))
+        if found:
+            return found.group(0), 'parsed_from_role'
+        return None, 'unattributed'
+
+    def record_usage(self, name, model, receipts):
+        """Append-only, written at the moment of spend: one row per provider request, tied to agent, session, ticket and model."""
+        ticket, how = self.ticket_of(name)
+        with self.lock, (self.session / 'usage.jsonl').open('a', encoding='utf-8') as handle:
+            for receipt in receipts:
+                usage = receipt.get('usage') or {}
+                handle.write(json.dumps({'at_utc': stamp(), 'session': self.session.name, 'agent': name, 'level': LEVELS[self.nodes[name]['level']],
+                                         'model': model, 'ordinal': receipt.get('ordinal'), 'ticket': ticket, 'attribution': how,
+                                         'usage_state': receipt.get('usage_state'), 'input_tokens': usage.get('input_tokens'),
+                                         'output_tokens': usage.get('output_tokens'), 'elapsed_ms': receipt.get('elapsed_ms'),
+                                         'http_status': receipt.get('http_status'), 'provider_error': (receipt.get('provider_error') or {}).get('type')},
+                                        ensure_ascii=False) + '\n')
 
     def kind(self, name):
         node = self.nodes[name]
@@ -174,6 +198,7 @@ class Tree:
                 answer_by=None if final else self.deadline - 300, stop_at=None if final else self.deadline, clock=self.clock,
                 model=model, effort=effort, max_output=max_output)
         self.ordinals[name] += len(receipts)  # Refused dispatches save nothing, so ordinals stay unique.
+        self.record_usage(name, model, receipts)
         record = {'round': round_number, 'agent': name, 'level': LEVELS[self.nodes[name]['level']], 'model': model, 'state': state,
                   'requests': len(receipts), 'final': final, 'receipts': receipts,
                   'summary': clip((candidate or {}).get('summary', ''), 2000)}
