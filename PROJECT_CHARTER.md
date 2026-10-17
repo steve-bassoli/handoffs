@@ -42,6 +42,19 @@ implemented wallet behavior. Legacy technical identifiers remain compatible.
 
 ## Human guidance and AI implementation
 
+### Highest priority interaction guardrail
+
+Context before questions. Before asking for human guidance, inspect the selected
+opportunity, its criteria, prior answers and failure evidence. Restore the concrete
+title, owner, intended outcome and actual blocker in plain language. Ask only for
+a genuinely unresolved human decision; never ask people to reconstruct information
+already available or act as the bridge between the system's agents. Carry context
+across authorized handoffs and investigate technical failures within approved scope.
+Human purpose, consent, resource authority and explicit verification remain human
+decisions. This guardrail does not bypass privacy, safety or authorization.
+The motivating exchange and evaluation criteria are retained in
+[AI research](PLAN/AI_RESEARCH.md#context-before-questions).
+
 ### Shared compute, equal participation
 
 Personal token quota is not an admission requirement. The Commons should smooth
