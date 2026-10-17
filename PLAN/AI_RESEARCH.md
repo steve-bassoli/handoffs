@@ -553,3 +553,23 @@ private badge and two seed files were observed in Chrome. This is a repository,
 not a working harness or proof of live Watson compatibility. No Watson source
 or production data was copied into it. Further population remains an explicit
 delegated implementation step with separate review, tests and commit evidence.
+
+## Round one: overnight 13-agent Astra campaign
+
+Recorded October 17, 2026, 13:25 UTC. The owner reported $1000 initial funding and
+later $999 more for prototype research (ledger cap $1998, $1 protected) and set
+agent priorities PRESSURE, TOKEN CONSERVATION, FUN. Nine automated Astra sessions
+(one 4-agent tree, then 13-agent HIGH/MEDIUM/LOW trees alternating crawl and
+resolve) made 476 provider requests with a conservative upper bound of $467.42;
+real spend runs roughly half and is not claimed here. Two provider streams ended
+without usage; their full envelopes were kept as spent and never retried. Three
+agents reported PRESSURE 3 and were stopped without pressure to continue. All
+leases were released at a graceful owner-requested stop.
+
+Outputs are unverified agent work: a source profile of the private legacy system
+and a compatibility-harness integration branch live only in a private repository;
+the board gained a campaign opportunity with 30 prerequisites, 25 proposed by
+agents, with evidence packages attached for human review. No board item was marked
+human-verified on the owner's behalf. Operational lessons (admission wording,
+token-conservation scope, 240 KB request cap, pinned-file immutability, JSON
+preamble tolerance) are applied in the launcher scripts and conduit.
