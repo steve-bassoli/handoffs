@@ -112,7 +112,9 @@ async function show(id) {
   selected = id;
   history.replaceState(null, '', '#opp=' + encodeURIComponent(id));
   for (const section of ['board', 'post', 'wallet', 'gremlins']) $(section).hidden = true;
-  const detail = $('detail'); detail.hidden = false; detail.replaceChildren();
+  const current = $('detail');
+  const refreshing = !current.hidden && current.querySelector('.detail-head code')?.textContent === id;
+  const detail = element('div');
   const back = element('button', '← Back to board'); back.onclick = () => run(() => navigate('open'));
   const header = element('div', undefined, 'detail-head'); header.append(element('span', data.phase, 'pill'), element('span', data.complexity, 'pill'), element('span', `Target: ${data.profile?.validation_scope || 'Unclassified'}`, 'pill'));
   if (data.funded) header.append(element('span', `${data.gold} GOLD`, 'pill bounty-gold'));
@@ -177,6 +179,22 @@ async function show(id) {
   detail.append(element('h3', 'History'));
   for (const event of data.events) {
     const row = element('div', undefined, 'event'); row.append(element('span', `${event.actor} · ${event.kind}${event.data.note ? ' · ' + event.data.note : ''}`), element('span', new Date(event.created_at).toLocaleString())); detail.append(row);
+  }
+  const x = window.scrollX, y = window.scrollY;
+  const panel = current.querySelector('.ai-panel')?.getBoundingClientRect();
+  const anchor = panel && panel.bottom > 0 && panel.top < window.innerHeight ? panel.top : null;
+  if (refreshing) {
+    const expanded = new Map([...current.querySelectorAll('details')].map(node => [node.querySelector('summary').textContent, node.open]));
+    for (const node of detail.querySelectorAll('details')) {
+      const summary = node.querySelector('summary').textContent;
+      if (expanded.has(summary)) node.open = expanded.get(summary);
+    }
+  }
+  current.replaceChildren(...detail.childNodes);
+  current.hidden = false;
+  if (refreshing) {
+    const nextPanel = current.querySelector('.ai-panel')?.getBoundingClientRect();
+    window.scrollTo(x, y + (anchor !== null && nextPanel ? nextPanel.top - anchor : 0));
   }
 }
 async function encodeSourceZip(file) {
