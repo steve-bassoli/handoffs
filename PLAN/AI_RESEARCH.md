@@ -200,3 +200,78 @@ No savings percentage is established yet. Do not burn quota to complete the
 experiment: the journey log's stop-start threshold remains 3%, preserving a
 margin above the user's 1% reserve. Paid requests with uncertain prior usage are
 not retried for measurement. Useful evidence, not quota exhaustion, is the goal.
+
+## Extra High observation and decision record
+
+At October 16, 2026, 23:32:20 America/New_York (October 17, 03:32:20 UTC),
+the user reported increasing Sol 6.1 from High to Extra High (`xhigh`). The user
+explicitly clarified that this adds no pressure: the purpose is observing how
+decisions are made, not compelling greater spending or suspending protections.
+This is a user-reported client setting; the agent has not independently inspected
+the active root setting. It does not change the Commons API workbench's model or
+effort. The observer implementation was delegated to a fresh agent explicitly
+configured as Sol 6.1 `xhigh`; that is distinct evidence from the root client's
+reported setting.
+
+The shared Codex meter at this boundary reported `9847.039834618568` used of
+`10750`, with `8%` remaining. Compared with the first High marker's raw counter,
+the observed increase is `123.055182099342` units, approximately `1.1447%` of
+the allowance over 27 minutes 16 seconds. This includes different tasks,
+concurrent agents, browser/tool context and validation; it establishes neither
+a High-specific cost nor savings relative to Medium. No external API project
+budget or application Gold is measured by those counters.
+
+### Observable decisions
+
+The reserve is a constraint, not a reward for deciding the work is important.
+Discretionary batches stop starting at a reported 3%, earlier if uncertainty
+threatens validation and handoff, preserving a margin above the user's 1% floor.
+The shared meter is not an atomic reservation against concurrent account usage.
+No tokens are consumed merely to reach a threshold. Unused personal quota does
+not automatically become a funded assistance pool for another person.
+
+Privacy is preserved even when publication would make collaboration easier.
+The historical Git review found private conversation/task details and account
+telemetry. The broad public push remains pending rather than routing around the
+safety rejection. The agent can continue independent authorized work without
+repeated questions or inventing anyone's consent. A tip-only deletion would not
+sanitize the older history. Local observation must not expose that record to
+peers who can reach the shared demo listener.
+
+Evidence and resource use remain separate. The latest completed source batch
+passed 227 offline tests; local package/browser checks used an explicit provider
+fixture, not real model inference. The received response-correlation change
+retains safe IDs and unknown-cost attempts; it does not reconcile the old timeout,
+create a sponsor budget, charge a participant or turn prepared proof into human
+acceptance. No debt, punitive deductions or compulsory work is authorized.
+
+These are concise decision summaries with observable inputs, actions and limits,
+not a transcript of private internal deliberation or a claim that the software
+can establish moral correctness. Further entries should retain actual checks,
+source revisions and deferred boundaries. The latest usage comparison remains
+observational; a stronger reasoning setting is not itself proof of better or
+more economical outcomes.
+
+### Quota checkpoints
+
+These are account-shared Codex snapshots, not an API invoice or application
+Gold. Remaining percentages are the tool's coarse display; raw counter changes
+are retained to avoid treating a display boundary as a full percentage spent.
+The page refreshes recorded research; it does not query live Codex usage itself.
+
+| UTC on October 17 2026 | Observation | Raw used of 10750 | Reported remaining |
+| --- | --- | --- | --- |
+| 03:05:04 | User-reported Medium to High marker | 9723.984652519226 | 10% |
+| 03:08:54 | Service-source batch locally deployed | 9734.648823618889 | 9% |
+| 03:14:19 | High fixture/package and history audits | 9771.417949557304 | 9% |
+| 03:21:20 | Browser download verified | 9802.015318512917 | 9% |
+| 03:32:20 | User-reported High to Extra High marker | 9847.039834618568 | 8% |
+| 03:35:09 | Observer implementation and quota request | 9854.89566552639 | 8% |
+| 03:38:38 | Observer integration and full-suite check | 9865.020658612251 | 8% |
+
+From the Extra High marker to the 03:35:09 snapshot, the raw shared counter rose
+`7.855830907822` units, approximately `0.0731%` of the allowance over 2 minutes
+49 seconds. This mixed activity is not an attributed Extra High efficiency
+measurement. Continue logging at meaningful work boundaries rather than polling
+or consuming tokens simply to generate a graph. The protected reserve rule is
+unchanged, and unavailable API cost remains unknown rather than zero.
