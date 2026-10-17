@@ -109,6 +109,29 @@ opportunities. RO3 supports grounded decomposition; never force three or use it
 to replace facts, consent or evidence. This is a conduct commitment, not a claim
 that a conduit is implemented, universally safe or incorruptible.
 
+### Protected sponsor allocation
+
+For the current experiment the sponsor authorizes $99 total and protects $1:
+at most $98 may be allocated to API work. Giving remains voluntary, without
+repayment or obligation. The reserve does not make a model's spending or stopping
+virtuous; evaluate useful outcomes, evidence and resources retained.
+
+Paid Commons providers and the direct Astra relay share a local reservation
+ledger. Missing accounting, stale price bounds or insufficient headroom refuse
+dispatch. Reserve conservative input/output envelopes before each request;
+known provider usage may reduce the hold, while unknown usage retains it and
+blocks more paid work until reconciled. No automatic retry of uncertain calls.
+An owner checkpoint may conservatively hold unresolved earlier expenditure;
+it must not silently reset the allocation or call uncertainty zero.
+
+The ledger protects only requests routed through it, not spending from other
+clients, credentials or external accounts. Snapshot spend, conservative holds,
+provider-reported tokens and final billed charges are different observations.
+The key-management page may show per-key spending, not a remaining balance.
+Use authorized project Usage/Costs accounting for reconciliation; never expose
+keys or request new billing credentials merely to remove a guard. Codex quota
+and participant Gold remain separate. No live account balance is inferred.
+
 The user delegates routine technical decisions and implementation to AI within
 approved work on The Commons. AI investigates, decomposes, implements and validates
 the smallest sufficient change, continuing ready LOW steps without repeated

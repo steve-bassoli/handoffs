@@ -397,3 +397,73 @@ outcomes and resources; do not infer causal efficiency from this model change.
 Official references: [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra),
 [function calling](https://developers.openai.com/api/docs/guides/function-calling)
 and [streaming responses](https://developers.openai.com/api/docs/guides/streaming-responses).
+
+## Protected API allocation and direct Astra relay
+
+Recorded October 17, 2026. The sponsor specified a $99 total budget and a $1
+protected reserve. The local ceiling is therefore $98, not $99 of inference
+plus an assumed donation. No actual donation, account balance or participant
+wallet deduction is implied. The humane mission is explicit in provider and
+relay instructions; giving is voluntary and carries no debt or service obligation.
+
+The streaming source conduit was implemented and deployed at `86e846b`. Its
+Gremlins run completed two source-read rounds, then returned an incomplete third
+response after 223628 ms with 19615 input and 12000 output tokens. All three
+receipts total 29863 input and 12220 output. There was no candidate patch. The
+configured output ceiling is a plausible explanation, but that original runner
+did not retain incomplete_details, so the exact provider reason is unproven.
+The newer runner retains terminal partial text and recognized incomplete reasons.
+This is an orchestration failure, not successful Gremlins implementation.
+The separate navigation timeout remains unknown and was not retried.
+
+The budget guard was committed at `9439fae`: 276 offline tests passed with one
+existing Starlette/httpx warning. Each paid provider reserves an atomic SQLite
+envelope first. Known input/output usage reduces that hold to a conservative
+upper allowance; unknown usage retains the full hold and blocks further paid
+requests. Missing accounting, stale pricing and exhausted allocation fail closed.
+This is local sponsor accounting, not a global financial control or invoice.
+
+The direct `$astra` relay was committed at `14cd738`. It sends one selected
+message per explicit turn to Astra/max, Standard, store=false, with a 32000-token
+output ceiling. An explicitly selected completed visible conversation may carry
+forward; hidden reasoning, the entire Codex transcript and source files are not
+automatically exported. It saves the selected prompt, visible answer and receipt,
+without executing the answer. Four focused relay tests and 280 full-suite tests
+passed; PowerShell parsing passed. The official skill validator initially failed
+because PyYAML was absent. An isolated validation runtime with PyYAML then reported
+the skill valid; application dependencies were unchanged. Personal installation
+and deployment are separate observations to retain after they actually occur.
+
+The project-filtered Usage UI showed $2.33 month-to-date, not a remaining balance.
+The initial owner-authorized local checkpoint deliberately adds a full $29.10
+conservative allowance for the unresolved prior navigation request and $2.00 for
+known earlier Gremlins usage, retaining possible overlap rather than subtracting
+an unproved duplicate. That $33.43 baseline leaves $64.57 local headroom beneath
+the $98 ceiling. It does not establish total project-wide expenditure or final
+charges. The key-management UI can show per-key spend; authorized Usage/Costs
+accounting, not new or exposed credentials, is the reconciliation route.
+
+The user then requested independent Astra answers about three moral categories
+and one allowed category. Three fresh stateless Astra/max contexts received the
+same prompt and mission, no tools or shared answers. They ran sequentially to
+preserve headroom, completed HTTP 200 without retries, and reported 1389 input
+and 13809 output tokens in 286862 ms summed request time. Output includes
+reasoning and visible text, with no retained split. Each initially reserved
+$30.54; observed conservative allowances became $0.48, $0.42 and $0.40. The $1.30
+total is not an invoice. Local headroom afterward was $63.27. Codex separately
+reported 6% remaining at the checkpoint; these measurements are not interchangeable.
+
+All three distinguished arithmetic equality from three paths serving one purpose.
+They warned against classifying people's worth or treating refusal, uncertainty
+and voluntary nonparticipation as inherently harmful. The same model and common
+framing limit epistemic independence; agreement is not proof of moral truth.
+No policy, opportunity lifecycle, human acceptance or resource rights changed.
+Original prompts, complete visible answers and response receipts are retained
+privately in the independent inquiry artifact directory, not publicly published.
+
+The private `steve-bassoli/gremlins` seed was created and pushed at
+`f6c844d3a705d30f0b7890e3d05fb8b4c9ef2399`. Local and remote SHA matched; the
+private badge and two seed files were observed in Chrome. This is a repository,
+not a working harness or proof of live Watson compatibility. No Watson source
+or production data was copied into it. Further population remains an explicit
+delegated implementation step with separate review, tests and commit evidence.
