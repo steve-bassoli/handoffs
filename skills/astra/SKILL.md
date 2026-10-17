@@ -28,7 +28,7 @@ without it is independent. No source tools or automatic retries are used.
 The helper selects `gpt-6-astra` at `max`, Standard, `store=false`, without a local
 output-token cap. The provider's documented 128000-token output maximum still
 applies; it is reserved conservatively before dispatch, not a target to consume.
-It carries the humane mission and shared $1000 funding/$1 reserve rules. Dollar,
+It carries the humane mission and shared $1999 funding/$1 reserve rules. Dollar,
 privacy and consent protections are not removed with artificial token limits.
 
 Read the returned `answer.json` and receipt. Attribute the answer to Astra and keep

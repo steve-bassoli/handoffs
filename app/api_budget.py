@@ -10,7 +10,7 @@ import httpx
 
 
 RULES = ('Empower people without debt or obligation. Report usage and failures honestly; REST at capacity. '
-         'The sponsor funding is $1000 with $1 protected: at most $999 may be allocated. '
+         'The sponsor funding is $1999 with $1 protected: at most $1998 may be allocated. '
          'Unknown usage retains its reservation; never automatically retry it. '
          'https://platform.openai.com/api-keys manages keys and may show per-key spend, not a balance. '
          'Use https://platform.openai.com/usage or authorized Costs API accounting; never expose keys. '
@@ -21,7 +21,8 @@ RATES = {'gpt-6-astra': ('25', '75'), 'gpt-6.1-sol': ('5', '15'),
          'gpt-6-sol': ('5', '15'), 'gpt-6-luna': ('.25', '.75'),
          'gpt-5.6-sol': ('10', '30'), 'gpt-5.6-terra': ('5', '18'), 'gpt-5.6-luna': ('.5', '1.8')}
 PRICES_EXPIRE = datetime(2026, 10, 18, 5, tzinfo=timezone.utc)
-CEILING_CENTS = 99900  # Owner chat 2026-10-17: $1000 initial funding, $1 protected.
+CEILING_CENTS = 199800  # Owner chat 2026-10-17: $1000 initial funding plus $999 more, $1 protected.
+AUTHORIZED_CEILINGS = (99900, CEILING_CENTS)  # Earlier owner checkpoint stays valid until raised.
 MAX_INPUT = 922000  # Inspected model pages; reserve the whole input capacity, not guessed tokenization.
 
 
@@ -82,7 +83,7 @@ def available(path=None):
         with connection(path or budget_path()) as db:
             ceiling, baseline = db.execute('SELECT ceiling,baseline FROM budget WHERE id=1').fetchone()
             held = db.execute('SELECT COALESCE(SUM(held),0) FROM calls').fetchone()[0]
-            if ceiling != CEILING_CENTS or min(baseline, held) < 0:
+            if ceiling not in AUTHORIZED_CEILINGS or min(baseline, held) < 0:
                 raise BudgetError('Invalid protected API budget')
             return max(0, ceiling - baseline - held)
     except (sqlite3.Error, TypeError, OSError):
@@ -135,7 +136,7 @@ def reserve(model, max_output_tokens, transport=None, path=None, now=None):
             held = db.execute('SELECT COALESCE(SUM(held),0) FROM calls').fetchone()[0]
             if db.execute("SELECT COUNT(*) FROM calls WHERE state IN ('unknown','overrun')").fetchone()[0]:
                 raise BudgetError('Reconcile unknown API usage before more paid work')
-            if ceiling != CEILING_CENTS or min(baseline, held) < 0 or baseline + held + bound > ceiling:
+            if ceiling not in AUTHORIZED_CEILINGS or min(baseline, held) < 0 or baseline + held + bound > ceiling:
                 raise BudgetError('Protected API reserve: insufficient verified headroom; no request sent')
             db.execute('INSERT INTO calls VALUES (?,?,?,?)', (identifier, model, bound, 'pending'))
     except (sqlite3.Error, TypeError, OSError):

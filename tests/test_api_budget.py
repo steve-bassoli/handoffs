@@ -163,3 +163,13 @@ def test_owner_ceiling_raise_keeps_history_and_cannot_repeat(tmp_path):
     assert provenance.startswith('Owner observation | Ceiling 9800 -> ')
     with pytest.raises(BudgetError):
         raise_ceiling(path, 'Cannot repeat')
+
+
+def test_earlier_owner_ceiling_stays_valid_until_raised(tmp_path):
+    path = tmp_path / 'budget.sqlite'
+    initialize(path, 0, 0, 'Owner')
+    with sqlite3.connect(path) as db:
+        db.execute('UPDATE budget SET ceiling=99900 WHERE id=1')  # $999 checkpoint from earlier tonight.
+    assert available(path) == 99900
+    raise_ceiling(path, 'Owner chat: $999 more')
+    assert available(path) == CEILING_CENTS == 199800
