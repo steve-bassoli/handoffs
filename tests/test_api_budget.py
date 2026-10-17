@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+import json
 import sqlite3
 
 import httpx
@@ -94,3 +95,52 @@ def test_real_provider_paths_fail_closed_before_network(tmp_path, monkeypatch):
     result = ProofReviewer().review(task, proof)
     assert result['verdict'] == 'inconclusive'
     assert observed[0]['stage'] == 'no_request' and observed[0]['reason'] == 'budget_unavailable'
+
+
+@pytest.mark.parametrize('provider', ['workbench', 'proof'])
+@pytest.mark.parametrize('failure', ['http-unreported', 'invalid-json', 'http-reported'])
+def test_failed_responses_settle_real_ledger_without_retry(tmp_path, monkeypatch, provider, failure):
+    from app import ai, proof_reviewer
+    from test_proofs import upload
+    path = tmp_path / 'budget.sqlite'
+    initialize(path, 0, 0, 'Offline failure-path fixture')
+    monkeypatch.setenv('OPENAI_API_KEY', 'offline-only')
+    monkeypatch.setenv('HANDOFFS_AI_MODEL', 'gpt-6-luna')
+    monkeypatch.setenv('HANDOFFS_PROOF_MODEL', 'gpt-6-luna')
+    module = ai if provider == 'workbench' else proof_reviewer
+    # Exercise real reservations with offline HTTP, rather than MockTransport's no-money path.
+    monkeypatch.setattr(module, 'reserve', lambda model, limit, transport: reserve(model, limit, path=path, now=NOW))
+    calls, observations = [], []
+
+    def respond(request):
+        calls.append(request)
+        assert json.loads(request.content)['service_tier'] == 'default'
+        if failure == 'invalid-json':
+            return httpx.Response(200, text='not JSON')
+        body = {'error': {'message': 'Synthetic failure'}}
+        if failure == 'http-reported':
+            body['usage'] = {'input_tokens': 12, 'output_tokens': 34}
+        return httpx.Response(503, json=body)
+
+    task = {'title': 'test', 'goal': 'test', 'criteria': ['one'], 'profile': {},
+            'repository': '', 'context_links': [], 'complexity': 'LOW'}
+    transport = httpx.MockTransport(respond)
+    with pytest.raises((httpx.HTTPStatusError, ValueError)):
+        if provider == 'workbench':
+            data = {'context': '', 'conversation': [], 'question_count': 0, 'source': {},
+                    '_record_usage': lambda delta, **metadata: observations.append(delta)}
+            ai.Luna(transport).generate(task, data)
+        else:
+            proof = {**upload(), 'proof_id': 'offline-proof', 'binding': 'fixture',
+                     '_record_usage': lambda **value: observations.append(value)}
+            proof_reviewer.ProofReviewer(transport).review(task, proof)
+    assert len(calls) == 1
+    with sqlite3.connect(path) as db:
+        held, state = db.execute('SELECT held,state FROM calls').fetchone()
+    if failure == 'http-reported':
+        assert state == 'reported_upper' and held == upper_cents('gpt-6-luna', 12, 34)
+        assert any(v.get('input_tokens') == 12 and v.get('output_tokens') == 34 for v in observations)
+    else:
+        assert state == 'unknown' and held > 0
+        with pytest.raises(BudgetError, match='unknown API usage'):
+            reserve('gpt-6-luna', 4000, path=path, now=NOW)

@@ -275,18 +275,23 @@ class Luna:
                 request_ordinal = record_usage({'api_calls': 1, 'unreported_calls': 1})
                 response = permit.post(client, 'https://api.openai.com/v1/responses',
                     headers={'Authorization': 'Bearer ' + os.environ['OPENAI_API_KEY']},
-                    json={'model': selected_model(data, self.model), 'store': False, 'instructions': instructions,
+                    json={'model': selected_model(data, self.model), 'service_tier': 'default', 'store': False, 'instructions': instructions,
                           'input': messages, 'tools': tools, 'reasoning': {'effort': 'low'},
                           'max_output_tokens': 12000,
                           'text': {'format': {'type': 'json_schema', 'name': 'bounty_decision',
                                               'strict': True, 'schema': schema}}})
-                response.raise_for_status()
-                result = response.json()
+                try:
+                    result = response.json()
+                except ValueError:
+                    permit.settle()
+                    raise
                 permit.settle(result.get('usage') if isinstance(result, dict) else None)
                 usage['api_calls'] += 1
                 reported = result.get('usage')
                 has_usage = (isinstance(reported, dict) and all(type(reported.get(name)) is int and reported[name] >= 0
                              for name in ('input_tokens', 'output_tokens')))
+                if not has_usage:
+                    response.raise_for_status()  # Preserve HTTP-error event behavior when no counts exist.
                 metadata = {}
                 identifier = result.get('id')
                 if isinstance(identifier, str) and re.fullmatch(r'resp_[A-Za-z0-9_-]{1,123}', identifier):
@@ -299,6 +304,7 @@ class Luna:
                              request_ordinal=request_ordinal, response_metadata=metadata)
                 for name in ('input_tokens', 'output_tokens'):
                     usage[name] += reported.get(name, 0) if isinstance(reported, dict) else 0
+                response.raise_for_status()
                 if result.get('status') != 'completed':
                     reason = (result.get('incomplete_details') or {}).get('reason')
                     raise AITurnError('output_limit' if reason == 'max_output_tokens' else 'incomplete')
