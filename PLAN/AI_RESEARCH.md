@@ -162,3 +162,41 @@ capability concentration has already occurred or that distribution is solved.
 This commitment is adopted in the project charter and empowerment constitution.
 No wallet, access-control, quota-allocation or runtime behavior changes are made
 by recording it. Sharing remains bounded by privacy, safety and sponsor consent.
+
+## Sol reasoning effort experiment
+
+At October 16, 2026, 23:05:04 America/New_York (October 17, 03:05:04 UTC),
+the user reported increasing Sol 6.1 reasoning effort from Medium to High and
+requested a usage comparison. This records the human-reported setting change;
+the agent has not independently inspected the active client setting. It does
+not change the Commons API workbench's model or reasoning configuration, or
+establish the effective setting of agents already running.
+
+The first retained shared Codex meter sample at that boundary was used
+`9723.984652519226` of limit `10750`, with `10%` remaining reported. This is an
+account-shared meter, not task-attributed tokens, an API project budget or
+application Gold. The percentage is coarse. The current work included a delegated
+service-source fix already in progress, so this boundary is not a clean restart
+or a controlled Medium/High comparison.
+
+The hypothesis is that stronger reasoning might reduce total consumption per
+verified useful outcome by avoiding retries or rework. Savings are not assumed.
+Official [Sol 6.1 documentation](https://developers.openai.com/api/docs/models/gpt-6.1-sol)
+supports both Medium and High. Official [reasoning-effort guidance](https://learn.chatgpt.com/docs/agent-configuration/subagents#reasoning-effort-model_reasoning_effort)
+states that higher effort increases response time and token use, while potentially
+improving complex-work quality. Per-response usage and end-to-end efficiency are
+different measurements.
+
+For subsequent bounded batches, retain start/end UTC, source revisions, effective
+model/effort when observable, shared meter counter deltas, elapsed time, retries,
+rework, executed checks and verified outcome. Record provider token telemetry
+separately when available, including cached/reasoning tokens and unknown usage;
+do not infer these from the Codex meter. Compare sufficiently similar workloads
+before attributing a change to reasoning effort. Concurrent chats, subagents,
+context size, caching and differing task difficulty remain confounders. If the
+effective setting or attribution is unavailable, label the result observational.
+
+No savings percentage is established yet. Do not burn quota to complete the
+experiment: the journey log's stop-start threshold remains 3%, preserving a
+margin above the user's 1% reserve. Paid requests with uncertain prior usage are
+not retried for measurement. Useful evidence, not quota exhaustion, is the goal.
