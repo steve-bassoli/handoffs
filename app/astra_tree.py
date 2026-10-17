@@ -23,6 +23,8 @@ from app.astra_agents import agent_lease
 MESSAGE_LIMIT = 4000
 MAX_MESSAGES = 10
 LEVELS = {1: 'HIGH', 2: 'MEDIUM', 3: 'LOW'}
+# Model id, reasoning effort and output ceiling per plan choice. Luna uses the workbench-proven 'low' effort.
+MODELS = {'astra': ('gpt-6-astra', 'max', None), 'luna': ('gpt-6-luna', 'low', 32000)}
 SHARED = ('messages is an array of {to, text}; to is an agent name, "parent", "children", "siblings" or "all". '
           'files are proposed relative path/content objects, never applied. pressure is 1-3.')
 ROLE_RULES = {
@@ -78,6 +80,9 @@ class Tree:
     def __init__(self, plan, session, minutes, transport=None, clock=time.monotonic):
         self.plan, self.session, self.transport, self.clock = plan, Path(session), transport, clock
         self.started = clock()
+        if plan.get('model', 'astra') not in MODELS:
+            raise ValueError('Plan model must be one of ' + ', '.join(MODELS))
+        self.model, self.effort, self.max_output = MODELS[plan.get('model', 'astra')]
         self.deadline = self.started + minutes * 60
         self.nodes = {'coordinator': {'role': 'Coordinates the tree.', 'shelf': plan['coordinator']['shelf'],
                                       'parent': None, 'level': 1, 'max_requests': 3, 'children': []}}
@@ -154,7 +159,8 @@ class Tree:
                 transport=self.transport, instructions=MISSION + ROLE_RULES[self.kind(name)],
                 first_ordinal=self.ordinals[name],
                 candidate_name=f'round-{round_number:02}{"-final" if final else ""}.json',
-                answer_by=None if final else self.deadline - 300, stop_at=None if final else self.deadline, clock=self.clock)
+                answer_by=None if final else self.deadline - 300, stop_at=None if final else self.deadline, clock=self.clock,
+                model=self.model, effort=self.effort, max_output=self.max_output)
         self.ordinals[name] += len(receipts)  # Refused dispatches save nothing, so ordinals stay unique.
         record = {'round': round_number, 'agent': name, 'level': LEVELS[self.nodes[name]['level']], 'state': state,
                   'requests': len(receipts), 'final': final, 'receipts': receipts,
@@ -224,10 +230,10 @@ class Tree:
 
     def finish(self):
         receipts = [receipt for record in self.rounds for receipt in record['receipts']]
-        upper = sum(upper_cents('gpt-6-astra', r['usage']['input_tokens'], r['usage']['output_tokens'])
+        upper = sum(upper_cents(self.model, r['usage']['input_tokens'], r['usage']['output_tokens'])
                     for r in receipts if r.get('usage'))
         root = self.last['coordinator']
-        summary = {'at_utc': stamp(), 'elapsed_minutes': round((self.clock() - self.started) / 60, 1),
+        summary = {'at_utc': stamp(), 'model': self.model, 'elapsed_minutes': round((self.clock() - self.started) / 60, 1),
                    'turns': [{k: v for k, v in record.items() if k != 'receipts'} for record in self.rounds],
                    'requests': len(receipts), 'unknown_usage': sum(r['usage_state'] != 'reported' for r in receipts),
                    'reported_input_tokens': sum(r.get('usage', {}).get('input_tokens', 0) for r in receipts),

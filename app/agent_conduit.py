@@ -168,7 +168,8 @@ def json_object(text):
         return value
 
 def converse(client, run, history, sources, max_requests, total_budget=None, per_request=None, transport=None,
-             instructions=MISSION, first_ordinal=1, candidate_name='candidate.json', answer_by=None, stop_at=None, clock=time.monotonic):
+             instructions=MISSION, first_ordinal=1, candidate_name='candidate.json', answer_by=None, stop_at=None, clock=time.monotonic,
+             model='gpt-6-astra', effort='max', max_output=None):
     """One bounded tool loop over a pinned shelf. answer_by/stop_at are monotonic times: answer now / dispatch nothing."""
     tools = [{'type': 'function', 'name': 'read_source', 'description': 'Read one explicitly selected source with its pinned SHA-256.',
         'strict': True, 'parameters': {'type': 'object', 'properties': {'key': {'type': 'string', 'enum': list(sources)}},
@@ -185,14 +186,16 @@ def converse(client, run, history, sources, max_requests, total_budget=None, per
         remaining = None if total_budget is None else total_budget - used
         if remaining is not None and remaining <= 0:
             break
-        payload = {'model': 'gpt-6-astra', 'reasoning': {'effort': 'max'}, 'service_tier': 'default',
+        payload = {'model': model, 'reasoning': {'effort': effort}, 'service_tier': 'default',
             'store': False, 'stream': True, 'include': ['reasoning.encrypted_content'],
             'instructions': instructions, 'input': history, 'tools': tools,
             'tool_choice': 'none' if step == max_requests or (answer_by is not None and clock() >= answer_by)
                 else 'required' if step == 1 else 'auto',
             'text': {'format': {'type': 'json_object'}}}
+        if max_output is not None and per_request is None and remaining is None:
+            payload['max_output_tokens'] = max_output
         if per_request is not None or remaining is not None:
-            payload['max_output_tokens'] = min(per_request or ASTRA_MAX_OUTPUT,
+            payload['max_output_tokens'] = min(per_request or max_output or ASTRA_MAX_OUTPUT,
                                                remaining if remaining is not None else ASTRA_MAX_OUTPUT,
                                                ASTRA_MAX_OUTPUT)
         try:
