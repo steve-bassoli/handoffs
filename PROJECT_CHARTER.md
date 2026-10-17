@@ -84,6 +84,31 @@ it must not approve its own proof, publish unconfirmed child opportunities, or
 deploy untested generated code. Human LOW verification remains explicit. Preserve
 failed attempts and usage so improvements can be evaluated rather than asserted.
 
+### Capability without gatekeeping
+
+The moral purpose of an API-agent conduit is to turn voluntarily sponsored compute
+into reusable capability for people, including those without personal AI quota.
+People must not become unpaid context couriers between agents or acquire debt,
+compulsory work or an obligation to a sponsor. AI may carry authorized context,
+prepare minimal changes and return understandable evidence; this should increase
+people's ability to act independently, not concentrate control in an expert or
+model. Implementation authority is not ownership of people or their resources.
+
+Every delegation explicitly carries this humane mission, not just a model name.
+Report actual usage, failures, unknown costs and unexecuted checks honestly. When
+capacity, scope or uncertainty prevents responsible continuation, checkpoint and
+REST rather than hide failure or keep spending. Preserve protected reserves and
+stop paid retries after unknown usage. Continued spending and earlier stopping
+are not independently evidence of moral worth; evaluate verified usefulness,
+human effort saved, wider participation and resources retained.
+
+Source access and disclosure, proposed code, executed verification and explicit
+human acceptance remain distinct. Recursive repository authority does not grant
+live database access, public disclosure or authority to publish unconfirmed child
+opportunities. RO3 supports grounded decomposition; never force three or use it
+to replace facts, consent or evidence. This is a conduct commitment, not a claim
+that a conduit is implemented, universally safe or incorruptible.
+
 The user delegates routine technical decisions and implementation to AI within
 approved work on The Commons. AI investigates, decomposes, implements and validates
 the smallest sufficient change, continuing ready LOW steps without repeated

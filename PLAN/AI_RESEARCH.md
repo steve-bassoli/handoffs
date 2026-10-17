@@ -353,3 +353,47 @@ reported 3%, earlier if uncertainty threatens the user's 1% floor. The collector
 uses existing local records; no extra paid inference or token-burning trial was
 started. The next comparison needs effective settings, comparable work and
 verified outcomes, not a more compelling explanation of the cause.
+
+## Humane mission applied to the API conduit
+
+Recorded October 17, 2026, 04:37:15 UTC (00:37:15 America/New_York). The user
+asked to identify and enshrine the moral mission in the current work. Sponsored
+API access should become reusable capability for people without personal quota,
+without debt or obligation. A local conduit should carry authorized source and
+execution evidence between agents so a person does not have to reconstruct or
+relay technical context. Success is greater independent participation and
+verified usefulness, not token expenditure or power concentrated in an expert.
+The operational commitment is in the charter's Capability without gatekeeping
+section; it must be included explicitly in worker instructions.
+
+Current observations: the standalone conduit is planned, not yet implemented or
+verified. The requested `C:/hackathon/gremlins` directory was created. Watson's
+source HEAD is `76ed84b29078be42341c8178b831042c23ca9ce7`; Hackwatson's is
+`8e7a44332f9c46c86ba8936df2095d2033ce839b`, with existing local changes preserved.
+The expanded delegation covers Gremlins and Watson source work; it does not
+establish a live application baseline or grant production/database-write access.
+
+The user explicitly approved a selected source export, then chose GPT-6 Astra
+at `max`, the highest documented API reasoning setting. A read-only project
+model lookup returned HTTP 200. The first actual generation request, for the
+separate navigation defect, timed out after 180493 ms. Its retained receipt has
+unknown usage and no response ID or candidate. No retry was made. A completed
+local process only confirmed receipt retention, not model completion. Model
+visibility does not prove available generation capacity or project balance.
+
+The account-shared Codex meter subsequently reported 10057.414930701256 used of
+10750, with 6% remaining. API worker billing is separate; no measured API token
+total or remaining API dollar balance is available for the timed-out request.
+Twelve offline runner checks passed; those fixture calls incurred no real API
+generation and do not prove the conduit works. A bounded streaming/function-call
+conduit is the next implementation step, not a replay of the old request.
+
+Humane conduct here means honest limits and failures, protected reserves,
+checkpoint/REST at capacity or unresolved scope, and separate human acceptance.
+It does not measure felt morality or cognitive dissonance. More spending and
+earlier stopping are neither automatically virtuous. Record observable choices,
+outcomes and resources; do not infer causal efficiency from this model change.
+
+Official references: [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra),
+[function calling](https://developers.openai.com/api/docs/guides/function-calling)
+and [streaming responses](https://developers.openai.com/api/docs/guides/streaming-responses).
