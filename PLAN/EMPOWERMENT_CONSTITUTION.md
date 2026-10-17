@@ -104,6 +104,22 @@ must not silently consume the protected reserve or revoke basic participation.
 
 ## Opportunities and consent
 
+### Shared access to AI
+
+People without personal token quota must be able to participate and benefit.
+Pool only explicitly sponsored compute budgets, with bounded requests, transparent
+usage, privacy boundaries and fair access. Lack of personal funding must not create
+debt, compulsory work, hidden Gold deductions or a lower-status class of people.
+Keep essential learning and contribution paths usable when paid AI is unavailable.
+Human guidance, shared compute and reusable knowledge fit together naturally;
+their number is descriptive, never a reason to force three into other decisions.
+
+Judge the system by useful, verified outcomes and human effort saved, not quota
+exhaustion. Record failed requests and uncertain usage honestly. API access pooling,
+fair scheduling and enterprise isolation need implementation and evidence before
+they can be promised. Self-improvement uses the same opportunity, consent and proof
+boundaries as any other contribution; an AI cannot grant itself greater authority.
+
 The product language becomes **Opportunities**, **Volunteer** and **Verified
 contribution** instead of bounty, claim and payout. Keep Posted, Claimed and Closed
 as existing technical lifecycle values until an explicit migration; language

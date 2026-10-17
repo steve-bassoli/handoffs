@@ -37,8 +37,9 @@ Do not pad with fake tasks or relabel work to bypass decomposition. If three
 meaningful children cannot be defined, reconsider the boundary or classification.
 Ask only for genuinely missing information; do not execute the parent.
 
-Three is the development design primitive: explore three meaningful alternatives
-when a design choice is needed, then choose the smallest grounded boundary.
+Consider alternatives only when a real design decision warrants them; never force
+three. Choose the smallest grounded boundary. The existing task-decomposition
+contract is not a universal count for questions, choices, proofs or resources.
 Explain why the selected three responsibilities cover the parent, map each child
 to parent criterion indexes, and preserve dependencies and existing prerequisite
 task references. Do not duplicate work already satisfied by retained evidence.

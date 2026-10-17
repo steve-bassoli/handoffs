@@ -42,6 +42,26 @@ implemented wallet behavior. Legacy technical identifiers remain compatible.
 
 ## Human guidance and AI implementation
 
+### Shared compute, equal participation
+
+Personal token quota is not an admission requirement. The Commons should smooth
+access to human guidance, shared compute and reusable knowledge across the company,
+so people without personal AI funding can still contribute and benefit. This trio
+describes complementary needs, not a mandatory shape for every design. Never force
+three alternatives, questions, resources or tasks merely for symmetry.
+
+Sponsors authorize bounded use of their API budgets; participants incur no debt,
+automatic personal-wallet charge or obligation to work in exchange. Preserve tenant
+privacy, transparent usage and meaningful access when compute is unavailable.
+Optimize verified usefulness and reduced human effort, not tokens spent. Shared
+enterprise allocation and fair scheduling are targets, not implemented guarantees.
+
+The Commons improves itself through ordinary opportunities: a bounded outcome,
+pinned source, an inspectable patch and recorded checks. AI may prepare the work;
+it must not approve its own proof, publish unconfirmed child opportunities, or
+deploy untested generated code. Human LOW verification remains explicit. Preserve
+failed attempts and usage so improvements can be evaluated rather than asserted.
+
 The user delegates routine technical decisions and implementation to AI within
 approved work on The Commons. AI investigates, decomposes, implements and validates
 the smallest sufficient change, continuing ready LOW steps without repeated
@@ -118,9 +138,10 @@ the user hunt through transcripts or artifact directories.
 
 HIGH decomposes into exactly three HIGHs or exactly three MEDIUMs, without mixed
 levels. HIGH branches eventually reach MEDIUM; each MEDIUM decomposes into exactly
-three LOWs. A genuinely LOW root needs no artificial parents. Explore three
-meaningful alternatives for a design decision, but never invent facts, questions
-or filler tasks to meet a count. Explain why the three responsibilities cover the
+three LOWs. A genuinely LOW root needs no artificial parents. Consider only the
+alternatives a real design decision warrants; never force three. The existing
+task-decomposition contract below is not permission to invent facts, questions
+or filler tasks. Explain why the three responsibilities cover the
 parent criteria and how their outcomes combine. Reconsider a boundary that cannot
 support a defensible split.
 
