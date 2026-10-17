@@ -35,24 +35,24 @@ def test_missing_or_invalid_setting_means_manual_and_set_keeps_history(tmp_path)
     path.write_text('{"mode": "turbo"}', encoding='utf-8')
     assert current(path)['mode'] == 'manual'
     with pytest.raises(ValueError):
-        set_mode('high', 'steve', '', path)
-    set_mode('high', 'steve', 'campaign', path)
+        set_mode('max', 'steve', '', path)
+    set_mode('max', 'steve', 'campaign', path)
     record = set_mode('manual', 'steve', 'humans only', path)
-    assert record['mode'] == 'manual' and [h['mode'] for h in record['history']] == ['high', 'manual']
+    assert record['mode'] == 'manual' and [h['mode'] for h in record['history']] == ['max', 'manual']
 
 
-def test_high_mode_runs_astra_root_and_sol_below(tmp_path):
+def test_max_mode_runs_astra_root_and_sol_below(tmp_path):
     seen = []
     session = tmp_path / 'session'
     session.mkdir()
-    summary = Tree(thirteen(tmp_path), session, 30, transport=recorder(seen, done=True), mode='high').run()
+    summary = Tree(thirteen(tmp_path), session, 30, transport=recorder(seen, done=True), mode='max').run()
     models = {name: (model, effort, ceiling) for name, model, effort, ceiling in seen}
     assert models['coordinator'] == ('gpt-6-astra', 'max', None)
     assert models['catalog'] == models['catalog1'] == ('gpt-6.1-sol', 'low', 12000)
-    assert summary['mode'] == 'high' and summary['models'] == {'HIGH': 'gpt-6-astra', 'MEDIUM': 'gpt-6.1-sol', 'LOW': 'gpt-6.1-sol'}
+    assert summary['mode'] == 'max' and summary['models'] == {'HIGH': 'gpt-6-astra', 'MEDIUM': 'gpt-6.1-sol', 'LOW': 'gpt-6.1-sol'}
 
 
-def test_light_mode_is_one_astra_over_three_sol_and_rejects_more(tmp_path):
+def test_light_and_heavy_modes_are_four_agents_and_reject_more(tmp_path):
     source = shelf(tmp_path)
     plan = {'goal': 'g', 'authority': 'a', 'coordinator': {'shelf': source},
             'children': [{'name': f'w{n}', 'role': 'low', 'shelf': source, 'max_requests': 1} for n in range(3)]}
@@ -61,7 +61,7 @@ def test_light_mode_is_one_astra_over_three_sol_and_rejects_more(tmp_path):
     session.mkdir()
     Tree(plan, session, 30, transport=recorder(seen), mode='light').run()
     assert {(name, model) for name, model, _, _ in seen} == {
-        ('coordinator', 'gpt-6-astra'), ('w0', 'gpt-6.1-sol'), ('w1', 'gpt-6.1-sol'), ('w2', 'gpt-6.1-sol')}
+        ('coordinator', 'gpt-6.1-sol'), ('w0', 'gpt-5.6-terra'), ('w1', 'gpt-5.6-terra'), ('w2', 'gpt-5.6-terra')}
     with pytest.raises(ValueError):
         Tree(thirteen(tmp_path), tmp_path, 30, mode='light')
 
@@ -75,7 +75,7 @@ def test_manual_mode_is_one_terra_agent_that_answers_once(tmp_path):
     assert seen == [('coordinator', 'gpt-5.6-terra', 'low', 12000)] and summary['requests'] == 1
     with pytest.raises(ValueError):
         Tree({**plan, 'children': [{'name': 'w', 'role': 'x', 'shelf': shelf(tmp_path)}]}, tmp_path, 30, mode='manual')
-    assert MODES['manual']['agents'] == 1 and MODES['light']['agents'] == 4 and MODES['high']['agents'] == 13
+    assert MODES['manual']['agents'] == 1 and MODES['light']['agents'] == 4 and MODES['max']['agents'] == 13
 
 
 def test_manual_mode_refuses_automated_writes_but_not_humans(tmp_path, monkeypatch):
@@ -107,10 +107,24 @@ def test_bob_naming_for_light_and_heavy_trees(tmp_path):
     session.mkdir()
     summary = Tree(light, session, 30, transport=recorder(seen), mode='light').run()
     assert {name for name, *_ in seen} == {'bob', 'bob-2', 'bob-3', 'bob-4'}
-    assert dict((name, model) for name, model, _, _ in seen)['bob'] == 'gpt-6-astra'
+    assert dict((name, model) for name, model, _, _ in seen)['bob'] == 'gpt-6.1-sol'
     assert summary['turns'][0]['agent'] == 'bob'
     heavy_seen = []
     heavy_session = tmp_path / 'heavy'
     heavy_session.mkdir()
-    Tree(heavy, heavy_session, 30, transport=recorder(heavy_seen, done=True), mode='high').run()
+    Tree(heavy, heavy_session, 30, transport=recorder(heavy_seen, done=True), mode='max').run()
     assert {name for name, *_ in heavy_seen} == {'bob'} | {f'bob-{n}' for n in range(2, 14)}
+
+
+def test_heavy_mode_is_astra_over_three_sol(tmp_path):
+    source = shelf(tmp_path)
+    plan = {'goal': 'g', 'authority': 'a', 'coordinator': {'shelf': source},
+            'children': [{'name': f'w{n}', 'role': 'low', 'shelf': source, 'max_requests': 1} for n in range(3)]}
+    seen = []
+    session = tmp_path / 'session'
+    session.mkdir()
+    Tree(plan, session, 30, transport=recorder(seen), mode='heavy').run()
+    assert {(name, model) for name, model, _, _ in seen} == {
+        ('coordinator', 'gpt-6-astra'), ('w0', 'gpt-6.1-sol'), ('w1', 'gpt-6.1-sol'), ('w2', 'gpt-6.1-sol')}
+    with pytest.raises(ValueError):
+        Tree(thirteen(tmp_path), tmp_path, 30, mode='heavy')
