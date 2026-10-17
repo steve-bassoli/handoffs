@@ -1,10 +1,12 @@
 import os
 from contextlib import asynccontextmanager
+from html import escape
+from ipaddress import ip_address
 from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, Query, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Literal
@@ -18,6 +20,9 @@ from app.workflow import Profile
 from app.proofs import Proofs, ProofUpload
 from app.proof_reviewer import ProofReviewer
 from app.gremlins import Comparison, compare, sabotage, witness
+
+
+RESEARCH_PATH = Path(__file__).resolve().parents[1] / 'PLAN' / 'AI_RESEARCH.md'
 
 
 class PostBounty(BaseModel):
@@ -126,6 +131,52 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     @app.get('/health')
     def health():
         return {'status': 'ok', 'mode': 'demo'}
+
+    @app.get('/research', include_in_schema=False)
+    def research(request: Request):
+        headers = {
+            'Cache-Control': 'no-store',
+            'X-Content-Type-Options': 'nosniff',
+            'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'none'",
+            'Referrer-Policy': 'no-referrer',
+        }
+        try:
+            loopback = request.client is not None and ip_address(request.client.host).is_loopback
+        except ValueError:
+            loopback = False
+        if not loopback:
+            return HTMLResponse('Research is available only from this workstation.', status_code=403, headers=headers)
+        try:
+            record = RESEARCH_PATH.read_text(encoding='utf-8')
+        except FileNotFoundError:
+            return HTMLResponse('Research record is unavailable.', status_code=404, headers=headers)
+        lines = record.splitlines(keepends=True)
+        latest = ''.join(lines[max((i for i, line in enumerate(lines) if line.startswith('## ')), default=0):])
+        return HTMLResponse(f'''<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="30">
+<title>The Commons · AI research</title>
+<style>
+body {{ margin: 0; border-top: 3px solid #f23f2c; color: #212529; background: #fff; font: 16px/1.6 Arial, sans-serif; }}
+main {{ max-width: 1000px; margin: auto; padding: 24px; }}
+h1, h2 {{ font-weight: 500; }}
+p {{ color: #54545c; }}
+section, details {{ border: 1px solid #ddd; padding: 20px; margin: 24px 0; }}
+section {{ border-top: 3px solid #c53024; }}
+pre {{ white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }}
+summary {{ cursor: pointer; color: #c53024; }}
+</style>
+</head>
+<body><main>
+<h1>The Commons · AI research</h1>
+<p>Local read-only observer. Refreshes the recorded research every 30 seconds;
+this page does not query the live Codex quota meter.</p>
+<section><h2>Latest recorded section</h2><pre>{escape(latest)}</pre></section>
+<details><summary>Full research record</summary><pre>{escape(record)}</pre></details>
+</main></body></html>''', headers=headers)
 
     @app.get('/api/v1/users')
     def users(request: Request):
