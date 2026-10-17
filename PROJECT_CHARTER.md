@@ -181,8 +181,9 @@ separate implementation and migration evidence before they become live balances.
 
 ### Protected sponsor allocation
 
-For the current experiment the sponsor authorizes $99 total and protects $1:
-at most $98 may be allocated to API work. Giving remains voluntary, without
+For the current experiment the sponsor reported initial funding of $1000 on
+October 17, 2026 and protects $1: at most $999 may be allocated to API work.
+The earlier $99 total / $98 ceiling remains in the ledger history. Giving remains voluntary, without
 repayment or obligation. The reserve does not make a model's spending or stopping
 virtuous; evaluate useful outcomes, evidence and resources retained.
 

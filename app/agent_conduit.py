@@ -155,6 +155,85 @@ def request(client, payload, run, ordinal, transport=None):
     return result, receipt
 
 
+def converse(client, run, history, sources, max_requests, total_budget=None, per_request=None, transport=None,
+             instructions=MISSION, first_ordinal=1, candidate_name='candidate.json', answer_by=None, stop_at=None, clock=time.monotonic):
+    """One bounded tool loop over a pinned shelf. answer_by/stop_at are monotonic times: answer now / dispatch nothing."""
+    tools = [{'type': 'function', 'name': 'read_source', 'description': 'Read one explicitly selected source with its pinned SHA-256.',
+        'strict': True, 'parameters': {'type': 'object', 'properties': {'key': {'type': 'string', 'enum': list(sources)}},
+        'required': ['key'], 'additionalProperties': False}}]
+    used = 0
+    receipts = []
+    state = 'rest_capacity'
+    candidate = None
+    for step in range(1, max_requests + 1):
+        ordinal = first_ordinal + step - 1
+        if stop_at is not None and clock() >= stop_at:
+            state = 'rest_deadline'
+            break
+        remaining = None if total_budget is None else total_budget - used
+        if remaining is not None and remaining <= 0:
+            break
+        payload = {'model': 'gpt-6-astra', 'reasoning': {'effort': 'max'}, 'service_tier': 'default',
+            'store': False, 'stream': True, 'include': ['reasoning.encrypted_content'],
+            'instructions': instructions, 'input': history, 'tools': tools,
+            'tool_choice': 'none' if step == max_requests or (answer_by is not None and clock() >= answer_by)
+                else 'required' if step == 1 else 'auto',
+            'text': {'format': {'type': 'json_object'}}}
+        if per_request is not None or remaining is not None:
+            payload['max_output_tokens'] = min(per_request or ASTRA_MAX_OUTPUT,
+                                               remaining if remaining is not None else ASTRA_MAX_OUTPUT,
+                                               ASTRA_MAX_OUTPUT)
+        try:
+            result, receipt = request(client, payload, run, ordinal, transport)
+        except BudgetError:
+            state = 'rest_budget'
+            break
+        except ValueError:
+            state = 'rest_context_limit'
+            break
+        receipts.append(receipt)
+        used += receipt.get('usage', {}).get('output_tokens', 0)
+        if receipt['usage_state'] != 'reported' or receipt.get('error_class'):
+            state = 'rest_unknown_usage'
+            break
+        if receipt.get('provider_status') != 'completed':
+            state = 'rest_provider_status'
+            break
+        output = result.get('output', [])
+        calls = [item for item in output if item.get('type') == 'function_call']
+        if calls:
+            if len(calls) > 40:
+                state = 'rest_tool_scope'
+                break
+            history.extend(output)  # Stateless reasoning items retained in memory, never journaled.
+            try:
+                for call in calls:
+                    arguments = json.loads(call['arguments'])
+                    if call.get('name') != 'read_source' or set(arguments) != {'key'} or arguments['key'] not in sources:
+                        raise ValueError('Tool outside approved shelf')
+                    observation = read_source(sources, arguments['key'])
+                    save(run / f'read-{ordinal:02}-{calls.index(call):02}.json', observation)
+                    history.append({'type': 'function_call_output', 'call_id': call['call_id'],
+                                    'output': json.dumps(observation, ensure_ascii=False)})
+            except (KeyError, ValueError, TypeError, OSError):
+                state = 'rest_tool_scope'
+                break
+            continue
+        try:
+            text = ''.join(part.get('text', '') for item in output if item.get('type') == 'message'
+                for part in item.get('content', []) if part.get('type') == 'output_text')
+            parsed = json.loads(text)
+            if not isinstance(parsed, dict):
+                raise ValueError('Expected a JSON object')
+            candidate = parsed
+            save(run / candidate_name, candidate)
+            state = 'candidate_prepared'
+        except (ValueError, TypeError):
+            state = 'rest_invalid_candidate'
+        break
+    return state, receipts, used, candidate
+
+
 def execute(manifest, run, transport=None):
     with agent_lease(run, manifest.get('parent_agent'), manifest.get('agent_role', 'worker'), transport) as agent:
         return _execute(manifest, run, transport, agent)
@@ -186,76 +265,11 @@ def _execute(manifest, run, transport=None, agent=None):
         'mission': MISSION, 'max_requests': max_requests, 'total_output_tokens': total_budget,
         'per_request_output_tokens': per_request, 'store': False,
         'scope': 'Pinned source reads and proposed JSON only; no code execution, acceptance, disclosure or publication.'})
-    tools = [{'type': 'function', 'name': 'read_source', 'description': 'Read one explicitly selected source with its pinned SHA-256.',
-        'strict': True, 'parameters': {'type': 'object', 'properties': {'key': {'type': 'string', 'enum': list(sources)}},
-        'required': ['key'], 'additionalProperties': False}}]
     history = [{'role': 'user', 'content': json.dumps({'task': manifest['task'],
         'source_shelf': list(sources), 'authority': manifest.get('authority', '')}, ensure_ascii=False)}]
-    used = 0
-    receipts = []
-    state = 'rest_capacity'
     with httpx.Client(headers={'Authorization': 'Bearer ' + key}, transport=transport,
                       timeout=httpx.Timeout(600, connect=15)) as client:
-        for ordinal in range(1, max_requests + 1):
-            remaining = None if total_budget is None else total_budget - used
-            if remaining is not None and remaining <= 0:
-                break
-            payload = {'model': 'gpt-6-astra', 'reasoning': {'effort': 'max'}, 'service_tier': 'default',
-                'store': False, 'stream': True, 'include': ['reasoning.encrypted_content'],
-                'instructions': MISSION, 'input': history, 'tools': tools,
-                'tool_choice': 'none' if ordinal == max_requests else 'required' if ordinal == 1 else 'auto',
-                'text': {'format': {'type': 'json_object'}}}
-            if per_request is not None or remaining is not None:
-                payload['max_output_tokens'] = min(per_request or ASTRA_MAX_OUTPUT,
-                                                   remaining if remaining is not None else ASTRA_MAX_OUTPUT,
-                                                   ASTRA_MAX_OUTPUT)
-            try:
-                result, receipt = request(client, payload, run, ordinal, transport)
-            except BudgetError:
-                state = 'rest_budget'
-                break
-            except ValueError:
-                state = 'rest_context_limit'
-                break
-            receipts.append(receipt)
-            used += receipt.get('usage', {}).get('output_tokens', 0)
-            if receipt['usage_state'] != 'reported' or receipt.get('error_class'):
-                state = 'rest_unknown_usage'
-                break
-            if receipt.get('provider_status') != 'completed':
-                state = 'rest_provider_status'
-                break
-            output = result.get('output', [])
-            calls = [item for item in output if item.get('type') == 'function_call']
-            if calls:
-                if len(calls) > 40:
-                    state = 'rest_tool_scope'
-                    break
-                history.extend(output)  # Stateless reasoning items retained in memory, never journaled.
-                try:
-                    for call in calls:
-                        arguments = json.loads(call['arguments'])
-                        if call.get('name') != 'read_source' or set(arguments) != {'key'} or arguments['key'] not in sources:
-                            raise ValueError('Tool outside approved shelf')
-                        observation = read_source(sources, arguments['key'])
-                        save(run / f'read-{ordinal:02}-{calls.index(call):02}.json', observation)
-                        history.append({'type': 'function_call_output', 'call_id': call['call_id'],
-                                        'output': json.dumps(observation, ensure_ascii=False)})
-                except (KeyError, ValueError, TypeError, OSError):
-                    state = 'rest_tool_scope'
-                    break
-                continue
-            try:
-                text = ''.join(part.get('text', '') for item in output if item.get('type') == 'message'
-                    for part in item.get('content', []) if part.get('type') == 'output_text')
-                candidate = json.loads(text)
-                if not isinstance(candidate, dict):
-                    raise ValueError('Expected a JSON object')
-                save(run / 'candidate.json', candidate)
-                state = 'candidate_prepared'
-            except (ValueError, TypeError):
-                state = 'rest_invalid_candidate'
-            break
+        state, receipts, used, _ = converse(client, run, history, sources, max_requests, total_budget, per_request, transport)
     summary = {'at_utc': stamp(), 'state': state, 'requests_attempted': len(receipts),
         'reported_output_tokens': used, 'unknown_usage': any(r['usage_state'] != 'reported' for r in receipts),
         'reported_input_tokens': sum(r.get('usage', {}).get('input_tokens', 0) for r in receipts),

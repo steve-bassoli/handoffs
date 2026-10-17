@@ -6,7 +6,7 @@ import sqlite3
 import httpx
 import pytest
 
-from app.api_budget import BudgetError, available, initialize, reserve, upper_cents
+from app.api_budget import CEILING_CENTS, BudgetError, available, initialize, raise_ceiling, reserve, upper_cents
 
 
 NOW = datetime(2026, 10, 17, 6, tzinfo=timezone.utc)
@@ -18,7 +18,7 @@ def test_missing_checkpoint_and_reset_cannot_create_money(tmp_path):
         reserve('gpt-6-astra', 32000, path=path, now=NOW)
     assert not path.exists()
     initialize(path, 233, 3110, 'Observed project month spend plus conservative legacy call holds')
-    assert available(path) == 6457
+    assert available(path) == CEILING_CENTS - 3343
     with pytest.raises(FileExistsError):
         initialize(path, 0, 0, 'Must not reset')
 
@@ -27,12 +27,12 @@ def test_reservation_and_reported_upper_bound_preserve_floor(tmp_path):
     path = tmp_path / 'budget.sqlite'
     initialize(path, 233, 3110, 'Owner observation')
     permit = reserve('gpt-6-astra', 32000, path=path, now=NOW)
-    assert available(path) == 6457 - upper_cents('gpt-6-astra', 922000, 32000)
+    assert available(path) == CEILING_CENTS - 3343 - upper_cents('gpt-6-astra', 922000, 32000)
     permit.settle({'input_tokens': 1000, 'output_tokens': 500})
     held = upper_cents('gpt-6-astra', 1000, 500)
-    assert available(path) == 6457 - held
+    assert available(path) == CEILING_CENTS - 3343 - held
     permit.settle({'input_tokens': 0, 'output_tokens': 0})
-    assert available(path) == 6457 - held, 'Duplicate settlement cannot refund paid work'
+    assert available(path) == CEILING_CENTS - 3343 - held, 'Duplicate settlement cannot refund paid work'
 
 
 def test_unknown_usage_keeps_envelope_and_blocks_more_paid_work(tmp_path):
@@ -46,7 +46,7 @@ def test_unknown_usage_keeps_envelope_and_blocks_more_paid_work(tmp_path):
         reserve('gpt-6-astra', 32000, path=path, now=NOW)
 
 
-def test_atomic_competing_reservations_cannot_exceed_98_dollars(tmp_path):
+def test_atomic_competing_reservations_cannot_exceed_ceiling(tmp_path):
     path = tmp_path / 'budget.sqlite'
     initialize(path, 0, 0, 'Owner')
 
@@ -57,12 +57,13 @@ def test_atomic_competing_reservations_cannot_exceed_98_dollars(tmp_path):
         except BudgetError:
             return False
 
-    with ThreadPoolExecutor(max_workers=6) as pool:
-        results = list(pool.map(attempt, range(6)))
-    assert sum(results) == 3
+    fits = CEILING_CENTS // upper_cents('gpt-6-astra', 922000, 32000)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(attempt, range(fits + 3)))
+    assert sum(results) == fits
     assert available(path) >= 0
     with sqlite3.connect(path) as db:
-        assert db.execute('SELECT SUM(held) FROM calls').fetchone()[0] <= 9800
+        assert db.execute('SELECT SUM(held) FROM calls').fetchone()[0] <= CEILING_CENTS
 
 
 def test_stale_prices_and_unknown_models_are_not_spending_permission(tmp_path):
@@ -144,3 +145,21 @@ def test_failed_responses_settle_real_ledger_without_retry(tmp_path, monkeypatch
         assert state == 'unknown' and held > 0
         with pytest.raises(BudgetError, match='unknown API usage'):
             reserve('gpt-6-luna', 4000, path=path, now=NOW)
+
+
+def test_owner_ceiling_raise_keeps_history_and_cannot_repeat(tmp_path):
+    path = tmp_path / 'budget.sqlite'
+    initialize(path, 233, 3110, 'Owner observation')
+    with sqlite3.connect(path) as db:
+        db.execute('UPDATE budget SET ceiling=9800 WHERE id=1')  # Earlier $98 ledger.
+    with pytest.raises(BudgetError):
+        available(path)
+    with pytest.raises(BudgetError):
+        raise_ceiling(path, ' ')
+    raise_ceiling(path, 'Owner chat: $1000 initial funding')
+    assert available(path) == CEILING_CENTS - 3343
+    with sqlite3.connect(path) as db:
+        provenance = db.execute('SELECT provenance FROM budget').fetchone()[0]
+    assert provenance.startswith('Owner observation | Ceiling 9800 -> ')
+    with pytest.raises(BudgetError):
+        raise_ceiling(path, 'Cannot repeat')

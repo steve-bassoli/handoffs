@@ -10,7 +10,7 @@ import httpx
 
 
 RULES = ('Empower people without debt or obligation. Report usage and failures honestly; REST at capacity. '
-         'The sponsor budget is $99 with $1 protected: at most $98 may be allocated. '
+         'The sponsor funding is $1000 with $1 protected: at most $999 may be allocated. '
          'Unknown usage retains its reservation; never automatically retry it. '
          'https://platform.openai.com/api-keys manages keys and may show per-key spend, not a balance. '
          'Use https://platform.openai.com/usage or authorized Costs API accounting; never expose keys. '
@@ -21,6 +21,7 @@ RATES = {'gpt-6-astra': ('25', '75'), 'gpt-6.1-sol': ('5', '15'),
          'gpt-6-sol': ('5', '15'), 'gpt-6-luna': ('.25', '.75'),
          'gpt-5.6-sol': ('10', '30'), 'gpt-5.6-terra': ('5', '18'), 'gpt-5.6-luna': ('.5', '1.8')}
 PRICES_EXPIRE = datetime(2026, 10, 18, 5, tzinfo=timezone.utc)
+CEILING_CENTS = 99900  # Owner chat 2026-10-17: $1000 initial funding, $1 protected.
 MAX_INPUT = 922000  # Inspected model pages; reserve the whole input capacity, not guessed tokenization.
 
 
@@ -45,7 +46,7 @@ def initialize(path, observed_cents, uncertainty_cents, provenance):
     """Explicit local owner setup only. Never called by a model, HTTP route or reserve."""
     if any(type(n) is not int or n < 0 for n in (observed_cents, uncertainty_cents)) or not provenance:
         raise BudgetError('A sourced, nonnegative owner checkpoint is required')
-    if observed_cents + uncertainty_cents > 9800:
+    if observed_cents + uncertainty_cents > CEILING_CENTS:
         raise BudgetError('Checkpoint exceeds the protected allocation')
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -53,8 +54,21 @@ def initialize(path, observed_cents, uncertainty_cents, provenance):
         pass  # Exclusive creation: never reset an existing budget.
     with sqlite3.connect(path) as db:
         db.execute('CREATE TABLE budget (id INTEGER PRIMARY KEY CHECK(id=1), ceiling INTEGER NOT NULL, baseline INTEGER NOT NULL, provenance TEXT NOT NULL)')
-        db.execute('INSERT INTO budget VALUES (1,9800,?,?)', (observed_cents + uncertainty_cents, provenance))
+        db.execute('INSERT INTO budget VALUES (1,?,?,?)', (CEILING_CENTS, observed_cents + uncertainty_cents, provenance))
         db.execute('CREATE TABLE calls (id TEXT PRIMARY KEY, model TEXT NOT NULL, held INTEGER NOT NULL, state TEXT NOT NULL)')
+
+
+def raise_ceiling(path, provenance):
+    """Explicit local owner update only: move an existing ledger up to CEILING_CENTS, keeping its history."""
+    if not isinstance(provenance, str) or not provenance.strip():
+        raise BudgetError('A sourced owner authorization is required')
+    with connection(path) as db:
+        db.execute('BEGIN IMMEDIATE')
+        ceiling, prior = db.execute('SELECT ceiling,provenance FROM budget WHERE id=1').fetchone()
+        if ceiling >= CEILING_CENTS:
+            raise BudgetError('Ceiling is already at or above the authorized allocation')
+        db.execute('UPDATE budget SET ceiling=?,provenance=? WHERE id=1',
+                   (CEILING_CENTS, f'{prior} | Ceiling {ceiling} -> {CEILING_CENTS} cents: {provenance}'))
 
 
 def connection(path):
@@ -68,7 +82,7 @@ def available(path=None):
         with connection(path or budget_path()) as db:
             ceiling, baseline = db.execute('SELECT ceiling,baseline FROM budget WHERE id=1').fetchone()
             held = db.execute('SELECT COALESCE(SUM(held),0) FROM calls').fetchone()[0]
-            if ceiling != 9800 or min(baseline, held) < 0:
+            if ceiling != CEILING_CENTS or min(baseline, held) < 0:
                 raise BudgetError('Invalid protected API budget')
             return max(0, ceiling - baseline - held)
     except (sqlite3.Error, TypeError, OSError):
@@ -121,7 +135,7 @@ def reserve(model, max_output_tokens, transport=None, path=None, now=None):
             held = db.execute('SELECT COALESCE(SUM(held),0) FROM calls').fetchone()[0]
             if db.execute("SELECT COUNT(*) FROM calls WHERE state IN ('unknown','overrun')").fetchone()[0]:
                 raise BudgetError('Reconcile unknown API usage before more paid work')
-            if ceiling != 9800 or min(baseline, held) < 0 or baseline + held + bound > ceiling:
+            if ceiling != CEILING_CENTS or min(baseline, held) < 0 or baseline + held + bound > ceiling:
                 raise BudgetError('Protected API reserve: insufficient verified headroom; no request sent')
             db.execute('INSERT INTO calls VALUES (?,?,?,?)', (identifier, model, bound, 'pending'))
     except (sqlite3.Error, TypeError, OSError):
