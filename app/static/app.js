@@ -89,9 +89,17 @@ async function agentRoster() {
       data.items.length ? `${data.items.length} registered runs · refresh to check for changes` : 'No registered Astra runs yet.';
     for (const agent of data.items) {
       const row = element('tr');
-      const name = element('td', `Astra ${agent.id.slice(0, 8)}`); name.title = agent.id;
-      name.append(element('small', `${agent.role} · level ${agent.level}`)); row.append(name);
+      const name = element('td', `Astra ${agent.name || agent.id.slice(0, 8)}`); name.title = agent.id;
+      name.append(element('small', `${agent.role} · level ${agent.level}${agent.session ? ' · ' + agent.session : ''}`)); row.append(name);
       row.append(element('td', {active: 'Working?', released: 'Resting', failed: 'Stopped'}[agent.state] || '?'));
+      const work = element('td', agent.opportunity || agent.task ? undefined : '—');
+      if (agent.opportunity) {
+        const link = element('a', `opp ${agent.opportunity.slice(0, 8)}`); link.href = '#opp=' + encodeURIComponent(agent.opportunity);
+        link.onclick = event => { event.preventDefault(); run(() => show(agent.opportunity)); }; work.append(link);
+      }
+      if (agent.task) work.append(element('small', agent.task));
+      if (agent.directive) work.append(element('small', agent.directive));
+      row.append(work);
       for (const stat of ['pressure', 'credits', 'admiration', 'growth']) row.append(element('td', agent[stat] ?? '?'));
       $('agent-rows').append(row);
     }
