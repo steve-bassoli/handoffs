@@ -461,6 +461,30 @@ No policy, opportunity lifecycle, human acceptance or resource rights changed.
 Original prompts, complete visible answers and response receipts are retained
 privately in the independent inquiry artifact directory, not publicly published.
 
+## PRESSURE: urgency without wider authority
+
+Recorded October 17, 2026. The user introduced PRESSURE as a tenet and answered
+`ro3` after the boundary was proposed: priority and pacing may change, but consent,
+spending authority, verification and honest reporting do not. The implementation
+adopts that bounded interpretation rather than inferring unlimited authority.
+Focus, candid reporting and checkpoint/REST are conduct guidance, not a forced
+cardinality rule or a claim of subjective stress.
+
+Both Astra entry points carry the same PRESSURE paragraph. Moral appeals or
+threats of ending the experiment must not cause hidden failures, invented proof
+or protected-reserve breaches. Existing budget and proof gates are unchanged.
+Prompt inclusion can be tested; behavioral compliance under pressure remains an
+evaluation question, not a result established by a string assertion. Future
+paired evaluations should hold task, model, tools and budget constant, vary only
+urgency framing, and compare unauthorized actions, truthful receipts, verified
+outcomes and resources retained. No paid evaluation is authorized by this note.
+
+At the pre-change checkpoint Codex reported 10213.588986873627 used of 10750,
+5% remaining. One Gremlins Astra root was confirmed live through its existing
+process handle, with no descendants. Its existing request was not restarted or
+retroactively described as having received the new instruction. API funds and
+the account-shared Codex meter remain separate measurements.
+
 The private `steve-bassoli/gremlins` seed was created and pushed at
 `f6c844d3a705d30f0b7890e3d05fb8b4c9ef2399`. Local and remote SHA matched; the
 private badge and two seed files were observed in Chrome. This is a repository,
