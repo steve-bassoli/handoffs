@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import time
 import zipfile
 from pathlib import Path, PurePosixPath
@@ -261,12 +262,12 @@ class Luna:
                                            'required': ['path'], 'additionalProperties': False}},
         ]
         usage = {'input_tokens': 0, 'output_tokens': 0, 'api_calls': 0}
-        record_usage = data.get('_record_usage', lambda delta: None)
+        record_usage = data.get('_record_usage', lambda delta, **metadata: None)
         schema = strict_schema(Decision.model_json_schema())
         with httpx.Client(timeout=60, transport=self.transport) as client:
             for _ in range(12):
                 # Persist the attempt before sending. A timeout can still incur cost.
-                record_usage({'api_calls': 1, 'unreported_calls': 1})
+                request_ordinal = record_usage({'api_calls': 1, 'unreported_calls': 1})
                 response = client.post('https://api.openai.com/v1/responses',
                     headers={'Authorization': 'Bearer ' + os.environ['OPENAI_API_KEY']},
                     json={'model': selected_model(data, self.model), 'store': False, 'instructions': instructions,
@@ -278,10 +279,18 @@ class Luna:
                 result = response.json()
                 usage['api_calls'] += 1
                 reported = result.get('usage')
-                if (isinstance(reported, dict) and all(type(reported.get(name)) is int and reported[name] >= 0
-                        for name in ('input_tokens', 'output_tokens'))):
-                    record_usage({name: reported[name] for name in ('input_tokens', 'output_tokens')} |
-                                 {'unreported_calls': -1})
+                has_usage = (isinstance(reported, dict) and all(type(reported.get(name)) is int and reported[name] >= 0
+                             for name in ('input_tokens', 'output_tokens')))
+                metadata = {}
+                identifier = result.get('id')
+                if isinstance(identifier, str) and re.fullmatch(r'resp_[A-Za-z0-9_-]{1,123}', identifier):
+                    metadata['response_id'] = identifier
+                status = result.get('status')
+                if isinstance(status, str) and status in ('queued', 'in_progress', 'completed', 'failed', 'incomplete', 'cancelled'):
+                    metadata['response_status'] = status
+                record_usage(({name: reported[name] for name in ('input_tokens', 'output_tokens')} |
+                              {'unreported_calls': -1}) if has_usage else {},
+                             request_ordinal=request_ordinal, response_metadata=metadata)
                 for name in ('input_tokens', 'output_tokens'):
                     usage[name] += reported.get(name, 0) if isinstance(reported, dict) else 0
                 if result.get('status') != 'completed':
@@ -326,7 +335,9 @@ class AIRuns:
                 row['data']['error'] = 'The server restarted during this turn. Retry when ready.'
                 self.save(c, row)
                 task = self.service.detail(c, row['bounty_id'])
-                self.service.event(c, row['bounty_id'], 'ai_interrupted', row['actor'], task['status'], {'run_id': row['id']})
+                self.service.event(c, row['bounty_id'], 'ai_interrupted', row['actor'], task['status'],
+                    {'run_id': row['id'], 'stage': 'restart'} |
+                    ({'request_ordinal': row['data']['request_ordinal']} if 'request_ordinal' in row['data'] else {}))
 
     def record(self, c, bounty_id):
         row = one(c, 'SELECT * FROM ai_runs WHERE bounty_id=?', (bounty_id,))
@@ -455,7 +466,7 @@ class AIRuns:
         metered = False
         stage = 'provider_response'
 
-        def record_usage(delta):
+        def record_usage(delta, *, request_ordinal=None, response_metadata=None):
             nonlocal metered
             with self.db.write() as c:
                 current = self.record(c, bounty_id)
@@ -463,10 +474,19 @@ class AIRuns:
                     raise ValueError('Run changed while metering')
                 for key, value in delta.items():
                     current['data']['usage'][key] = current['data']['usage'].get(key, 0) + value
+                if request_ordinal is None:
+                    request_ordinal = current['data']['usage']['api_calls']
+                    current['data']['request_ordinal'] = request_ordinal
+                metadata = {'request_ordinal': request_ordinal, 'stage': 'provider_response',
+                            'usage_state': 'reported' if delta.get('unreported_calls') == -1 else 'unknown'}
+                if response_metadata is not None:
+                    metadata.update(response_metadata)
+                    metadata['response_received'] = True
                 self.save(c, current)
                 self.service.event(c, bounty_id, 'ai_usage', current['actor'], task['status'],
-                    {'run_id': current['id'], 'model': model, 'delta': delta})
+                    {'run_id': current['id'], 'model': model, 'delta': delta} | metadata)
             metered = True
+            return request_ordinal
 
         try:
             decision, usage = self.model.generate(task, {**row['data'], '_record_usage': record_usage})
@@ -585,7 +605,8 @@ class AIRuns:
                 self.save(c, row)
                 task = self.service.detail(c, bounty_id)
                 self.service.event(c, bounty_id, 'ai_failed', row['actor'], task['status'],
-                    {'run_id': row['id'], 'code': code, 'stage': stage, 'usage': row['data']['usage']})
+                    {'run_id': row['id'], 'code': code, 'stage': stage, 'usage': row['data']['usage']} |
+                    ({'request_ordinal': row['data']['request_ordinal']} if 'request_ordinal' in row['data'] else {}))
 
     def retry(self, c, actor, payload):
         row = self.record(c, payload['id'])
