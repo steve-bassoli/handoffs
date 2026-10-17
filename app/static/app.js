@@ -336,6 +336,17 @@ function proofSection(data, detail) {
     const download = element('button', 'Download proof'); download.onclick = () => run(() => downloadArtifact(proof.download_url, proof.filename)); controls.append(view, download); box.append(controls, preview);
     const review = proof.review;
     box.append(element('p', review ? `AI review: ${review.verdict} · ${review.reason || 'Review in progress'}` : 'AI review: not requested'));
+    if (review) {
+      const usage = review.usage;
+      const state = usage?.usage_state || 'unobserved';
+      const calls = usage?.api_calls == null ? 'API calls unobserved' : `${usage.api_calls} API call(s)`;
+      const tokens = state === 'reported' ? `${usage.input_tokens} reported input / ${usage.output_tokens} output tokens` : state === 'no_request' ? 'No provider request' : state === 'unknown' ? 'Token usage unknown' : 'Token usage unobserved';
+      const elapsed = usage?.elapsed_ms == null ? 'Elapsed time unavailable' : `${(usage.elapsed_ms / 1000).toFixed(1)}s review elapsed`;
+      box.append(element('p', `Proof review usage: ${calls} · ${tokens} · ${elapsed}`));
+      if (state === 'unknown') box.append(element('small', 'The request was attempted, but complete token counts were not reported. Unknown usage is not zero usage.'));
+      if (state === 'unobserved') box.append(element('small', 'This review has no provider usage observations. Its request count and token use are unobserved.'));
+      if (state === 'no_request') box.append(element('small', usage.reason === 'unsupported_video' ? 'Video inspection is unsupported; no provider request was made.' : 'Provider access is unavailable; no provider request was made.'));
+    }
     for (const criterion of review?.criteria || []) box.append(element('p', `${criterion.index + 1}. ${criterion.verdict} · ${criterion.reason}`));
     if (proof.human) box.append(element('p', `Human LOW verification: ${proof.human.accepted ? 'accepted' : 'rejected'} · ${proof.human.note}`));
     if (editable && proof.fresh && !['queued', 'running'].includes(review?.verdict)) { const request = element('button', 'Request AI proof review'); request.onclick = () => run(() => mutate(`/bounties/${data.id}/proof-review`)); box.append(request, element('small', 'Explicit request uses the configured provider. Missing access or unsupported video review stays inconclusive.')); }
