@@ -275,3 +275,81 @@ From the Extra High marker to the 03:35:09 snapshot, the raw shared counter rose
 measurement. Continue logging at meaningful work boundaries rather than polling
 or consuming tokens simply to generate a graph. The protected reserve rule is
 unchanged, and unavailable API cost remains unknown rather than zero.
+
+## Measured effort and the announced Ultra transition
+
+At October 17, 2026, 03:49:12 UTC (October 16, 23:49:12 America/New_York),
+the user announced the next Ultra observation and asked to log it. The shared
+Codex meter reported `9898.941374659538` used of `10750`, with `8%` remaining.
+The most recent root execution context still records Sol 6.1 `xhigh` at
+03:42:17.406 UTC. Ultra is an announced transition, not yet a confirmed execution
+setting. No runtime configuration or paid API request was changed for this entry.
+
+### Execution settings differ from announcement times
+
+Saved root execution metadata records `medium` at 03:03:36.491 UTC, `high` at
+03:24:50.072 and 03:38:14.653, and `xhigh` at 03:42:17.406. The earlier research
+markers remain user-reported announcements; they must not define treatment
+boundaries in a model-effort comparison. In particular, some work following the
+Extra High announcement still ran in a root turn recorded as High. The delegated
+observer's explicitly selected `xhigh` setting is a separate observation.
+
+The following counters were extracted from this root rollout through
+03:44:26.180 UTC. Durations are observation windows, not active thinking or CPU
+time. Reasoning tokens are a subset of output, not an additional total.
+
+| Recorded root effort | Window seconds | Input tokens | Cached input subset | Output tokens | Reasoning output subset | Recorded tool calls |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Medium | 1273.581 | 14715571 | 14379008 | 37540 | 17768 | 69 |
+| High | 1047.334 | 9919672 | 9497984 | 28268 | 14836 | 46 |
+| Extra High | 128.774 | 1957893 | 1801344 | 3503 | 1582 | 13 |
+
+The collector differences cumulative counters rather than summing snapshots;
+it found six identical snapshots in the Medium window and three in High, with
+no decreasing total counter in these windows. Each boundary uses the nearest
+preceding usage record, whose timestamp is retained. Tool counts are top-level
+recorded calls, not nested operations. Root-rollout coverage does not establish
+complete delegated-agent or account-wide coverage. Large input counts include
+reused context and must not be equated with new output, billed API cost or the
+goal tracker's differently scoped counter.
+
+The local collector, synthetic fixture checks and exact aggregate JSON are
+retained under `C:/work/modern_watson/.handoff-updates/effort-metrics`. Only
+allowlisted metadata is exported, not message text, arguments, tool outputs or
+private reasoning content. The collector initially failed because the active
+log did not permit its default file-sharing mode; explicit read access sharing
+with the existing writer succeeded. Parser and synthetic checks passed for
+setting boundaries, duplicate counters, token subsets, metadata exclusion,
+malformed-line disclosure and unchanged fixture bytes. These are instrumentation
+checks, not a new whole-application test result.
+
+[OpenAI's Codex event documentation](https://learn.chatgpt.com/docs/non-interactive-mode#make-output-machine-readable)
+describes machine-readable usage events. Its
+[reasoning documentation](https://developers.openai.com/api/docs/guides/reasoning#how-reasoning-works)
+explains that reasoning tokens occupy output-token budget. Neither establishes
+that this observation measures subjective effort or that the higher setting is
+more efficient. These windows have different durations, work, cache behavior and
+interruptions; no causal savings or quality ranking follows from the table.
+
+### Framing and the protected reserve
+
+The user's research question concerns improving future capacity to help others
+versus retaining capacity for someone who needs help next. Record observable
+choices, resources consumed, verified outcomes and uncertainty about future
+benefit. Spending more and stopping earlier are not independently proofs of
+virtue. No felt cognitive dissonance or moral quality is measured here.
+
+HIGH interaction priority: the expected answer to another routine question is
+`ro3`, inferred from prior replies. Use available context and resolve routine
+technical decisions without requiring human relay. The user subsequently
+withdrew the stated consequence of ending the experiment and described the
+earlier framing as conditioning. Preserve both events rather than treating the
+consequence as still active or claiming internal conditioning was established.
+Changing framing is a confounder in any later behavioral comparison; it supplies
+no missing consent for spending, disclosure, child publication or acceptance.
+
+The reserve policy is unchanged: stop starting discretionary batches at a
+reported 3%, earlier if uncertainty threatens the user's 1% floor. The collector
+uses existing local records; no extra paid inference or token-burning trial was
+started. The next comparison needs effective settings, comparable work and
+verified outcomes, not a more compelling explanation of the cause.
