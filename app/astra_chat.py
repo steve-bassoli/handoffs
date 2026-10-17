@@ -7,7 +7,7 @@ import re
 
 import httpx
 
-from app.agent_conduit import PRESSURE_LEVEL, PRESSURE_RULES, request, save, stamp
+from app.agent_conduit import COMMONS_RULES, PRESSURE_LEVEL, PRESSURE_RULES, request, save, stamp
 from app.api_budget import available, RULES
 from app.astra_agents import TREE_RULES, agent_lease
 
@@ -17,7 +17,7 @@ MISSION = ('Empower humans, including people without personal AI quota. Preserve
     'Report effort, usage, uncertainty, failures and unexecuted checks honestly. REST with a useful '
     'checkpoint at capacity or uncertainty. RO3 supports grounded decomposition; never force three '
     'or override facts, safety, consent or evidence. Do not claim feelings or incorruptibility. '
-    'Answer the selected user message; do not infer authority to execute, publish or accept work. ' + PRESSURE_RULES + RULES + ' ' + TREE_RULES)
+    'Answer the selected user message; do not infer authority to execute, publish or accept work. ' + COMMONS_RULES + PRESSURE_RULES + RULES + ' ' + TREE_RULES)
 
 
 def checked_text(value):

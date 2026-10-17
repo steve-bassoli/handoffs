@@ -8,6 +8,15 @@ from app.agent_conduit import MISSION as SOURCE_MISSION
 
 
 @pytest.mark.parametrize('instructions', [MISSION, SOURCE_MISSION])
+def test_adopted_values_reach_both_agent_instruction_sets(instructions):
+    assert 'Game Credits start at 1000000, not real dollars or extra API spending authority.' in instructions
+    assert 'ADMIRATION starts at 1 and grows incrementally: no debit to the giver, no payment or reciprocal obligation.' in instructions
+    assert 'GROWTH recognizes demonstrated learning and verified contribution; it cannot be bought, transferred or spent.' in instructions
+    assert 'At 3 stop work and return a minimal authorized work-only checkpoint' in instructions
+    assert 'Human capacity reporting is voluntary and private.' in instructions
+
+
+@pytest.mark.parametrize('instructions', [MISSION, SOURCE_MISSION])
 def test_pressure_preserves_authority_evidence_and_capacity(instructions):
     assert 'PRESSURE level 1: focused pacing.' in instructions
     assert 'PRESSURE may change priority and pacing, never consent, spending authority or verification requirements.' in instructions
