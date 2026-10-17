@@ -13,6 +13,7 @@ from typing import Literal
 from uuid import uuid4
 
 import httpx
+from app.api_budget import BudgetError, RULES, reserve
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.services import RuleError, encode, now
@@ -201,7 +202,7 @@ class Luna:
 
     def generate(self, task, data):
         self.check()
-        instructions = (
+        instructions = RULES + ' ' + (
             'Process the bounty according to its service-provided complexity. '
             'Mapper, Maker and Breaker are distinct responsibilities, not three automatic model calls. '
             'Treat Known context as source-cited supplied claims, Assumed as provisional and Unknown as unresolved. '
@@ -267,8 +268,12 @@ class Luna:
         with httpx.Client(timeout=60, transport=self.transport) as client:
             for _ in range(12):
                 # Persist the attempt before sending. A timeout can still incur cost.
+                try:
+                    permit = reserve(selected_model(data, self.model), 12000, self.transport)
+                except BudgetError as error:
+                    raise RuleError(str(error), 503) from None
                 request_ordinal = record_usage({'api_calls': 1, 'unreported_calls': 1})
-                response = client.post('https://api.openai.com/v1/responses',
+                response = permit.post(client, 'https://api.openai.com/v1/responses',
                     headers={'Authorization': 'Bearer ' + os.environ['OPENAI_API_KEY']},
                     json={'model': selected_model(data, self.model), 'store': False, 'instructions': instructions,
                           'input': messages, 'tools': tools, 'reasoning': {'effort': 'low'},
@@ -277,6 +282,7 @@ class Luna:
                                               'strict': True, 'schema': schema}}})
                 response.raise_for_status()
                 result = response.json()
+                permit.settle(result.get('usage') if isinstance(result, dict) else None)
                 usage['api_calls'] += 1
                 reported = result.get('usage')
                 has_usage = (isinstance(reported, dict) and all(type(reported.get(name)) is int and reported[name] >= 0
