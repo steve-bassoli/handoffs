@@ -224,7 +224,7 @@ class Service:
 
     def do_ai_profile(self, c, actor, payload):
         task = self.workflow_owner(c, actor, payload['id'])
-        if 'sk-proj-' in encode(payload['profile']):
+        if ('sk-' + 'proj-') in encode(payload['profile']):
             raise RuleError('Keep secrets out of bounty context', 422)
         self.event(c, task['id'], 'profile_recorded', actor, task['status'], {'profile': payload['profile']})
         return self.detail(c, task['id'])

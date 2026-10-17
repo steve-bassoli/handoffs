@@ -12,17 +12,20 @@ from conftest import post_bounty, write
 from test_ai import FakeLuna, decision, get_run, source_zip
 
 
-def test_engine_source_roundtrip_and_nonnoop_delivery(tmp_path):
-    source = Path(__file__).parents[1].joinpath('app/ai.py').read_text(encoding='utf-8')
-    supplied = source_zip({'app/ai.py': source})
-    assert read_source(supplied) == {'app/ai.py': source}
-    before = '"""Small, persisted AI workflow. Generated code is delivered for local execution."""'
-    after = '"""Small, persisted AI workflow. Generated patches require local verification."""'
+@pytest.mark.parametrize('path,before,after', [
+    ('app/ai.py', '"""Small, persisted AI workflow. Generated code is delivered for local execution."""',
+     '"""Small, persisted AI workflow. Generated patches require local verification."""'),
+    ('app/services.py', 'def now():', 'def now():  # Current timestamp'),
+])
+def test_engine_source_roundtrip_and_nonnoop_delivery(tmp_path, path, before, after):
+    source = Path(__file__).parents[1].joinpath(path).read_text(encoding='utf-8')
+    supplied = source_zip({path: source})
+    assert read_source(supplied) == {path: source}
     result = decision('deliver', instructions='Run focused tests locally.',
         verification=['python -m pytest -q tests/test_ai_self_source.py'], plan=[{
             'id': 'self-source', 'title': 'Clarify local verification', 'complexity': 'LOW',
-            'work_type': 'implementation', 'files': ['app/ai.py'], 'children': []}])
-    result.edits = [SourceEdit(path='app/ai.py', before=before, after=after)]
+            'work_type': 'implementation', 'files': [path], 'children': []}])
+    result.edits = [SourceEdit(path=path, before=before, after=after)]
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=FakeLuna([result]))) as client:
         bounty = post_bounty(client).json()['id']
         stats = client.get('/api/v1/me/stats').json()
@@ -31,12 +34,30 @@ def test_engine_source_roundtrip_and_nonnoop_delivery(tmp_path):
         response = client.get(f'/api/v1/bounties/{bounty}/ai/artifact')
         assert response.status_code == 200
         with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
-            assert archive.read('workspace/app/ai.py').decode() == source.replace(before, after, 1)
-            assert '+"""Small, persisted AI workflow. Generated patches' in archive.read('changes.patch').decode()
+            assert archive.read('workspace/' + path).decode() == source.replace(before, after, 1)
+            assert '+' + after in archive.read('changes.patch').decode()
             assert 'No build or tests have been run' in archive.read('START_HERE.md').decode()
         task = client.get(f'/api/v1/bounties/{bounty}').json()
         assert task['phase'] != 'Closed'
         assert client.get('/api/v1/me/stats').json() == stats
+
+
+def test_api_prefix_profile_still_rejected_without_state_change(client):
+    bounty = post_bounty(client).json()['id']
+    profile = {'validation_scope': 'SIM', 'migration_stage': 'WRAP',
+               'baseline_revision': 'fixture-base', 'candidate_revision': 'fixture-candidate',
+               'environment': 'isolated fixture'}
+    assert write(client, f'/bounties/{bounty}/profile', profile).status_code == 200
+    stats = client.get('/api/v1/me/stats').json()
+    task = client.get(f'/api/v1/bounties/{bounty}').json()
+    rejected = write(client, f'/bounties/{bounty}/profile',
+                     {**profile, 'environment': 'sk-proj-not-a-real-secret'})
+    assert rejected.status_code == 422
+    assert 'Keep secrets out of bounty context' in rejected.text
+    assert client.get(f'/api/v1/bounties/{bounty}').json() == task
+    assert task['profile']['environment'] == 'isolated fixture'
+    assert task['phase'] != 'Closed' and task['ai_run'] is None
+    assert client.get('/api/v1/me/stats').json() == stats
 
 
 @pytest.mark.parametrize('marker', ['sk-proj-', '-----BEGIN PRIVATE KEY-----'])
