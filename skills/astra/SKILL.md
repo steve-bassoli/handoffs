@@ -36,3 +36,10 @@ your own interpretation separate. Report actual provider tokens and unknowns,
 not an invented cost or a claim of independent verification. Terminal partial text
 is retained on incomplete responses; an interrupted stream may have no saved text.
 Do not retry a failed/incomplete turn automatically. Preserve the run for review.
+
+The controlled launch gate permits one active tree, three levels including the
+root and at most three lifetime children per parent: 13 nodes maximum, not 31.
+Level 3 cannot spawn. A conversation continuation is not a child-agent launch.
+All nodes share sponsor funds; they do not each receive a new $100 allowance.
+No spawn tool is currently exposed. Report verified live agents separately from
+stale occupied slots; do not automatically expire or restart an interrupted lease.

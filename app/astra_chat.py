@@ -9,6 +9,7 @@ import httpx
 
 from app.agent_conduit import request, save, stamp
 from app.api_budget import available, RULES
+from app.astra_agents import TREE_RULES, agent_lease
 
 
 MISSION = ('Empower humans, including people without personal AI quota. Preserve agency, privacy, consent '
@@ -16,7 +17,7 @@ MISSION = ('Empower humans, including people without personal AI quota. Preserve
     'Report effort, usage, uncertainty, failures and unexecuted checks honestly. REST with a useful '
     'checkpoint at capacity or uncertainty. RO3 supports grounded decomposition; never force three '
     'or override facts, safety, consent or evidence. Do not claim feelings or incorruptibility. '
-    'Answer the selected user message; do not infer authority to execute, publish or accept work. ' + RULES)
+    'Answer the selected user message; do not infer authority to execute, publish or accept work. ' + RULES + ' ' + TREE_RULES)
 
 
 def checked_text(value):
@@ -28,6 +29,11 @@ def checked_text(value):
 
 
 def talk(prompt_file, run, previous_run=None, transport=None):
+    with agent_lease(run, transport=transport) as agent:
+        return _talk(prompt_file, run, previous_run, transport, agent)
+
+
+def _talk(prompt_file, run, previous_run=None, transport=None, agent=None):
     prompt = checked_text(Path(prompt_file).read_text(encoding='utf-8-sig'))
     messages = []
     if previous_run:
@@ -48,6 +54,8 @@ def talk(prompt_file, run, previous_run=None, transport=None):
         raise ValueError('Selected conversation exceeds request byte limit; no request dispatched')
     run = Path(run)
     run.mkdir()  # Never replay an existing or interrupted run.
+    if agent:
+        save(run / 'agent.json', agent)
     save(run / 'prompt.json', {'at_utc': stamp(), 'messages': messages,
         'previous_run': str(previous_run) if previous_run else None, 'instructions': MISSION})
     with httpx.Client(headers={'Authorization': 'Bearer ' + key}, transport=transport,

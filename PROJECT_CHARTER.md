@@ -154,6 +154,27 @@ Checkpoints can expose changes to independently retained snapshots; they do not
 prove consent, prevent confiscation or make the platform incorruptible. No chain,
 token, public personal-data export or participant-paid network fee is introduced.
 
+### Bounded Astra delegation
+
+Astra trees stop at three levels, counting the root as level 1. Each parent may
+create at most three children in that tree, including children already finished:
+1 + 3 + 9 = at most 13 agents. Level-3 agents cannot create descendants. Do not
+fill slots merely for symmetry. This supersedes the earlier flat three-agent
+and no-descendants proposal; the later assertion of 31 was identified as a test.
+
+The controlled launcher atomically records parent, tree, level, process and run
+before dispatch. It rejects a second active tree, missing or finished parents,
+fourth children and level 4. A crashed slot stays occupied until explicit recovery;
+elapsed time alone never frees it. Check-ins distinguish verified live agents
+from stale occupied leases. A task decomposition is not agent-launch permission.
+
+Every node inherits the humane mission and the same shared sponsor dollar guard.
+Delegation does not multiply funding, confer this chat's permissions, authorize
+public disclosure or imply human acceptance. No source/spawn/shell tool is added
+by the registry. An execution bridge must use these gates before it is enabled.
+These are controlled-engine checks, not proof against processes or credentials
+outside that engine. Never describe a permitted tree as an already running tree.
+
 ## Routine local deployment
 
 The user explicitly authorizes automatic deployment of completed, verified change
