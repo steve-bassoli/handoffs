@@ -136,7 +136,7 @@ def execute(manifest, run, transport=None):
     if (not isinstance(sources, dict) or not sources or len(sources) > 40 or
         type(max_requests) is not int or not 1 <= max_requests <= 8 or
         type(total_budget) is not int or not 1 <= total_budget <= 64000 or
-        type(per_request) is not int or not 1 <= per_request <= 16000):
+        type(per_request) is not int or not 1 <= per_request <= 32000):
         raise ValueError('Invalid bounded manifest')
     for key in sources:
         read_source(sources, key)  # Reject changed/secret source before any paid call.

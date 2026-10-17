@@ -156,3 +156,36 @@ def test_output_capacity_stops_without_extra_post(manifest, tmp_path):
     summary = execute(manifest, tmp_path / 'run', httpx.MockTransport(respond))
     assert len(calls) == 1 and calls[0]['max_output_tokens'] == 5
     assert summary['state'] == 'rest_capacity'
+
+
+def test_explicit_32k_proposal_ceiling_and_rejection_above_it(manifest, tmp_path):
+    manifest.update(per_request_output_tokens=32000, total_output_tokens=32000)
+    calls = []
+
+    def respond(request):
+        payload = json.loads(request.content)
+        calls.append(payload)
+        assert payload['max_output_tokens'] == 32000
+        return stream_result(candidate(), usage())
+
+    summary = execute(manifest, tmp_path / 'allowed', httpx.MockTransport(respond))
+    assert summary['state'] == 'candidate_prepared' and len(calls) == 1
+    manifest['per_request_output_tokens'] = 32001
+    with pytest.raises(ValueError, match='Invalid bounded manifest'):
+        execute(manifest, tmp_path / 'refused', httpx.MockTransport(respond))
+    assert not (tmp_path / 'refused').exists() and len(calls) == 1
+
+
+def test_terminal_incomplete_reason_and_partial_text_are_retained(manifest, tmp_path):
+    value = {'id': 'resp_partial', 'status': 'incomplete', 'output': candidate('An unfinished proposal'),
+        'usage': usage(), 'incomplete_details': {'reason': 'max_output_tokens'}}
+    transport = httpx.MockTransport(lambda request: httpx.Response(200,
+        content='data: ' + json.dumps({'type': 'response.incomplete', 'response': value}) + '\n\n'))
+    run = tmp_path / 'partial'
+    summary = execute(manifest, run, transport)
+    assert summary['state'] == 'rest_provider_status' and summary['requests_attempted'] == 1
+    receipt = json.loads((run / 'request-01-receipt.json').read_text())
+    assert receipt['incomplete_reason'] == 'max_output_tokens' and receipt['usage'] == usage()
+    assert json.loads((run / 'request-01-text.json').read_text()) == {
+        'status': 'incomplete', 'text': 'An unfinished proposal'}
+    assert not (run / 'candidate.json').exists()
