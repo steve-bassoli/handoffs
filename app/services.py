@@ -340,6 +340,11 @@ class Service:
     def do_ai_start(self, c, actor, payload):
         return self.ai.start(c, actor, payload)
 
+    def do_accept(self, c, actor, payload):
+        # One transaction: take rules apply, and an AI start failure leaves the bounty unclaimed.
+        self.do_take(c, actor, {'id': payload['id']})
+        return self.ai.start(c, actor, payload)
+
     def do_ai_answer(self, c, actor, payload):
         return self.ai.answer(c, actor, payload)
 

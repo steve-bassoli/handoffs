@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 let user = localStorage.getItem('handoffs-user') || 'steve';
 let view = 'open', offset = 0, txOffset = 0, selected = null;
-let aiPoll, proofPoll;
+let aiPoll, proofPoll, acceptPoll;
 const pageSize = 12;
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -125,6 +125,45 @@ async function mutate(path, body = {}) {
     for (const button of document.querySelectorAll('button[data-busy]')) { button.disabled = false; delete button.dataset.busy; }
   }
 }
+const acceptStages = {
+  queued: ['Accepted · queued for AI preparation', 'working'],
+  running: ['Accepted · AI is preparing', 'working'],
+  needs_input: ['AI has questions for you', 'attention'],
+  followups_pending: ['Child proposals await your approval', 'attention'],
+  ready: ['Preparation ready · not verified', 'done'],
+  completed: ['Preparation complete', 'done'],
+  failed: ['AI preparation failed · retry from the opportunity', 'error'],
+};
+function acceptNotice(id, title, text, state) {
+  // One top-right notice, replaced in place as the accepted opportunity moves through AI preparation.
+  let box = $('accept-notice');
+  if (!box) { box = element('aside'); box.id = 'accept-notice'; box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite'); document.body.append(box); }
+  const link = element('a', title); link.href = '#opp=' + encodeURIComponent(id);
+  link.onclick = e => { e.preventDefault(); run(() => show(id)); };
+  const close = element('button', '×', 'notice-close'); close.setAttribute('aria-label', 'Dismiss notification');
+  close.onclick = () => { clearTimeout(acceptPoll); box.remove(); };
+  box.className = state; box.replaceChildren(close, element('strong', text), link);
+}
+async function trackAccept(id, title) {
+  clearTimeout(acceptPoll);
+  const status = (await api('/bounties/' + encodeURIComponent(id))).ai_run?.status;
+  const [text, state] = acceptStages[status] || ['Accepted', 'done'];
+  acceptNotice(id, title, text, state);
+  if (['queued', 'running'].includes(status)) acceptPoll = setTimeout(() => run(() => trackAccept(id, title)), 2000);
+}
+async function accept(data, button) {
+  clearTimeout(acceptPoll);
+  button.textContent = 'Accepting…'; button.classList.add('loading'); button.setAttribute('aria-busy', 'true');
+  acceptNotice(data.id, data.title, 'Accepting · assigning you and starting AI preparation', 'working');
+  try {
+    await mutate(`/bounties/${data.id}/accept`, {model: data.ai_options.recommended});
+  } catch (error) {
+    button.textContent = 'Accept bounty'; button.classList.remove('loading'); button.removeAttribute('aria-busy');
+    acceptNotice(data.id, data.title, 'Not accepted · ' + error.message, 'error');
+    throw error;
+  }
+  await trackAccept(data.id, data.title);
+}
 async function show(id) {
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
@@ -154,7 +193,14 @@ async function show(id) {
   const action = (label, suffix) => { const b = element('button', label); b.onclick = () => run(() => mutate(`/bounties/${id}/${suffix}`)); actions.append(b); };
   if (data.funded && data.status === 'open') {
     if (user === data.creator) action('Cancel & refund', 'cancel');
-    else if (!data.target || data.target === user) action('Volunteer manually', 'take');
+    else if (!data.target || data.target === user) {
+      if (!data.ai_run && (!data.legacy || data.events.some(event => event.kind === 'reopened'))) {
+        const button = element('button', 'Accept bounty', 'primary');
+        button.onclick = () => run(() => accept(data, button));
+        actions.append(button);
+      }
+      action('Volunteer manually', 'take');
+    }
   }
   if (!data.ai_run && ['completed', 'settled'].includes(data.status)
       && [data.creator, data.target, data.claimant, data.completed_by].includes(user)) {

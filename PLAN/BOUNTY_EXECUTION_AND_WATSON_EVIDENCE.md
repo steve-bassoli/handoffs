@@ -60,13 +60,17 @@ Unknown behavior remains unverified; coverage requires a pinned behavior catalog
 
 ## Remaining execution UX
 
-The target Accept bounty experience combines assignment and AI preparation with
-immediate button loading and one updating top-right progress notification linking
-to the bounty. Current separate take/start controls remain; there is no invented
-percentage or claim that this combined interaction is implemented. Contextual
-model routing and resumable global notifications remain future work. Luna is the
-configured test default, not automatic complexity-based routing. Preparation asks
-at most three developer questions and retains portable artifacts for a fresh chat.
+Accept bounty combines assignment and AI preparation. `POST /bounties/{id}/accept`
+applies the take rules (live, open, not the requester, offered to this user) and
+starts AI preparation in one transaction, so an unavailable model leaves the
+bounty unclaimed. The button shows loading immediately; one top-right notification
+updates in place from the AI run status (queued, preparing, questions, ready,
+failed) and links to the bounty, with no invented percentage. Volunteer manually
+and the context/source workbench form remain. The notification is in-page only:
+contextual model routing and notifications that resume after reload remain future
+work. Luna is the configured test default, not automatic complexity-based routing.
+Preparation asks at most three developer questions and retains portable artifacts
+for a fresh chat.
 
 Real Watson REST/MCP adapters, Oracle/application runners, deployment authorization,
 authenticated identity and broader legacy coverage remain separate work. Local

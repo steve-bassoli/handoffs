@@ -274,9 +274,14 @@ this page does not query the live Codex quota meter.</p>
     def ai_write(request, background, user, key, action, bounty_id, payload):
         service = request.app.state.service
         result = service.execute(user, key, action, {'id': bounty_id, **payload})
-        if action in ('ai_start', 'ai_answer', 'ai_retry'):
+        if action in ('accept', 'ai_start', 'ai_answer', 'ai_retry'):
             background.add_task(service.ai.generate, bounty_id)
         return result
+
+    @app.post('/api/v1/bounties/{bounty_id}/accept')
+    def accept(bounty_id: str, payload: AIStart, request: Request, background: BackgroundTasks,
+               user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return ai_write(request, background, user, idempotency_key, 'accept', bounty_id, payload.model_dump())
 
     @app.post('/api/v1/bounties/{bounty_id}/ai/start')
     def ai_start(bounty_id: str, payload: AIStart, request: Request, background: BackgroundTasks,
