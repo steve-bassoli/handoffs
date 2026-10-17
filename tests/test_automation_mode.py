@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.astra_tree import Tree
-from app.automation_mode import AUTOMATION_HEADER, MODES, current, set_mode
+from app.automation_mode import AUTOMATION_HEADER, MODES, apply_agent_names, current, set_mode
 from app.main import create_app
 from conftest import post_bounty
 from test_agent_conduit import candidate, stream_result, usage
@@ -91,3 +91,26 @@ def test_manual_mode_refuses_automated_writes_but_not_humans(tmp_path, monkeypat
         allowed = client.post('/api/v1/bounties', json={'title': 't', 'goal': 'g', 'criteria': ['c'], 'gold': 5},
                               headers={'X-Demo-User': 'steve', 'Idempotency-Key': 'auto-2', AUTOMATION_HEADER: 'astra'})
         assert allowed.status_code == 200
+
+
+def test_bob_naming_for_light_and_heavy_trees(tmp_path):
+    heavy = apply_agent_names(thirteen(tmp_path))
+    assert heavy['root_name'] == 'bob'
+    assert [lead['name'] for lead in heavy['children']] == ['bob-2', 'bob-3', 'bob-4']
+    assert [[w['name'] for w in lead['children']] for lead in heavy['children']] == [
+        ['bob-5', 'bob-6', 'bob-7'], ['bob-8', 'bob-9', 'bob-10'], ['bob-11', 'bob-12', 'bob-13']]
+    source = shelf(tmp_path)
+    light = apply_agent_names({'goal': 'g', 'authority': 'a', 'coordinator': {'shelf': source},
+                               'children': [{'name': f'w{n}', 'role': 'low', 'shelf': source, 'max_requests': 1} for n in range(3)]})
+    seen = []
+    session = tmp_path / 'session'
+    session.mkdir()
+    summary = Tree(light, session, 30, transport=recorder(seen), mode='light').run()
+    assert {name for name, *_ in seen} == {'bob', 'bob-2', 'bob-3', 'bob-4'}
+    assert dict((name, model) for name, model, _, _ in seen)['bob'] == 'gpt-6.1-sol'
+    assert summary['turns'][0]['agent'] == 'bob'
+    heavy_seen = []
+    heavy_session = tmp_path / 'heavy'
+    heavy_session.mkdir()
+    Tree(heavy, heavy_session, 30, transport=recorder(heavy_seen, done=True), mode='high').run()
+    assert {name for name, *_ in heavy_seen} == {'bob'} | {f'bob-{n}' for n in range(2, 14)}

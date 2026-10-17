@@ -90,9 +90,10 @@ class Tree:
         else:
             raise ValueError('Plan model must be one of ' + ', '.join(MODELS))
         self.deadline = self.started + minutes * 60
-        self.nodes = {'coordinator': {'role': 'Coordinates the tree.', 'shelf': plan['coordinator']['shelf'],
+        self.root = plan.get('root_name', 'coordinator')  # The agent the human talks to (for example bob).
+        self.nodes = {self.root: {'role': 'Coordinates the tree.', 'shelf': plan['coordinator']['shelf'],
                                       'parent': None, 'level': 1, 'max_requests': 3, 'children': []}}
-        self.add('coordinator', plan.get('children', plan.get('workers', [])))
+        self.add(self.root, plan.get('children', plan.get('workers', [])))
         if len(self.nodes) > 13:
             raise ValueError('A tree has at most thirteen nodes')
         if mode is not None and (len(self.nodes) > AUTOMATION_MODES[mode]['agents'] or
@@ -218,7 +219,7 @@ class Tree:
                  'minutes': round((self.deadline - self.started) / 60, 1), 'started_utc': stamp(),
                  'leases': leases, 'automatic_retry': False, 'candidates_applied': False, 'human_accepted': False})
             round_number, finished, leaves_ran = 0, False, False
-            while self.clock() < self.deadline and 'coordinator' not in self.stopped and not finished:
+            while self.clock() < self.deadline and self.root not in self.stopped and not finished:
                 round_number += 1
                 for depth, names in enumerate(self.phases):
                     results = self.phase(names, round_number)
@@ -236,7 +237,7 @@ class Tree:
                         leaves_ran = True
                         if not any(record['state'] == 'candidate_prepared' for record, _ in results):
                             finished = True
-            if finished != 'done' and leaves_ran and 'coordinator' not in self.stopped:
+            if finished != 'done' and leaves_ran and self.root not in self.stopped:
                 for names in reversed(self.phases[:-1]):
                     self.phase(names, round_number + 1, final=True)
         return self.finish()
@@ -245,7 +246,7 @@ class Tree:
         receipts = [receipt for record in self.rounds for receipt in record['receipts']]
         upper = sum(upper_cents(record['model'], r['usage']['input_tokens'], r['usage']['output_tokens'])
                     for record in self.rounds for r in record['receipts'] if r.get('usage'))
-        root = self.last['coordinator']
+        root = self.last[self.root]
         summary = {'at_utc': stamp(), 'mode': self.mode, 'models': {LEVELS[level]: settings[0] for level, settings in self.level_models.items()},
                    'elapsed_minutes': round((self.clock() - self.started) / 60, 1),
                    'turns': [{k: v for k, v in record.items() if k != 'receipts'} for record in self.rounds],

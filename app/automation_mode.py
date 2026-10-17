@@ -70,6 +70,24 @@ def models_by_level(mode):
     return {level: MODEL_SETTINGS[name] for level, name in enumerate(MODES[mode]['levels'], start=1)}
 
 
+def apply_agent_names(plan, base='bob'):
+    """Name a plan's agents in tree order: base for the root, then base-2, base-3, ... level by level.
+
+    light: bob over bob-2..4. high: bob over bob-2..4, with bob-5..7, bob-8..10 and bob-11..13 under them.
+    The human only ever talks to the root.
+    """
+    plan = json.loads(json.dumps(plan))
+    plan['root_name'] = base
+    number = 2
+    level = list(plan.get('children', plan.get('workers', [])))
+    while level:
+        for node in level:
+            node['name'] = f'{base}-{number}'
+            number += 1
+        level = [child for node in level for child in node.get('children', [])]
+    return plan
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('action', choices=('show', 'set'))
