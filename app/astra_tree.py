@@ -157,7 +157,8 @@ class Tree:
                 'worker_reports': {child: {'state': self.state[child], 'report': clip(self.last[child], 20000)}
                                    for child in node['children'] if self.state[child]},
                 'inbox': inbox, 'your_previous_output': clip(self.last[name], 12000),
-                'source_shelf': list(self.shelves[name])}
+                'source_shelf': list(self.shelves[name]),
+                'reply_format': 'one JSON object'}  # json_object output requires the word in the input.
 
     def turn(self, name, round_number, final=False):
         content = self.content(name, round_number, final)

@@ -174,3 +174,11 @@ def test_luna_plan_sends_luna_with_proven_effort_and_output_ceiling(tmp_path):
     assert set(payloads) == {('gpt-6-luna', 'low', 12000)} and set(summary['models'].values()) == {'gpt-6-luna'}
     with pytest.raises(ValueError):
         Tree({**plan_value, 'model': 'nova'}, tmp_path, 30)
+
+
+def test_every_tree_message_names_json_for_json_object_output(tmp_path):
+    seen = []
+    session = tmp_path / 'session'
+    session.mkdir()
+    Tree(thirteen(tmp_path), session, 30, transport=tree_mock(seen, done_round=2)).run()
+    assert seen and all(content['reply_format'] == 'one JSON object' for _, _, content in seen)

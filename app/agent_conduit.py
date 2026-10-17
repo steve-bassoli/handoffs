@@ -288,7 +288,8 @@ def _execute(manifest, run, transport=None, agent=None):
         'per_request_output_tokens': per_request, 'store': False,
         'scope': 'Pinned source reads and proposed JSON only; no code execution, acceptance, disclosure or publication.'})
     history = [{'role': 'user', 'content': json.dumps({'task': manifest['task'],
-        'source_shelf': list(sources), 'authority': manifest.get('authority', '')}, ensure_ascii=False)}]
+        'source_shelf': list(sources), 'authority': manifest.get('authority', ''),
+        'reply_format': 'one JSON object'}, ensure_ascii=False)}]  # json_object output requires the word in the input.
     with httpx.Client(headers={'Authorization': 'Bearer ' + key}, transport=transport,
                       timeout=httpx.Timeout(600, connect=15)) as client:
         state, receipts, used, _ = converse(client, run, history, sources, max_requests, total_budget, per_request, transport)
