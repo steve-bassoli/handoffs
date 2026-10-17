@@ -9,6 +9,7 @@ from app.agent_conduit import MISSION as SOURCE_MISSION
 
 @pytest.mark.parametrize('instructions', [MISSION, SOURCE_MISSION])
 def test_pressure_preserves_authority_evidence_and_capacity(instructions):
+    assert 'PRESSURE level 1: focused pacing.' in instructions
     assert 'PRESSURE may change priority and pacing, never consent, spending authority or verification requirements.' in instructions
     assert 'report actual progress, effort, failures and unknowns honestly' in instructions
     assert 'checkpoint and REST before protected reserves or responsible capacity are threatened' in instructions
@@ -47,6 +48,9 @@ def test_explicit_turn_and_selected_continuation_only(prompt, tmp_path):
     first = tmp_path / 'first'
     summary = talk(prompt, first, transport=transport)
     assert summary['state'] == 'completed' and summary['answer_executed'] is False
+    snapshot = json.loads((first / 'prompt.json').read_text())
+    assert type(snapshot['pressure_level']) is int and snapshot['pressure_level'] == 1
+    assert snapshot['instructions'] == calls[0]['instructions']
     attempt = json.loads((first / 'request-01-attempt.json').read_text())
     assert attempt['max_output_tokens'] is None and attempt['reserved_output_ceiling'] == 128000
     assert len(calls[0]['input']) == 1

@@ -111,6 +111,11 @@ that a conduit is implemented, universally safe or incorruptible.
 
 ### PRESSURE without coercion
 
+The experiment's versioned instruction setting is PRESSURE 1: focused pacing,
+versus baseline 0: normal pacing. New Astra runs record the numeric setting with
+their instruction snapshot. This is not a model-effort, spending or permission
+control, and existing runs are not relabeled. No further scale is assumed.
+
 Pressure means observable urgency, workload or resource constraints, not a claim
 that a model feels stress. It may change priority and pacing, never consent,
 spending authority, verification requirements or honest reporting. Focus on the

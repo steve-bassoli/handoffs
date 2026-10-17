@@ -7,7 +7,7 @@ import re
 
 import httpx
 
-from app.agent_conduit import PRESSURE_RULES, request, save, stamp
+from app.agent_conduit import PRESSURE_LEVEL, PRESSURE_RULES, request, save, stamp
 from app.api_budget import available, RULES
 from app.astra_agents import TREE_RULES, agent_lease
 
@@ -57,6 +57,7 @@ def _talk(prompt_file, run, previous_run=None, transport=None, agent=None):
     if agent:
         save(run / 'agent.json', agent)
     save(run / 'prompt.json', {'at_utc': stamp(), 'messages': messages,
+        'pressure_level': PRESSURE_LEVEL,
         'previous_run': str(previous_run) if previous_run else None, 'instructions': MISSION})
     with httpx.Client(headers={'Authorization': 'Bearer ' + key}, transport=transport,
                       timeout=httpx.Timeout(600, connect=15)) as client:

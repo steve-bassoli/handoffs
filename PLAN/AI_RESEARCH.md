@@ -485,6 +485,14 @@ process handle, with no descendants. Its existing request was not restarted or
 retroactively described as having received the new instruction. API funds and
 the account-shared Codex meter remain separate measurements.
 
+The user then explicitly requested PRESSURE 0 -> 1 and monitoring Astra agents.
+Level 1 denotes focused pacing rather than higher model effort or spend. The
+new versioned instruction setting is recorded numerically beside future source
+authority/direct-relay snapshots; the prior baseline is not retroactively added
+to historical receipts. Behavioral effects remain unmeasured. A read-only monitor
+must distinguish actual live processes from occupied registry leases, remain
+quiet on unchanged healthy state, and never restart, spawn or retry paid work.
+
 The private `steve-bassoli/gremlins` seed was created and pushed at
 `f6c844d3a705d30f0b7890e3d05fb8b4c9ef2399`. Local and remote SHA matched; the
 private badge and two seed files were observed in Chrome. This is a repository,
