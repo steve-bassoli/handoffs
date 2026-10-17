@@ -562,7 +562,7 @@ agent priorities PRESSURE, TOKEN CONSERVATION, FUN. Nine automated Astra session
 (one 4-agent tree, then 13-agent HIGH/MEDIUM/LOW trees alternating crawl and
 resolve) made 476 provider requests with a conservative upper bound of $467.42;
 real spend runs roughly half and is not claimed here. Two provider streams ended
-without usage; their full envelopes were kept as spent and never retried. Three
+without usage; their full envelopes were kept as spent and never retried. Two
 agents reported PRESSURE 3 and were stopped without pressure to continue. All
 leases were released at a graceful owner-requested stop.
 
