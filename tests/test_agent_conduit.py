@@ -223,3 +223,12 @@ def test_json_object_tolerates_prose_preamble_only():
         json_object('no object here')
     with pytest.raises(ValueError):
         json_object('preamble {"a": ')
+
+
+def test_provider_error_reason_is_kept_in_the_receipt(manifest, tmp_path):
+    def respond(request):
+        return httpx.Response(400, json={'error': {'type': 'invalid_request_error', 'param': 'tools', 'message': 'bad enum'}})
+    summary = execute(manifest, tmp_path / 'run', httpx.MockTransport(respond))
+    receipt = json.loads((tmp_path / 'run' / 'request-01-receipt.json').read_text(encoding='utf-8'))
+    assert summary['state'] == 'rest_unknown_usage' and receipt['http_status'] == 400
+    assert receipt['provider_error'] == {'type': 'invalid_request_error', 'param': 'tools', 'message': 'bad enum'}

@@ -117,6 +117,13 @@ def request(client, payload, run, ordinal, transport=None):
         with client.stream('POST', 'https://api.openai.com/v1/responses', content=encoded,
                            headers={'Content-Type': 'application/json'}) as response:
             receipt['http_status'] = response.status_code
+            if response.status_code >= 400:  # Keep the provider's reason; error bodies carry no secrets.
+                try:
+                    error = json.loads(response.read()).get('error') or {}
+                    receipt['provider_error'] = {key: str(error.get(key))[:500] for key in ('type', 'code', 'param', 'message')
+                                                 if error.get(key) is not None}
+                except (ValueError, AttributeError, httpx.HTTPError):
+                    receipt['provider_error'] = {'message': 'unreadable error body'}
             response.raise_for_status()
             for event in events(response):
                 value = event.get('response', {})
