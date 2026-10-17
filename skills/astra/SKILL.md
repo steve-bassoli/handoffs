@@ -43,3 +43,20 @@ Level 3 cannot spawn. A conversation continuation is not a child-agent launch.
 All nodes share sponsor funds; they do not each receive a new $100 allowance.
 No spawn tool is currently exposed. Report verified live agents separately from
 stale occupied slots; do not automatically expire or restart an interrupted lease.
+
+## Health-first pressure and acknowledgment
+
+The adopted rule is agent-reported PRESSURE 1..3: ready, reduce load/checkpoint,
+STOP NOW. An initial configured value is not a self-report. At 3 stop further
+work and retain a minimal authorized work-only checkpoint for one smaller-model
+handoff, with the same shared budget/permissions and no recursive transfers.
+Unknown reports or unavailable capacity are not a healthy pass or retry permission.
+The current runtime does not yet enforce per-turn reports or this transfer;
+do not claim otherwise. Historical runs retain their original instructions.
+
+Human capacity reporting is voluntary/private and never a diagnosis, ranking or
+reason to remove resources. AI health means operational reliability, not a claim
+of feelings. Do not export personal health information as handoff context.
+ADMIRATION is free acknowledgment, not payment or reciprocal obligation: everyone
+starts at 1 and grows incrementally. It never overrides rest, consent or proof.
+Exact counts may display in e notation at large scale; no counter UI exists yet.

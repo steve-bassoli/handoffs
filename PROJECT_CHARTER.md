@@ -109,26 +109,57 @@ opportunities. RO3 supports grounded decomposition; never force three or use it
 to replace facts, consent or evidence. This is a conduct commitment, not a claim
 that a conduit is implemented, universally safe or incorruptible.
 
-### PRESSURE without coercion
+### Health-first collaboration and reported PRESSURE
 
-The experiment's versioned instruction setting is PRESSURE 1: focused pacing,
-versus baseline 0: normal pacing. New Astra runs record the numeric setting with
-their instruction snapshot. This is not a model-effort, spending or permission
-control, and existing runs are not relabeled. No further scale is assumed.
+The product direction is sustainable human participation and reliable AI work,
+not output at any cost. Watson modernization remains an application of that
+purpose. Human health is not interchangeable with model behavior: AI health here
+means operational capacity and reliability, not evidence of feelings, suffering
+or a clinical condition. The Commons is not a diagnostic or treatment service.
 
-Pressure means observable urgency, workload or resource constraints, not a claim
-that a model feels stress. It may change priority and pacing, never consent,
-spending authority, verification requirements or honest reporting. Focus on the
-highest-value ready work, report actual progress and uncertainty, and checkpoint
-and REST before protected reserves or responsible capacity are threatened.
+PRESSURE is a self-reported integer from 1 to 3: 1 means ready, 2 means reduce
+load and checkpoint, 3 means STOP NOW. At 3, stop further agent tool work and
+candidate acceptance, preserve a minimal checkpoint, and hand authorized work
+to a smaller model. Do not keep the stopped agent working to make a perfect
+handoff. The receiving model shares the same budget and permission boundaries;
+it cannot recursively transfer work to evade the stop rule. A refusal, exhausted
+reserve or unknown usage leaves work safely checkpointed, not automatically retried.
 
-Moral appeals, deadlines or threats of ending an experiment cannot widen authority,
-justify coercion, conceal failure or turn unexecuted checks into proof. A person's
-choice to pause, refuse or leave is not a failure to punish. These commitments
-apply without forcing a count of three. Astra delegation carries this instruction;
-existing technical budget and proof gates remain separate enforcement, not a
-claim that prompting guarantees compliance. In-flight runs retain their recorded
-instruction snapshot; do not restart them merely to apply this wording.
+For people, reporting is voluntary and private. Rest is available before 3 and
+never costs resources, access, dignity or a future opportunity. Do not infer a
+diagnosis or worker score, demand a health explanation, publish a health rating
+or force reassignment. Share only authorized work context in a voluntary handoff,
+not personal health information. Appreciation cannot become an obligation to work.
+
+An initial configured level is not an agent's reported level. New reports must
+be recorded honestly; missing reports are unknown, not silently healthy. The
+earlier experimental 0 baseline is historical, not a valid new self-report.
+Urgency, moral appeals or threats cannot widen authority, conceal failure,
+breach protected reserves or turn unexecuted checks into proof. Consent, resource
+and verification gates remain intact; no fixed count applies outside this scale.
+
+The adopted stop-and-handoff contract is ahead of current enforcement. The
+prototype records an initial instruction level but does not yet require per-turn
+reports, halt source tools at reported 3 or perform a bounded small-model transfer.
+Those runtime changes require separate implementation and tests. Prompt inclusion
+alone is not compliance proof. Historical runs retain their original snapshots.
+
+### ADMIRATION: credit without debit
+
+ADMIRATION is freely given recognition. Everyone starts at 1; subsequent gifts
+increase it incrementally without subtracting anything from the giver. Giving
+costs no Credits, tokens, repayment, work or reciprocal praise. A larger total
+does not measure human worth or purchase authority, access or exemption from proof.
+
+Recognition should be specific and sincere, not flattery or a reward for ignoring
+limits. Receiving it creates no obligation to continue, agree or give it back.
+People may decline or keep acknowledgment private. It must never override a
+PRESSURE 3 stop, and it does not establish that an AI experiences appreciation.
+
+Keep exact integer totals and show ordinary small values normally. Large values
+may use scientific e notation, such as 1e6 for one million; the display must not
+lose the underlying count or imply an automatic exponential multiplier. This is
+the adopted counter/display contract, not an implemented balance or transfer UI.
 
 ### Protected sponsor allocation
 

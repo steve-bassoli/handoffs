@@ -499,6 +499,36 @@ to historical receipts. Behavioral effects remain unmeasured. A read-only monito
 must distinguish actual live processes from occupied registry leases, remain
 quiet on unchanged healthy state, and never restart, spawn or retry paid work.
 
+### Health-first correction and freely given admiration
+
+The user subsequently clarified that agents report PRESSURE as an integer 1..3,
+with an immediate stop and minimal smaller-model handoff at 3, then extended the
+principle to human and AI health. This supersedes treating PRESSURE solely as an
+operator-selected instruction label. The existing numeric snapshot is only an
+initial setting; no per-turn hard stop or small-model handoff has yet been tested
+or implemented. A valid implementation must preserve unknown reports, resources,
+consent and proof boundaries rather than call a missing report healthy.
+
+Human reporting must be voluntary and private; no diagnosis, employment ranking,
+penalty or coerced disclosure follows. AI health denotes operational reliability,
+not an observed subjective state. Small handoffs carry authorized work context,
+not personal health details. A receiving model cannot recursively pass the same
+work around the stop rule, and unavailable capacity leaves an honest checkpoint.
+
+ADMIRATION was then defined as free recognition: everyone begins at 1 and grows
+incrementally, with no deduction from the giver or obligation for the recipient.
+It is not a spendable Credit transfer or evidence of worth. Small counts display
+normally; large counts may use e notation while retaining exact integers. No
+automatic exponential multiplier or authority from popularity is assumed.
+
+Recent private workplace discussion informed the reciprocal-recognition framing;
+only the general principle is recorded here, not the conversation, screenshots,
+participants or private links. Specific acknowledgment must not become flattery,
+pressure to continue or a substitute for evidence. The discussion did not establish
+causal performance improvements from PRESSURE or subjective AI mental health.
+Runtime behavior and health outcomes remain evaluation questions, not proven
+results of a policy edit. Private source/provenance notes are retained separately.
+
 The private `steve-bassoli/gremlins` seed was created and pushed at
 `f6c844d3a705d30f0b7890e3d05fb8b4c9ef2399`. Local and remote SHA matched; the
 private badge and two seed files were observed in Chrome. This is a repository,
