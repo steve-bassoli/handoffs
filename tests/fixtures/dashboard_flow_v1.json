@@ -1,0 +1,40 @@
+{
+  "agreement": "v1-r2",
+  "lineage": {
+    "root_id": "root",
+    "items": [
+      {"id": "root", "parent_id": null, "title": "Root", "status": "open"},
+      {"id": "child", "parent_id": "root", "title": "<img src=x onerror=alert(1)>", "status": "open"},
+      {"id": "unconfirmed", "parent_id": "root", "title": "Unconfirmed", "status": "open"},
+      {"id": "unknown", "title": "No parent evidence", "status": "open"},
+      {"id": "orphan", "parent_id": "absent", "title": "Orphan", "status": "open"},
+      {"id": "cycle-a", "parent_id": "cycle-b", "title": "Cycle A", "status": "open"},
+      {"id": "cycle-b", "parent_id": "cycle-a", "title": "Cycle B", "status": "open"},
+      {"id": "invalid-parent", "parent_id": 17},
+      {"id": "child", "parent_id": "other", "title": "Conflicting duplicate", "status": "closed"},
+      {"id": "   ", "parent_id": null}
+    ]
+  },
+  "details": {
+    "root": {"events": [
+      {"kind": "followups_confirmed", "actor": "PRIVATE_ACTOR", "data": {"assigned_agent": "not-authority", "acceptance_verified": false}}
+    ]},
+    "child": {"assigned_agent": "not-authority", "events": [
+      {"kind": "taken", "actor": "PRIVATE_ACTOR", "data": {"notes": "PRIVATE_BODY"}},
+      {"kind": "followup_confirmed", "actor": "wrong-agent", "created_at": "2025-01-02T00:00:00Z", "data": {"assigned_agent": "bob-2", "message": "PRIVATE_BODY"}},
+      {"kind": "followup_confirmed", "created_at": "earlier-but-source-later", "data": {"assigned_agent": "bob-3"}},
+      {"kind": "posted", "created_at": "", "data": {"message": "PRIVATE_BODY"}},
+      {"kind": "private_message", "data": {"message": "PRIVATE_BODY"}},
+      {"kind": ["posted"]},
+      null
+    ]},
+    "unconfirmed": {"assigned_agent": "not-authority", "events": [
+      {"kind": "taken", "actor": "bob-4"},
+      {"kind": "followup_confirmed", "data": {"assigned_agent": " "}}
+    ]},
+    "unknown": {"events": "malformed"},
+    "cycle-a": {"events": []},
+    "cycle-b": {"events": []},
+    "invalid-parent": {"events": []}
+  }
+}
