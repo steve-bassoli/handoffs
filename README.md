@@ -120,6 +120,11 @@ a total question limit. Each turn waits for an explicit developer reply; per-tur
 tool-call, timeout and output bounds remain. API calls, tokens, elapsed time,
 questions and answers are recorded in the task. Existing runs use the configured
 model on their next submitted turn, preserving prior model history.
+The workbench model picker contains only **Sol**, **Terra**, and **Luna**. It starts
+with the server's recommended model (Terra by default); an explicit choice is
+retained for that run and can be changed for the next reply or retry. Selecting
+an option sends no request and incurs no model usage until the form is submitted.
+The server maps these choices to `gpt-6.1-sol`, `gpt-5.6-terra`, and `gpt-6-luna`.
 Repository URLs and context links are references; this prototype does not fetch
 private repositories or execute the generated code on the host.
 

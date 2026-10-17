@@ -58,12 +58,16 @@ class Review(BaseModel):
     note: str = Field(min_length=1)
 
 
-class AIStart(BaseModel):
+class AIModelChoice(BaseModel):
+    model: Literal['sol', 'terra', 'luna'] | None = None
+
+
+class AIStart(AIModelChoice):
     context: str = Field(default='', max_length=100000)
     source_zip: str = Field(default='', max_length=4000000)
 
 
-class AIAnswers(BaseModel):
+class AIAnswers(AIModelChoice):
     answers: list[str] = Field(min_length=1)
     source_zip: str = Field(default='', max_length=4000000)
 
@@ -230,8 +234,10 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
 
     @app.post('/api/v1/bounties/{bounty_id}/ai/retry')
     def ai_retry(bounty_id: str, request: Request, background: BackgroundTasks,
+                 payload: AIModelChoice | None = None,
                  user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return ai_write(request, background, user, idempotency_key, 'ai_retry', bounty_id, {})
+        return ai_write(request, background, user, idempotency_key, 'ai_retry', bounty_id,
+                        payload.model_dump() if payload else {})
 
     @app.post('/api/v1/bounties/{bounty_id}/ai/confirm-followups')
     def ai_confirm(bounty_id: str, payload: AIConfirm, request: Request, background: BackgroundTasks,

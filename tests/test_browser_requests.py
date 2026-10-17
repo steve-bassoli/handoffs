@@ -62,3 +62,27 @@ const startup = source.slice(source.lastIndexOf('run(async () => {'));
 })().catch(error => { console.error(error); process.exitCode = 1; });
 '''
     subprocess.run([node, '-e', checks], check=True, capture_output=True, text=True)
+
+
+def test_model_picker_shows_only_simple_names_and_defaults_to_recommended():
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('Node is needed for the model-picker check')
+    source = Path('app/static/app.js').read_text(encoding='utf-8')
+    picker = source[source.index('function modelInput('):source.index('async function aiSection(')]
+    checks = r'''
+const assert = require('node:assert/strict');
+const element = (tag, text) => ({tag, text, children: [], append(...nodes) { this.children.push(...nodes); }});
+const settings = {models: [{value: 'sol', name: 'Sol'}, {value: 'terra', name: 'Terra'}, {value: 'luna', name: 'Luna'}], recommended: 'terra'};
+for (const choice of [null, 'sol', 'luna']) {
+  const form = element('form');
+  const select = modelInput(form, {ai_options: settings, ai_run: {model_choice: choice}});
+  assert.deepEqual(select.children.map(option => option.text), ['Sol', 'Terra', 'Luna']);
+  assert.equal(select.value, choice || 'terra');
+  assert.equal(form.children[0].text, 'Model');
+  assert.equal(form.children[1].text, 'Recommended: Terra. Selection applies when you submit.');
+  assert.equal(select.onchange, undefined, 'Selecting a model must not submit or spend');
+}
+'''
+    subprocess.run([node, '-e', picker + checks],
+                   check=True, capture_output=True, text=True)

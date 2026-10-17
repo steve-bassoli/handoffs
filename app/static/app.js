@@ -363,6 +363,19 @@ function sourceInput(form) {
   return () => encodeSourceZip(input.files[0]);
 }
 
+function modelInput(form, data) {
+  const settings = data.ai_options;
+  const label = element('label', 'Model'); const select = element('select');
+  for (const model of settings.models) {
+    const option = element('option', model.name); option.value = model.value; select.append(option);
+  }
+  select.value = data.ai_run?.model_choice || settings.recommended;
+  label.append(select);
+  const recommended = settings.models.find(model => model.value === settings.recommended);
+  form.append(label, element('small', `Recommended: ${recommended.name}. Selection applies when you submit.`));
+  return select;
+}
+
 async function aiSection(data, detail) {
   const id = data.id;
   const owner = data.ai_run?.actor === user;
@@ -376,10 +389,11 @@ async function aiSection(data, detail) {
         : 'Implementation LOW: AI prepares one minimal change for one managed commit. Local verification is required.')
       : `Rule of three: AI researches this ${data.complexity} opportunity and proposes exactly three criterion-covered children. You must approve the complete set. Decomposition does not complete the parent.`));
     const form = element('form');
+    const model = modelInput(form, data);
     const label = element('label', 'Additional context'); const context = element('textarea'); label.append(context); form.append(label);
     const source = sourceInput(form);
     form.append(element('button', data.complexity === 'LOW' ? 'Start with AI' : 'Propose child opportunities with AI', 'primary'));
-    form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/start`, {context: context.value, source_zip: await source()})); };
+    form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/start`, {model: model.value, context: context.value, source_zip: await source()})); };
     box.append(form);
   }
   const ai = data.ai_run;
@@ -387,7 +401,7 @@ async function aiSection(data, detail) {
     const usage = ai.usage;
     box.append(element('span', ai.status.replaceAll('_', ' '), 'pill'),
       element('p', `${ai.model} · ${ai.question_count} questions · ${usage.api_calls} API calls · ${usage.input_tokens} input / ${usage.output_tokens} output tokens · ${(usage.elapsed_ms / 1000).toFixed(1)}s`));
-    if (ai.next_model && ai.next_model !== ai.model) box.append(element('p', `Next reply uses ${ai.next_model}. Earlier turns retain their recorded model.`));
+    if (ai.next_model && ai.next_model !== ai.model) box.append(element('p', 'Earlier turns used a different model; their recorded history is preserved.'));
     if (ai.result) box.append(element('p', ai.result.summary, 'content'));
     if (ai.result?.action === 'evidence') box.append(element('p', 'Verification-only LOW · prepared evidence, no source patch or forced commit. The API agent has not executed checks. Human verification is still required.'));
     if (ai.result?.plan?.length) {
@@ -411,12 +425,13 @@ async function aiSection(data, detail) {
     }
     if (ai.status === 'needs_input' && owner) {
       const form = element('form'); const answers = [];
+      const model = modelInput(form, data);
       for (const question of ai.conversation.at(-1).questions) {
         const label = element('label', question); const answer = element('textarea'); answer.required = true; label.append(answer); form.append(label); answers.push(answer);
       }
       const source = sourceInput(form);
       form.append(element('button', 'Send answers to AI', 'primary'));
-      form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/answers`, {answers: answers.map(a => a.value), source_zip: await source()})); };
+      form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/answers`, {model: model.value, answers: answers.map(a => a.value), source_zip: await source()})); };
       box.append(form);
     }
     if (ai.download_url) {
@@ -457,7 +472,9 @@ async function aiSection(data, detail) {
     if (ai.status === 'failed') {
       box.append(element('p', ai.error));
       if (owner) {
-        const retry = element('button', 'Retry AI'); retry.onclick = () => run(() => mutate(`/bounties/${id}/ai/retry`)); box.append(retry);
+        const form = element('form'); const model = modelInput(form, data);
+        form.append(element('button', 'Retry AI'));
+        form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/ai/retry`, {model: model.value})); }; box.append(form);
       }
     }
     if (['queued', 'running'].includes(ai.status)) {

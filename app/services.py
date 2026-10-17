@@ -127,6 +127,7 @@ class Service:
                              for event in events if event['kind'] == 'package_attached']
         bounty['deliveries'] = all_rows(c, 'SELECT * FROM deliveries WHERE bounty_id=? ORDER BY created_at,id', (bounty_id,))
         ai = getattr(self, 'ai', None)
+        bounty['ai_options'] = ai.options() if ai else None
         row = one(c, 'SELECT * FROM ai_runs WHERE bounty_id=?', (bounty_id,))
         if ai and row:
             row['data'] = json.loads(row['data'])

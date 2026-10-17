@@ -20,6 +20,18 @@ from app.complexity import validate_bounty_split, validate_plan
 from app.workflow import ROLES
 
 
+WORKBENCH_MODELS = {
+    'sol': ('Sol', 'gpt-6.1-sol'),
+    'terra': ('Terra', 'gpt-5.6-terra'),
+    'luna': ('Luna', 'gpt-6-luna'),
+}
+
+
+def selected_model(data, default):
+    choice = data.get('model_choice')
+    return WORKBENCH_MODELS[choice][1] if choice else default
+
+
 class OutputModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
@@ -206,7 +218,7 @@ class Luna:
             for _ in range(12):
                 response = client.post('https://api.openai.com/v1/responses',
                     headers={'Authorization': 'Bearer ' + os.environ['OPENAI_API_KEY']},
-                    json={'model': self.model, 'store': False, 'instructions': instructions,
+                    json={'model': selected_model(data, self.model), 'store': False, 'instructions': instructions,
                           'input': messages, 'tools': tools, 'reasoning': {'effort': 'low'},
                           'max_output_tokens': 12000,
                           'text': {'format': {'type': 'json_schema', 'name': 'bounty_decision',
@@ -243,6 +255,11 @@ class AIRuns:
         self.db = service.db
         self.model = model
 
+    def options(self):
+        return {'models': [{'value': key, 'name': name} for key, (name, _) in WORKBENCH_MODELS.items()],
+                'recommended': next((key for key, (_, identifier) in WORKBENCH_MODELS.items()
+                                     if identifier == self.model.model), 'terra')}
+
     def recover(self):
         # A process restart must not silently spend again or strand an in-flight turn.
         with self.db.write() as c:
@@ -269,7 +286,8 @@ class AIRuns:
             if 'plan' in result:
                 result['plan'] = archived_plan(result['plan'])
         return {key: row[key] for key in ('id', 'actor', 'status', 'created_at', 'updated_at')} | {
-            'model': data['model'], 'next_model': self.model.model, 'question_count': data['question_count'],
+            'model': data['model'], 'next_model': selected_model(data, self.model.model),
+            'model_choice': data.get('model_choice'), 'question_count': data['question_count'],
             'conversation': data['conversation'], 'result': result,
             'usage': data['usage'], 'error': data.get('error'),
             'download_url': f"/api/v1/bounties/{row['bounty_id']}/ai/artifact" if result and result['action'] in ('deliver', 'evidence') and row['status'] in ('ready', 'completed') else None,
@@ -324,7 +342,7 @@ class AIRuns:
             source = parent['data']['source']
             context = encode({'developer_context': context, 'parent_summary': parent['data']['result']['summary'],
                               'parent_conversation': parent['data']['conversation']})
-        data = {'model': self.model.model, 'context': context, 'source': source,
+        data = {'model': self.model.model, 'model_choice': payload.get('model'), 'context': context, 'source': source,
                 'question_count': 0, 'conversation': [], 'usage': {'input_tokens': 0, 'output_tokens': 0, 'api_calls': 0, 'elapsed_ms': 0}}
         run_id = str(uuid4())
         c.exec_driver_sql('INSERT INTO ai_runs VALUES (?,?,?,?,?,?,?)',
@@ -353,6 +371,8 @@ class AIRuns:
         if len(row['data']['source']) > 200 or sum(len(s.encode()) for s in row['data']['source'].values()) > 2_000_000:
             raise RuleError('Combined source exceeds 2 MB', 422)
         row['data']['conversation'].append({'answers': answers})
+        if payload.get('model') is not None:
+            row['data']['model_choice'] = payload['model']
         row['status'] = 'queued'
         self.save(c, row)
         self.service.event(c, payload['id'], 'ai_answers', actor, 'working', {'answers': answers,
@@ -364,12 +384,13 @@ class AIRuns:
             row = self.record(c, bounty_id)
             if row['status'] != 'queued':
                 return
-            if row['data']['model'] != self.model.model:
+            model = selected_model(row['data'], self.model.model)
+            if row['data']['model'] != model:
                 previous_model = row['data']['model']
-                row['data']['model'] = self.model.model
+                row['data']['model'] = model
                 task = self.service.detail(c, bounty_id)
                 self.service.event(c, bounty_id, 'ai_model_changed', row['actor'], task['status'],
-                    {'run_id': row['id'], 'previous_model': previous_model, 'model': self.model.model})
+                    {'run_id': row['id'], 'previous_model': previous_model, 'model': model})
             row['status'] = 'running'
             self.save(c, row)
             task = self.service.detail(c, bounty_id)
@@ -451,6 +472,8 @@ class AIRuns:
         if row['status'] != 'failed':
             raise RuleError('Only failed AI turns can be retried')
         self.model.check()
+        if payload.get('model') is not None:
+            row['data']['model_choice'] = payload['model']
         row['status'] = 'queued'
         row['data'].pop('error', None)
         self.save(c, row)

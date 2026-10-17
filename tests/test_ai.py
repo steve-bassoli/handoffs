@@ -200,7 +200,9 @@ def test_missing_key_does_not_claim_or_create_run(client, monkeypatch):
     assert task['status'] == 'open' and task['ai_run'] is None
 
 
-def test_provider_tools_and_api_key_stay_out_of_payload(monkeypatch):
+@pytest.mark.parametrize('choice,model_id', [(None, 'gpt-5.6-terra'), ('sol', 'gpt-6.1-sol'),
+                                           ('terra', 'gpt-5.6-terra'), ('luna', 'gpt-6-luna')])
+def test_provider_tools_and_api_key_stay_out_of_payload(monkeypatch, choice, model_id):
     monkeypatch.setenv('OPENAI_API_KEY', 'test-api-key')
     monkeypatch.delenv('HANDOFFS_AI_MODEL', raising=False)
     requests = []
@@ -209,7 +211,7 @@ def test_provider_tools_and_api_key_stay_out_of_payload(monkeypatch):
         requests.append(payload)
         assert 'test-api-key' not in request.content.decode()
         assert request.headers['Authorization'] == 'Bearer test-api-key'
-        assert payload['model'] == 'gpt-5.6-terra'
+        assert payload['model'] == model_id
         context = json.loads(payload['input'][0]['content'])
         assert context['question_count'] == 4 and 'remaining_questions' not in context
         assert 'There is no total question limit.' in payload['instructions']
@@ -222,9 +224,49 @@ def test_provider_tools_and_api_key_stay_out_of_payload(monkeypatch):
         return httpx.Response(200, json={'status': 'completed', 'output': output, 'usage': {'input_tokens': 10, 'output_tokens': 5}})
     result, usage = Luna(httpx.MockTransport(handler)).generate(
         {'title': 'Task', 'goal': 'Fix', 'criteria': ['Works'], 'repository': '', 'context_links': []},
-        {'source': {'calc.py': 'source'}, 'context': '', 'conversation': [], 'question_count': 4})
+        {'source': {'calc.py': 'source'}, 'context': '', 'conversation': [], 'question_count': 4, 'model_choice': choice})
     assert result.questions == ['Version?']
     assert usage == {'api_calls': 2, 'input_tokens': 20, 'output_tokens': 10}
+
+
+@pytest.mark.parametrize('choice,identifier', [('sol', 'gpt-6.1-sol'), ('terra', 'gpt-5.6-terra'), ('luna', 'gpt-6-luna')])
+def test_picker_choice_is_validated_retained_and_audited(tmp_path, choice, identifier):
+    model = FakeLuna([decision('ask', questions=['Source?']), decision('ask', questions=['Revision?']),
+                      decision('ask', questions=['Environment?'])])
+    model.model = 'gpt-5.6-terra'
+    with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
+        bounty = post_bounty(client).json()['id']
+        options = client.get('/api/v1/bounties/' + bounty).json()['ai_options']
+        assert options == {'models': [{'value': 'sol', 'name': 'Sol'}, {'value': 'terra', 'name': 'Terra'},
+                                     {'value': 'luna', 'name': 'Luna'}], 'recommended': 'terra'}
+        assert model.calls == 0
+        assert write(client, f'/bounties/{bounty}/ai/start', {'model': 'arbitrary-provider'}).status_code == 422
+        assert write(client, f'/bounties/{bounty}/ai/start', {'model': choice}).status_code == 200
+        assert get_run(client, bounty)['model'] == identifier
+        assert get_run(client, bounty)['model_choice'] == choice
+        assert write(client, f'/bounties/{bounty}/ai/answers', {'model': 'sol', 'answers': ['Source']}, 'will').status_code == 403
+        assert model.calls == 1 and get_run(client, bounty)['model_choice'] == choice
+        assert write(client, f'/bounties/{bounty}/ai/answers', {'model': 'bad', 'answers': ['Source']}).status_code == 422
+        assert write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['Source']}).status_code == 200
+        assert get_run(client, bounty)['model'] == identifier
+        assert write(client, f'/bounties/{bounty}/ai/answers', {'model': 'sol', 'answers': ['Revision']}).status_code == 200
+        current = client.get('/api/v1/bounties/' + bounty).json()
+        assert current['ai_run']['model'] == 'gpt-6.1-sol'
+        assert current['ai_run']['model_choice'] == 'sol' and model.calls == 3
+        assert [event['data']['model'] for event in current['events'] if event['kind'] == 'ai_ask'] == [identifier, identifier, 'gpt-6.1-sol']
+
+
+def test_retry_can_select_a_model_without_bypassing_run_ownership(tmp_path):
+    model = FakeLuna([decision('ask'), decision('ask', questions=['Source?'])])
+    with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
+        bounty = post_bounty(client).json()['id']
+        write(client, f'/bounties/{bounty}/ai/start', {'model': 'terra'})
+        assert get_run(client, bounty)['status'] == 'failed'
+        assert write(client, f'/bounties/{bounty}/ai/retry', {'model': 'sol'}, 'will').status_code == 403
+        assert write(client, f'/bounties/{bounty}/ai/retry', {'model': 'bad'}).status_code == 422
+        assert write(client, f'/bounties/{bounty}/ai/retry', {'model': 'sol'}).status_code == 200
+        assert get_run(client, bounty)['status'] == 'needs_input'
+        assert get_run(client, bounty)['model'] == 'gpt-6.1-sol'
 
 
 def test_target_and_claimant_are_respected(tmp_path):
