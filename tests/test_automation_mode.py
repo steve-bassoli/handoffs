@@ -52,7 +52,7 @@ def test_high_mode_runs_astra_root_and_sol_below(tmp_path):
     assert summary['mode'] == 'high' and summary['models'] == {'HIGH': 'gpt-6-astra', 'MEDIUM': 'gpt-6.1-sol', 'LOW': 'gpt-6.1-sol'}
 
 
-def test_light_mode_is_one_sol_over_three_terra_and_rejects_more(tmp_path):
+def test_light_mode_is_one_astra_over_three_sol_and_rejects_more(tmp_path):
     source = shelf(tmp_path)
     plan = {'goal': 'g', 'authority': 'a', 'coordinator': {'shelf': source},
             'children': [{'name': f'w{n}', 'role': 'low', 'shelf': source, 'max_requests': 1} for n in range(3)]}
@@ -61,7 +61,7 @@ def test_light_mode_is_one_sol_over_three_terra_and_rejects_more(tmp_path):
     session.mkdir()
     Tree(plan, session, 30, transport=recorder(seen), mode='light').run()
     assert {(name, model) for name, model, _, _ in seen} == {
-        ('coordinator', 'gpt-6-astra'), ('w0', 'gpt-5.6-terra'), ('w1', 'gpt-5.6-terra'), ('w2', 'gpt-5.6-terra')}
+        ('coordinator', 'gpt-6-astra'), ('w0', 'gpt-6.1-sol'), ('w1', 'gpt-6.1-sol'), ('w2', 'gpt-6.1-sol')}
     with pytest.raises(ValueError):
         Tree(thirteen(tmp_path), tmp_path, 30, mode='light')
 

@@ -1,7 +1,7 @@
 """System-wide automation mode for the shared API key: how many agents may run and who may write tickets.
 
 manual: 1 Terra agent; only humans create or update tickets (automated writes are refused).
-light:  4 agents; 1 Astra root over 3 Terra workers; automation may write.
+light:  4 agents; 1 Astra root over 3 Sol workers; automation may write.
 high:   13 agents; 1 Astra root over 3 Sol leads, each over 3 Sol workers; automation may write.
 
 The mode is an explicit local owner setting (like the API ledger), never changed by a model or HTTP route.
@@ -16,8 +16,8 @@ from pathlib import Path
 MODES = {
     'manual': {'agents': 1, 'levels': ('terra',), 'automated_writes': False,
                'summary': '1 Terra agent; only humans create or update tickets'},
-    'light': {'agents': 4, 'levels': ('astra', 'terra'), 'automated_writes': True,
-              'summary': '4 agents: 1 Astra over 3 Terra; automation may write'},
+    'light': {'agents': 4, 'levels': ('astra', 'sol'), 'automated_writes': True,
+              'summary': '4 agents: 1 Astra over 3 Sol; automation may write'},
     'high': {'agents': 13, 'levels': ('astra', 'sol', 'sol'), 'automated_writes': True,
              'summary': '13 agents: 1 Astra over 3 Sol, each over 3 Sol; automation may write'},
 }
@@ -73,7 +73,7 @@ def models_by_level(mode):
 def apply_agent_names(plan, base='bob'):
     """Name a plan's agents in tree order: base for the root, then base-2, base-3, ... level by level.
 
-    light: bob (Astra) over bob-2..4 (Terra). high: bob over bob-2..4, with bob-5..7, bob-8..10 and bob-11..13 under them.
+    light: bob (Astra) over bob-2..4 (Sol). high: bob over bob-2..4, with bob-5..7, bob-8..10 and bob-11..13 under them.
     The human only ever talks to the root.
     """
     plan = json.loads(json.dumps(plan))
