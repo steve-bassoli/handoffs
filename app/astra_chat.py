@@ -43,7 +43,7 @@ def talk(prompt_file, run, previous_run=None, transport=None):
     if not key:
         raise ValueError('No API key; no request dispatched')
     payload = {'model': 'gpt-6-astra', 'reasoning': {'effort': 'max'}, 'service_tier': 'default',
-        'store': False, 'stream': True, 'instructions': MISSION, 'input': messages, 'max_output_tokens': 32000}
+        'store': False, 'stream': True, 'instructions': MISSION, 'input': messages}
     if len(json.dumps(payload, ensure_ascii=False).encode('utf-8')) > 240000:
         raise ValueError('Selected conversation exceeds request byte limit; no request dispatched')
     run = Path(run)

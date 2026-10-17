@@ -30,13 +30,15 @@ def test_explicit_turn_and_selected_continuation_only(prompt, tmp_path):
         assert value['model'] == 'gpt-6-astra' and value['reasoning']['effort'] == 'max'
         assert value['store'] is False and value['service_tier'] == 'default'
         assert value['instructions'] == MISSION and 'tools' not in value
-        assert value['max_output_tokens'] == 32000
+        assert 'max_output_tokens' not in value
         return response('Astra answer, not executed.')
 
     transport = httpx.MockTransport(respond)
     first = tmp_path / 'first'
     summary = talk(prompt, first, transport=transport)
     assert summary['state'] == 'completed' and summary['answer_executed'] is False
+    attempt = json.loads((first / 'request-01-attempt.json').read_text())
+    assert attempt['max_output_tokens'] is None and attempt['reserved_output_ceiling'] == 128000
     assert len(calls[0]['input']) == 1
     assert json.loads((first / 'answer.json').read_text())['text'] == 'Astra answer, not executed.'
     talk(prompt, tmp_path / 'second', previous_run=first, transport=transport)

@@ -12,6 +12,7 @@ import httpx
 
 from app.api_budget import BudgetError, RULES, reserve
 
+ASTRA_MAX_OUTPUT = 128000  # Documented provider capacity, not a local generation target.
 
 MISSION = (
     'Empower humans, including people without personal AI quota. Preserve agency, privacy and protected resources; '
@@ -76,12 +77,14 @@ def request(client, payload, run, ordinal, transport=None):
     encoded = json.dumps(payload, ensure_ascii=False).encode()
     if len(encoded) > 240000:
         raise ValueError('Context byte limit reached; REST without dispatch')
-    permit = reserve(payload['model'], payload['max_output_tokens'], transport)
+    ceiling = payload.get('max_output_tokens', ASTRA_MAX_OUTPUT)
+    permit = reserve(payload['model'], ceiling, transport)
     stem = f'request-{ordinal:02}'
     save(run / (stem + '-attempt.json'), {'at_utc': stamp(), 'ordinal': ordinal,
         'model': payload['model'], 'effort': payload['reasoning']['effort'],
         'request_sha256': digest(encoded), 'request_bytes': len(encoded),
-        'max_output_tokens': payload['max_output_tokens'], 'usage_state': 'unknown', 'automatic_retry': False})
+        'max_output_tokens': payload.get('max_output_tokens'), 'reserved_output_ceiling': ceiling,
+        'usage_state': 'unknown', 'automatic_retry': False})
     started = time.monotonic()
     receipt = {'ordinal': ordinal, 'usage_state': 'unknown', 'automatic_retry': False}
     result = None
@@ -131,12 +134,12 @@ def execute(manifest, run, transport=None):
     """A trusted local manifest selects source; model output cannot mutate it."""
     sources = manifest['sources']
     max_requests = manifest.get('max_requests', 4)
-    total_budget = manifest.get('total_output_tokens', 24000)
-    per_request = manifest.get('per_request_output_tokens', 12000)
+    total_budget = manifest.get('total_output_tokens')
+    per_request = manifest.get('per_request_output_tokens')
     if (not isinstance(sources, dict) or not sources or len(sources) > 40 or
         type(max_requests) is not int or not 1 <= max_requests <= 8 or
-        type(total_budget) is not int or not 1 <= total_budget <= 64000 or
-        type(per_request) is not int or not 1 <= per_request <= 32000):
+        (total_budget is not None and (type(total_budget) is not int or total_budget < 1)) or
+        (per_request is not None and (type(per_request) is not int or not 1 <= per_request <= ASTRA_MAX_OUTPUT))):
         raise ValueError('Invalid bounded manifest')
     for key in sources:
         read_source(sources, key)  # Reject changed/secret source before any paid call.
@@ -161,14 +164,18 @@ def execute(manifest, run, transport=None):
     with httpx.Client(headers={'Authorization': 'Bearer ' + key}, transport=transport,
                       timeout=httpx.Timeout(600, connect=15)) as client:
         for ordinal in range(1, max_requests + 1):
-            remaining = total_budget - used
-            if remaining <= 0:
+            remaining = None if total_budget is None else total_budget - used
+            if remaining is not None and remaining <= 0:
                 break
             payload = {'model': 'gpt-6-astra', 'reasoning': {'effort': 'max'}, 'service_tier': 'default',
                 'store': False, 'stream': True, 'include': ['reasoning.encrypted_content'],
                 'instructions': MISSION, 'input': history, 'tools': tools,
                 'tool_choice': 'none' if ordinal == max_requests else 'required' if ordinal == 1 else 'auto',
-                'max_output_tokens': min(per_request, remaining), 'text': {'format': {'type': 'json_object'}}}
+                'text': {'format': {'type': 'json_object'}}}
+            if per_request is not None or remaining is not None:
+                payload['max_output_tokens'] = min(per_request or ASTRA_MAX_OUTPUT,
+                                                   remaining if remaining is not None else ASTRA_MAX_OUTPUT,
+                                                   ASTRA_MAX_OUTPUT)
             try:
                 result, receipt = request(client, payload, run, ordinal, transport)
             except BudgetError:

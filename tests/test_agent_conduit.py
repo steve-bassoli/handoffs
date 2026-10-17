@@ -158,7 +158,7 @@ def test_output_capacity_stops_without_extra_post(manifest, tmp_path):
     assert summary['state'] == 'rest_capacity'
 
 
-def test_explicit_32k_proposal_ceiling_and_rejection_above_it(manifest, tmp_path):
+def test_explicit_proposal_ceiling_and_rejection_above_provider_capacity(manifest, tmp_path):
     manifest.update(per_request_output_tokens=32000, total_output_tokens=32000)
     calls = []
 
@@ -170,7 +170,7 @@ def test_explicit_32k_proposal_ceiling_and_rejection_above_it(manifest, tmp_path
 
     summary = execute(manifest, tmp_path / 'allowed', httpx.MockTransport(respond))
     assert summary['state'] == 'candidate_prepared' and len(calls) == 1
-    manifest['per_request_output_tokens'] = 32001
+    manifest['per_request_output_tokens'] = 128001
     with pytest.raises(ValueError, match='Invalid bounded manifest'):
         execute(manifest, tmp_path / 'refused', httpx.MockTransport(respond))
     assert not (tmp_path / 'refused').exists() and len(calls) == 1
@@ -189,3 +189,25 @@ def test_terminal_incomplete_reason_and_partial_text_are_retained(manifest, tmp_
     assert json.loads((run / 'request-01-text.json').read_text()) == {
         'status': 'incomplete', 'text': 'An unfinished proposal'}
     assert not (run / 'candidate.json').exists()
+
+
+def test_default_has_no_artificial_request_or_aggregate_token_cap(manifest, tmp_path):
+    manifest.pop('per_request_output_tokens')
+    manifest.pop('total_output_tokens')
+    calls = []
+
+    def respond(request):
+        value = json.loads(request.content)
+        calls.append(value)
+        assert 'max_output_tokens' not in value
+        return stream_result([tool()] if len(calls) == 1 else candidate(),
+                             {'input_tokens': 100, 'output_tokens': 40000})
+
+    run = tmp_path / 'provider-capacity'
+    summary = execute(manifest, run, httpx.MockTransport(respond))
+    assert summary['state'] == 'candidate_prepared' and len(calls) == 2
+    assert summary['reported_output_tokens'] == 80000
+    authority = json.loads((run / 'authority.json').read_text())
+    assert authority['total_output_tokens'] is None and authority['per_request_output_tokens'] is None
+    attempt = json.loads((run / 'request-01-attempt.json').read_text())
+    assert attempt['max_output_tokens'] is None and attempt['reserved_output_ceiling'] == 128000

@@ -25,9 +25,11 @@ For an explicit continuation, add `-PreviousRun <completed-run-directory>`.
 Only that run's visible user/assistant messages carry forward. A fresh invocation
 without it is independent. No source tools or automatic retries are used.
 
-The helper selects `gpt-6-astra` at `max`, Standard, `store=false`, with a 32000-token
-output ceiling that includes reasoning. It carries the humane mission and shared
-$99 budget/$1 reserve rules. Do not change those settings silently.
+The helper selects `gpt-6-astra` at `max`, Standard, `store=false`, without a local
+output-token cap. The provider's documented 128000-token output maximum still
+applies; it is reserved conservatively before dispatch, not a target to consume.
+It carries the humane mission and shared $99 budget/$1 reserve rules. Dollar,
+privacy and consent protections are not removed with artificial token limits.
 
 Read the returned `answer.json` and receipt. Attribute the answer to Astra and keep
 your own interpretation separate. Report actual provider tokens and unknowns,
