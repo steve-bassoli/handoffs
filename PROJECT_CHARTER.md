@@ -20,8 +20,12 @@ Human authority over policy, access, task creation and deployment remains intact
 
 The Commons exists to enrich and empower people, not to make them earn the right to
 participate. The governing [empowerment constitution](PLAN/EMPOWERMENT_CONSTITUTION.md)
-adopts three resources: Credits for unconditional daily provision and voluntary
-support, Knowledge for reusable learning, and Growth for nonspendable recognition.
+adopts two currencies and one growth stat: Credits for shared human/token access,
+ADMIRATION for freely given recognition, and GROWTH for demonstrated learning and
+verified contribution. Everyone starts with 1,000,000 game Credits and 1 ADMIRATION;
+this is an adopted starting-state contract, not a live wallet migration. Knowledge
+remains a shared library rather than another currency. GROWTH builds on the
+existing XP/level concept and cannot be bought, transferred or used to gate basics.
 The three commitments are security without earning it, choice without coercion,
 and contribution without domination.
 
@@ -160,6 +164,20 @@ Keep exact integer totals and show ordinary small values normally. Large values
 may use scientific e notation, such as 1e6 for one million; the display must not
 lose the underlying count or imply an automatic exponential multiplier. This is
 the adopted counter/display contract, not an implemented balance or transfer UI.
+
+### Credits and GROWTH
+
+Credits begin at 1,000,000 per participant and support fair access across human
+guidance and AI token capacity. They are game accounting, not a dollar balance
+or a promise of unlimited compute. Real sponsor budgets and protected reserves
+still gate every paid request. No Credit-to-token price is assumed here.
+
+GROWTH records demonstrated learning, mentoring and verified contributions,
+building on existing XP and levels. It cannot be bought, transferred or spent;
+rest, disagreement and declining work never deduct it. It is not moral worth,
+popularity or a condition of receiving basic Credits. Knowledge remains freely
+reusable within consent and privacy boundaries. These adopted values require
+separate implementation and migration evidence before they become live balances.
 
 ### Protected sponsor allocation
 

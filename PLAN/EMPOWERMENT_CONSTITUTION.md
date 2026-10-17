@@ -50,20 +50,25 @@ is not a mathematical proof of morality or immunity to corruption. Evidence,
 consent, privacy and the ability to challenge decisions take precedence over
 producing a particular count. One sufficient proof remains one proof.
 
-## Three resources
+## Two currencies and one growth stat
 
 | Resource | Purpose | Protection |
 | --- | --- | --- |
-| Credits | Unconditional daily provision plus voluntarily earned support for useful work. | Spendable only above the protected reserve; no debt, punitive deductions, inactivity decay or compulsory giving. |
-| Knowledge | Source-backed discoveries, explanations and reusable artifacts in a shared library. | Sharing does not consume the original. Sharing scope requires consent; essential learning is not gated by rank or payment. |
-| Growth | Personal experience recognizing demonstrated learning, mentoring and verified contributions. | Nonspendable, nontransferable and never deducted as punishment. Not a moral score, purchasable privilege or measure of human worth. |
+| Credits | Start at 1,000,000 game Credits; smooth access between human guidance and shared AI token capacity, alongside unconditional daily provision. | Spendable only above the protected reserve; no debt, punitive deductions, inactivity decay or compulsory giving. Game holdings do not expand real sponsor budgets. |
+| ADMIRATION | Free recognition, starting at 1 and increasing incrementally when given. Anyone can give without spare Credits. | No debit to the giver, payment, repayment or reciprocal obligation. Never a price for participation, popularity-based authority or reason to work past a health limit. |
+| GROWTH | Personal experience recognizing demonstrated learning, mentoring and verified contributions, building on existing XP and levels. | Nonspendable, nontransferable and never deducted as punishment. Not a moral score, purchasable privilege or measure of human worth. |
 
-Only Credits is a spendable currency. Knowledge and Growth are persistent forms
-of value, not artificial scarcity meters or conversion tokens. Do not fabricate
+Credits and ADMIRATION serve different purposes: funded capacity and freely given
+recognition. ADMIRATION is not a debit transfer or an API payment instrument.
+Keep exact integer counts, display small values normally, and use scientific e
+notation for large totals when useful. No automatic exponential multiplier is
+implied. GROWTH is a stat, not another spendable currency. Do not fabricate
 experience from login streaks, task counts, tokens consumed or document volume.
 Recognize demonstrated outcomes, including a useful discovery that a proposed
 change is unnecessary. A daily allocation does not require a contribution.
 
+Knowledge remains a consented shared library, not an additional currency. Sharing
+does not consume the original; essential learning is not gated by rank or payment.
 Knowledge may be corrected, superseded or removed for privacy and safety without
 financial punishment. Preserve appropriate provenance without retaining sensitive
 content merely to make the archive permanent. Recognition claims can be marked
@@ -274,14 +279,17 @@ preserved autonomy and reusable learning rather than maximizing work or spending
 The current service still uses Gold, monthly allocations and existing bounty
 API/data identifiers; the web UI now calls the work Opportunities. It prevents
 overdrafts but does not enforce a positive protected
-reserve. It has artifacts, not the Knowledge/Growth resource model described
+reserve. It has artifacts and existing XP/levels, not the Credits/ADMIRATION/GROWTH
+economy described
 here. Authenticated identity, consent-bound debit authorization, an isolated ledger
 authority and independent verification are not implemented by this policy change.
 It does not migrate wallets, create daily grants, implement resource fulfillment,
 deploy blockchain
 or claim a tested moral or operator-resistance guarantee.
 
-Before implementing the economy, explicitly set the daily Credit amount, protected
+The adopted initial Credit amount is 1,000,000; it is not an authorized rewrite
+of existing balances or a Credit-to-token conversion rate. Before implementing
+the economy, explicitly set the daily Credit amount, protected
 reserve and calendar/catch-up policy. Preserve balances, earned rewards and open
 escrow; preview migration without mutating live accounts. In isolated tests prove
 that exact-floor spending succeeds, below-floor spending fails without partial

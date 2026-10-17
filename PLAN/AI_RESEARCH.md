@@ -529,6 +529,24 @@ causal performance improvements from PRESSURE or subjective AI mental health.
 Runtime behavior and health outcomes remain evaluation questions, not proven
 results of a policy edit. Private source/provenance notes are retained separately.
 
+### Two currencies, one growth stat
+
+The user clarified that the game's initial 1,000,000 belongs to Credits, the
+currency intended to smooth human/token access. ADMIRATION is a separate freely
+given currency that requires no spare Credits, debit or obligation. Its earlier
+starting value of 1 and incremental growth remain distinct from Credit funding.
+Small values are shown normally; large counts may use exact-backed e notation.
+The third stat was delegated to AI: GROWTH reuses the established XP/level idea
+for demonstrated learning and verified contribution, without making development
+something that can be bought, transferred or withheld as punishment.
+
+This supersedes the earlier resource trio's classification of Knowledge as a
+resource wallet; the shared library remains valuable without becoming a currency.
+No live wallet migration, daily grant amount, positive floor or token exchange
+rate is implemented by this decision. The real API allocation and protected
+reserve are unchanged. Appreciation does not confer authority, prove a fix or
+cancel a health stop. Future agents must carry those limits with the mission.
+
 The private `steve-bassoli/gremlins` seed was created and pushed at
 `f6c844d3a705d30f0b7890e3d05fb8b4c9ef2399`. Local and remote SHA matched; the
 private badge and two seed files were observed in Chrome. This is a repository,
