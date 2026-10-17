@@ -3,6 +3,7 @@ import base64
 import hashlib
 import json
 import re
+import time
 from typing import Literal
 from uuid import uuid4
 
@@ -90,6 +91,23 @@ class Proofs:
                 'proof_id': acceptance.get('proof_id'), 'binding': acceptance.get('proof_binding')})
         return children, receipts
 
+    @staticmethod
+    def review_usage(task, review):
+        observations = {event['data']['stage']: event['data'] for event in task['events']
+                        if event['kind'] == 'proof_review_usage' and event['data']['review_id'] == review['review_id']}
+        attempt = observations.get('request_started')
+        received = observations.get('response_received', {})
+        no_request = observations.get('no_request')
+        state = received.get('usage_state', 'unknown') if attempt else 'no_request' if no_request else 'unobserved'
+        usage = {'api_calls': 1 if attempt else 0 if no_request else None,
+                 'input_tokens': received.get('input_tokens') if state == 'reported' else 0 if no_request else None,
+                 'output_tokens': received.get('output_tokens') if state == 'reported' else 0 if no_request else None,
+                 'usage_state': state, 'unreported_calls': int(state == 'unknown') if attempt else 0 if no_request else None,
+                 'elapsed_ms': review.get('elapsed_ms')}
+        observation = received or attempt or no_request or {}
+        usage.update({key: observation[key] for key in ('model', 'response_id', 'response_status', 'reason') if key in observation})
+        return usage
+
     def project(self, c, task):
         children, requirements = self.requirements(c, task)
         records = [event['data'] for event in task['events'] if event['kind'] == 'proof_attached']
@@ -99,6 +117,8 @@ class Proofs:
             review = next((event['data'] for event in reversed(task['events'])
                            if event['kind'] in ('proof_review_queued', 'proof_review_started', 'proof_reviewed')
                            and event['data']['proof_id'] == proof['proof_id']), None)
+            if review:
+                review = {**review, 'usage': self.review_usage(task, review)}
             human = next((event['data'] for event in reversed(task['events']) if event['kind'] == 'proof_human_reviewed'
                           and event['data']['proof_id'] == proof['proof_id']), None)
             fresh = proof['binding'] == binding(task, requirements)
@@ -173,8 +193,27 @@ class Proofs:
             proof = next(event['data'] for event in task['events'] if event['kind'] == 'proof_attached'
                          and event['data']['proof_id'] == meta['proof_id'])
             self.service.event(c, identifier, 'proof_review_started', queued['actor'], task['status'], {**meta, 'verdict': 'running'})
+        started = time.monotonic()
+
+        def record_usage(*, stage, **observation):
+            if stage not in ('request_started', 'response_received', 'no_request'):
+                raise ValueError('Unknown proof review usage stage')
+            data = {key: observation[key] for key in ('model', 'usage_state', 'input_tokens', 'output_tokens',
+                    'response_id', 'response_status', 'reason') if key in observation}
+            if stage in ('request_started', 'no_request'):
+                data.update(api_calls=int(stage == 'request_started'),
+                            usage_state='unknown' if stage == 'request_started' else 'no_request')
+            with self.service.db.write() as c:
+                current = self.service.detail(c, identifier)
+                if any(event['kind'] == 'proof_review_usage' and event['data']['review_id'] == review_id
+                       and event['data']['stage'] == stage for event in current['events']):
+                    return
+                self.service.event(c, identifier, 'proof_review_usage', queued['actor'], current['status'], {
+                    **{key: meta[key] for key in ('review_id', 'proof_id', 'binding')},
+                    'request_ordinal': 1, 'stage': stage, **data})
+
         try:
-            raw = self.reviewer.review(task, proof)
+            raw = self.reviewer.review(task, {**proof, '_record_usage': record_usage})
             result = validate_review({key: raw[key] for key in ('verdict', 'reason', 'criteria')}, len(task['criteria']))
             result['reviewer'] = raw.get('reviewer', 'configured-reviewer')
         except Exception:
@@ -183,7 +222,8 @@ class Proofs:
             current = self.service.detail(c, identifier)
             if not current['proof'] or current['proof']['proof_id'] != proof['proof_id'] or not current['proof']['fresh']:
                 result = ProofReviewer.inconclusive(task, 'The proof or its bound context changed during review.')
-            self.service.event(c, identifier, 'proof_reviewed', queued['actor'], current['status'], {**meta, **result})
+            self.service.event(c, identifier, 'proof_reviewed', queued['actor'], current['status'],
+                               {**meta, **result, 'elapsed_ms': round((time.monotonic() - started) * 1000)})
 
     def recover(self):
         from app.storage import all_rows

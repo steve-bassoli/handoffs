@@ -2,6 +2,7 @@
 import base64
 import json
 import os
+import re
 
 import httpx
 
@@ -13,10 +14,14 @@ class ProofReviewer:
         self.transport = transport
 
     def review(self, task, proof):
+        record_usage = proof.get('_record_usage', lambda **observation: None)
+        model = os.environ.get('HANDOFFS_PROOF_MODEL', os.environ.get('HANDOFFS_AI_MODEL', 'gpt-6-luna'))
         if proof['media_type'] == 'video/mp4':
+            record_usage(stage='no_request', model=model, reason='unsupported_video')
             return self.inconclusive(task, 'Direct MP4 inspection is not supported by this reviewer; use an independently sufficient text or image proof instead.')
         key = os.environ.get('OPENAI_API_KEY')
         if not key:
+            record_usage(stage='no_request', model=model, reason='missing_key')
             return self.inconclusive(task, 'Proof review is unavailable: configure the server key. No proof was accepted.')
         from app.ai import strict_schema
         context = {'title': task['title'], 'goal': task['goal'], 'criteria': task['criteria'],
@@ -27,8 +32,9 @@ class ProofReviewer:
             content.append({'type': 'input_image', 'image_url': 'data:' + proof['media_type'] + ';base64,' + proof['content_base64']})
         else:
             content.append({'type': 'input_text', 'text': base64.b64decode(proof['content_base64']).decode('utf-8-sig')})
-        model = os.environ.get('HANDOFFS_PROOF_MODEL', os.environ.get('HANDOFFS_AI_MODEL', 'gpt-6-luna'))
         with httpx.Client(timeout=60, transport=self.transport) as client:
+            # Commit the attempt before dispatch: an interrupted call may still use tokens.
+            record_usage(stage='request_started', model=model)
             response = client.post('https://api.openai.com/v1/responses', headers={'Authorization': 'Bearer ' + key},
                 json={'model': model, 'store': False, 'max_output_tokens': 4000,
                     'instructions': 'You are the Breaker, a separate proof reviewer, not the implementing agent. '
@@ -41,8 +47,26 @@ class ProofReviewer:
                     'input': [{'role': 'user', 'content': content}],
                     'text': {'format': {'type': 'json_schema', 'name': 'proof_review', 'strict': True,
                                        'schema': strict_schema(ReviewResult.model_json_schema())}}})
+            try:
+                result = response.json()
+            except ValueError:
+                record_usage(stage='response_received', model=model, usage_state='unknown')
+                raise
+            reported = result.get('usage') if isinstance(result, dict) else None
+            has_usage = (isinstance(reported, dict) and all(type(reported.get(name)) is int and reported[name] >= 0
+                         for name in ('input_tokens', 'output_tokens')))
+            observation = {'usage_state': 'reported' if has_usage else 'unknown'}
+            if has_usage:
+                observation.update({name: reported[name] for name in ('input_tokens', 'output_tokens')})
+            if isinstance(result, dict):
+                identifier = result.get('id')
+                if isinstance(identifier, str) and re.fullmatch(r'resp_[A-Za-z0-9_-]{1,123}', identifier):
+                    observation['response_id'] = identifier
+                status = result.get('status')
+                if isinstance(status, str) and status in ('queued', 'in_progress', 'completed', 'failed', 'incomplete', 'cancelled'):
+                    observation['response_status'] = status
+            record_usage(stage='response_received', model=model, **observation)
             response.raise_for_status()
-            result = response.json()
         if result.get('status') != 'completed':
             return self.inconclusive(task, 'The provider did not complete proof review.')
         text = ''.join(part['text'] for item in result.get('output', []) if item['type'] == 'message'
