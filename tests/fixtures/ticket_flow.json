@@ -1,0 +1,54 @@
+{
+  "lineage": {
+    "root_id": "72c0ca9e-7228-4afa-beae-dafe50b4faf4",
+    "items": [
+      {
+        "id": "72c0ca9e-7228-4afa-beae-dafe50b4faf4",
+        "parent_id": null,
+        "title": "Make MEDIUM-to-LOW ticket flow unmistakable on ticket pages",
+        "status": "decomposed"
+      },
+      {
+        "id": "05029745-a3e8-4eda-8e22-0c9c81beb6ed",
+        "parent_id": "72c0ca9e-7228-4afa-beae-dafe50b4faf4",
+        "title": "Render <unsafe>& flow",
+        "status": "open"
+      },
+      {
+        "id": "9f65f898-1dd0-402c-bc5e-84a0b23a1077",
+        "parent_id": "72c0ca9e-7228-4afa-beae-dafe50b4faf4",
+        "title": "Style accessible branches",
+        "status": "open"
+      },
+      {
+        "id": "62f63af2-57c9-4910-bcc0-5ff4caa9d8d0",
+        "parent_id": "72c0ca9e-7228-4afa-beae-dafe50b4faf4",
+        "title": "Specify ticket-flow checks",
+        "status": "open"
+      }
+    ]
+  },
+  "currentId": "05029745-a3e8-4eda-8e22-0c9c81beb6ed",
+  "detailsById": {
+    "72c0ca9e-7228-4afa-beae-dafe50b4faf4": {
+      "complexity": "MEDIUM",
+      "status": "decomposed",
+      "events": []
+    },
+    "05029745-a3e8-4eda-8e22-0c9c81beb6ed": {
+      "complexity": "LOW",
+      "status": "open",
+      "events": [{"kind": "followup_confirmed", "actor": "steve", "data": {"assigned_agent": "bob-2"}}]
+    },
+    "9f65f898-1dd0-402c-bc5e-84a0b23a1077": {
+      "complexity": "LOW",
+      "status": "open",
+      "events": [{"kind": "followup_confirmed", "actor": "steve", "data": {"assigned_agent": "bob-3"}}]
+    },
+    "62f63af2-57c9-4910-bcc0-5ff4caa9d8d0": {
+      "complexity": "LOW",
+      "status": "open",
+      "events": [{"kind": "posted", "actor": "bob-4", "data": {}}]
+    }
+  }
+}

@@ -572,6 +572,14 @@ async function aiSection(data, detail) {
   }
   if (box.childElementCount > 1) detail.append(box);
   const lineage = await api(`/bounties/${id}/lineage`);
+  if (window.renderTicketFlow && lineage.items.length > 1) {
+    try {
+      const detailsById = {};
+      await Promise.all(lineage.items.map(async item => { try { detailsById[item.id] = await api('/bounties/' + encodeURIComponent(item.id)); } catch (error) { /* enrichment is optional */ } }));
+      detail.append(window.renderTicketFlow({lineage, currentId: id, detailsById, onNavigate: target => run(() => show(target))}));
+      return;
+    } catch (error) { /* fall back to the plain list below */ }
+  }
   const tree = element('details', undefined, 'lineage'); tree.open = true; tree.append(element('summary', 'Task history & follow-ups'));
   const add = (parent, container) => {
     const list = element('ul');
