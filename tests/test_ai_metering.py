@@ -61,6 +61,11 @@ def test_provider_attempts_and_usage_survive_failures(tmp_path, monkeypatch, kin
             failure = next(event for event in detail['events'] if event['kind'] == 'ai_failed')
             assert failure['data']['code'] == code
             assert failure['data']['usage'] == run['usage']
+            if kind == 'plan':
+                assert failure['data']['stage'] == 'implementation_plan'
+                assert 'Provide at least one plan item' in run['error']
+            if kind == 'invalid':
+                assert failure['data']['stage'] == 'provider_response'
         after = client.get('/api/v1/me/stats').json()
         assert (before['available_gold'], before['reserved_gold']) == (after['available_gold'], after['reserved_gold'])
     with TestClient(create_app(db, ai_model=Luna(httpx.MockTransport(provider)))) as restarted:
@@ -105,3 +110,17 @@ def test_tool_limit_stops_without_a_thirteenth_call(tmp_path, monkeypatch):
         assert run['status'] == 'failed' and 'source-reading budget' in run['error']
         assert len(calls) == run['usage']['api_calls'] == 12
         assert run['usage']['input_tokens'] == 1476
+
+
+def test_bad_edit_exposes_only_a_fixed_safe_rule(tmp_path):
+    from app.ai import SourceEdit
+    from test_ai import FakeLuna
+    result = decision('deliver', instructions='Test locally')
+    result.edits = [SourceEdit(path='calc.py', before='private source excerpt not present', after='replacement')]
+    with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=FakeLuna([result]))) as client:
+        bounty = post_bounty(client).json()['id']
+        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
+        task = client.get('/api/v1/bounties/' + bounty).json()
+        assert 'uniquely match the supplied source' in task['ai_run']['error']
+        assert 'private source excerpt' not in json.dumps(task)
+        assert next(event for event in task['events'] if event['kind'] == 'ai_failed')['data']['stage'] == 'source_edits'

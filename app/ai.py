@@ -450,6 +450,7 @@ class AIRuns:
             task = self.service.detail(c, bounty_id)
         started = time.monotonic()
         metered = False
+        stage = 'provider_response'
 
         def record_usage(delta):
             nonlocal metered
@@ -466,7 +467,9 @@ class AIRuns:
 
         try:
             decision, usage = self.model.generate(task, {**row['data'], '_record_usage': record_usage})
+            stage = 'source_edits'
             materialize_edits(decision, row['data']['source'])
+            stage = 'outcome_contract'
             if decision.action == 'ask' and not decision.questions:
                 raise ValueError('An ask outcome needs at least one question')
             if decision.action == 'deliver' and (not row['data']['source'] or not decision.files or not decision.instructions.strip()):
@@ -490,6 +493,7 @@ class AIRuns:
                     or (decision.action != 'followups' and decision.proposals)):
                 raise ValueError('Conflicting model outcomes')
             if decision.action == 'deliver':
+                stage = 'implementation_plan'
                 normalized, leaves = validate_plan([step.model_dump() for step in decision.plan])
                 if len(normalized) != 1 or normalized[0]['complexity'] != 'LOW' or leaves[0]['work_type'] != 'implementation':
                     raise ValueError('An implementation LOW needs exactly one implementation leaf, not another decomposition')
@@ -498,11 +502,14 @@ class AIRuns:
                 decision.plan = [PlanStep.model_validate(step) for step in normalized]
             elif decision.plan:
                 raise ValueError('Only a delivery has an executable plan')
+            stage = 'artifact_paths'
             paths = [source_path(f.path) for f in decision.files]
             if len(paths) != len(set(paths)):
                 raise ValueError('Duplicate artifact path')
+            stage = 'secret_check'
             if any('sk-proj-' in f.content or '-----BEGIN PRIVATE KEY-----' in f.content for f in decision.files):
                 raise ValueError('Secret in model output')
+            stage = 'result_storage'
             with self.db.write() as c:
                 row = self.record(c, bounty_id)
                 if not metered:
@@ -539,6 +546,35 @@ class AIRuns:
                     if isinstance(error, httpx.RequestError)
                     else AITurnError.messages[error.code] if isinstance(error, AITurnError)
                     else 'AI returned an invalid outcome. Check source, exact edit matches and the LOW plan before retrying.')
+                safe_rules = {
+                    'Only implementation deliveries can contain source edits',
+                    'Edits need supplied source and cannot overlap full-file outputs',
+                    'An edit must uniquely match the supplied source and change it',
+                    'Edited source exceeds the artifact limit',
+                    'An ask outcome needs at least one question',
+                    'Missing source or delivery files/instructions',
+                    'Missing follow-up proposals',
+                    'Only a matching implementation or verification LOW can deliver this outcome',
+                    'Evidence needs report artifacts and review instructions',
+                    'Evidence-only outcomes cannot contain source patches or executable files',
+                    'Conflicting model outcomes',
+                    'An implementation LOW needs exactly one implementation leaf, not another decomposition',
+                    'Every changed file must belong to a LOW leaf',
+                    'Only a delivery has an executable plan',
+                    'Provide at least one plan item',
+                    'Every plan item needs a stable ID',
+                    'Plan IDs must be unique; at most 200 items',
+                    'Every item requires title, children, and files',
+                    'Plan files must be distinct exact relative paths',
+                    'Only LOW leaves declare commit files',
+                    'LOW is a leaf and cannot have children',
+                    'Duplicate artifact path',
+                    'Secret in model output',
+                }
+                if code == 'invalid_outcome':
+                    row['data']['error'] += f' Validation stage: {stage}.'
+                    if type(error) is ValueError and str(error) in safe_rules:
+                        row['data']['error'] += ' ' + str(error) + '.'
                 unknown = row['data']['usage'].get('unreported_calls', 0)
                 if unknown:
                     row['data']['error'] += f' Reported token totals exclude {unknown} request(s) with unknown usage; do not assume zero cost.'
@@ -546,7 +582,7 @@ class AIRuns:
                 self.save(c, row)
                 task = self.service.detail(c, bounty_id)
                 self.service.event(c, bounty_id, 'ai_failed', row['actor'], task['status'],
-                    {'run_id': row['id'], 'code': code, 'usage': row['data']['usage']})
+                    {'run_id': row['id'], 'code': code, 'stage': stage, 'usage': row['data']['usage']})
 
     def retry(self, c, actor, payload):
         row = self.record(c, payload['id'])
