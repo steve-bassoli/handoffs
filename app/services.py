@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -8,6 +9,9 @@ from zoneinfo import ZoneInfo
 from app.context import project_legacy
 from app.workflow import ROLES, constellation, dependencies, disposition, phase, profile, validate_dependencies
 from app.storage import all_rows, one
+
+
+event_via = ContextVar('event_via', default=None)
 
 
 def now():
@@ -88,8 +92,12 @@ class Service:
             return all_rows(c, "SELECT t.*, e.amount, a.kind AS account_kind FROM gold_transactions t JOIN gold_entries e ON e.transaction_id=t.id JOIN accounts a ON a.id=e.account_id WHERE a.user_id=? ORDER BY e.seq DESC LIMIT ? OFFSET ?", (user, limit, offset))
 
     def event(self, c, bounty_id, kind, actor, state, data=None):
+        record = dict(data or {})
+        via = event_via.get()
+        if via is not None:
+            record['via'] = via
         c.exec_driver_sql('INSERT INTO events(bounty_id,kind,actor,state,data,created_at) VALUES (?,?,?,?,?,?)',
-                          (bounty_id, kind, actor, state, encode(data or {}), now()))
+                          (bounty_id, kind, actor, state, encode(record), now()))
 
     def detail(self, c, bounty_id):
         bounty = one(c, 'SELECT * FROM bounties WHERE id=?', (bounty_id,))

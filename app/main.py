@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, HttpUrl
 from typing import Literal
 
 from app.adapters import DemoDeliveryVerifier, DemoIdentity
-from app.services import RuleError, Service
+from app.services import RuleError, Service, event_via
 from app.storage import Database
 from app.ai import AIRuns, Luna
 from app.artifacts import download, inventory
@@ -127,10 +127,15 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     @app.middleware('http')
     async def automation_guard(request: Request, call_next):
         # Automation tools label their writes; manual mode refuses them so only humans change tickets.
-        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and request.headers.get(AUTOMATION_HEADER):
+        via = request.headers.get(AUTOMATION_HEADER)
+        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and via:
             if not current_mode(getattr(request.app.state, 'mode_path', None))['automated_writes']:
                 return JSONResponse(status_code=403, content={'detail': 'Manual mode: only humans create or update tickets'})
-        return await call_next(request)
+        token = event_via.set(via)
+        try:
+            return await call_next(request)
+        finally:
+            event_via.reset(token)
 
     @app.exception_handler(RuleError)
     async def rule_error(request: Request, error: RuleError):
