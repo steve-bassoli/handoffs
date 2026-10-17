@@ -36,6 +36,19 @@ class OutputModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
 
+class AITurnError(ValueError):
+    """Only allowlisted codes may cross the provider diagnostic boundary."""
+    messages = {
+        'output_limit': 'AI reached its output limit. Narrow the change or use smaller source edits before retrying.',
+        'incomplete': 'AI returned an incomplete response. Review the scope before explicitly retrying.',
+        'tool_limit': 'AI exhausted this turn\'s source-reading budget. Supply a focused source package before retrying.',
+    }
+
+    def __init__(self, code):
+        self.code = code
+        super().__init__(self.messages[code])
+
+
 class SourceFile(OutputModel):
     path: str
     content: str
@@ -245,9 +258,12 @@ class Luna:
                                            'required': ['path'], 'additionalProperties': False}},
         ]
         usage = {'input_tokens': 0, 'output_tokens': 0, 'api_calls': 0}
+        record_usage = data.get('_record_usage', lambda delta: None)
         schema = strict_schema(Decision.model_json_schema())
         with httpx.Client(timeout=60, transport=self.transport) as client:
             for _ in range(12):
+                # Persist the attempt before sending. A timeout can still incur cost.
+                record_usage({'api_calls': 1, 'unreported_calls': 1})
                 response = client.post('https://api.openai.com/v1/responses',
                     headers={'Authorization': 'Bearer ' + os.environ['OPENAI_API_KEY']},
                     json={'model': selected_model(data, self.model), 'store': False, 'instructions': instructions,
@@ -258,10 +274,16 @@ class Luna:
                 response.raise_for_status()
                 result = response.json()
                 usage['api_calls'] += 1
+                reported = result.get('usage')
+                if (isinstance(reported, dict) and all(type(reported.get(name)) is int and reported[name] >= 0
+                        for name in ('input_tokens', 'output_tokens'))):
+                    record_usage({name: reported[name] for name in ('input_tokens', 'output_tokens')} |
+                                 {'unreported_calls': -1})
                 for name in ('input_tokens', 'output_tokens'):
-                    usage[name] += result.get('usage', {}).get(name, 0)
+                    usage[name] += reported.get(name, 0) if isinstance(reported, dict) else 0
                 if result.get('status') != 'completed':
-                    raise ValueError('Incomplete model response')
+                    reason = (result.get('incomplete_details') or {}).get('reason')
+                    raise AITurnError('output_limit' if reason == 'max_output_tokens' else 'incomplete')
                 output = result.get('output', [])
                 calls = [item for item in output if item['type'] == 'function_call']
                 if not calls:
@@ -278,7 +300,7 @@ class Luna:
                     else:
                         value = 'Tool unavailable'
                     messages.append({'type': 'function_call_output', 'call_id': call['call_id'], 'output': encode(value)})
-        raise ValueError('Source investigation exceeded the per-turn tool budget')
+        raise AITurnError('tool_limit')
 
 
 class AIRuns:
@@ -427,8 +449,23 @@ class AIRuns:
             self.save(c, row)
             task = self.service.detail(c, bounty_id)
         started = time.monotonic()
+        metered = False
+
+        def record_usage(delta):
+            nonlocal metered
+            with self.db.write() as c:
+                current = self.record(c, bounty_id)
+                if current['id'] != row['id'] or current['status'] != 'running':
+                    raise ValueError('Run changed while metering')
+                for key, value in delta.items():
+                    current['data']['usage'][key] = current['data']['usage'].get(key, 0) + value
+                self.save(c, current)
+                self.service.event(c, bounty_id, 'ai_usage', current['actor'], task['status'],
+                    {'run_id': current['id'], 'model': model, 'delta': delta})
+            metered = True
+
         try:
-            decision, usage = self.model.generate(task, row['data'])
+            decision, usage = self.model.generate(task, {**row['data'], '_record_usage': record_usage})
             materialize_edits(decision, row['data']['source'])
             if decision.action == 'ask' and not decision.questions:
                 raise ValueError('An ask outcome needs at least one question')
@@ -468,8 +505,9 @@ class AIRuns:
                 raise ValueError('Secret in model output')
             with self.db.write() as c:
                 row = self.record(c, bounty_id)
-                for key in ('input_tokens', 'output_tokens', 'api_calls'):
-                    row['data']['usage'][key] += usage.get(key, 0)
+                if not metered:
+                    for key in ('input_tokens', 'output_tokens', 'api_calls'):
+                        row['data']['usage'][key] += usage.get(key, 0)
                 row['data']['usage']['elapsed_ms'] += round((time.monotonic() - started) * 1000)
                 row['data']['result'] = decision.model_dump()
                 if decision.action == 'ask':
@@ -490,13 +528,25 @@ class AIRuns:
             with self.db.write() as c:
                 row = self.record(c, bounty_id)
                 row['status'] = 'failed'
+                row['data']['usage']['elapsed_ms'] += round((time.monotonic() - started) * 1000)
+                code = ('http_error' if isinstance(error, httpx.HTTPStatusError)
+                        else 'transport_error' if isinstance(error, httpx.RequestError)
+                        else error.code if isinstance(error, AITurnError) else 'invalid_outcome')
                 row['data']['error'] = (
                     f'OpenAI returned HTTP {error.response.status_code}. Check the key and model access, then retry.'
                     if isinstance(error, httpx.HTTPStatusError)
-                    else 'AI could not finish this turn. Check server configuration or retry.')
+                    else 'AI request was interrupted; provider usage may be unknown. Check usage before explicitly retrying.'
+                    if isinstance(error, httpx.RequestError)
+                    else AITurnError.messages[error.code] if isinstance(error, AITurnError)
+                    else 'AI returned an invalid outcome. Check source, exact edit matches and the LOW plan before retrying.')
+                unknown = row['data']['usage'].get('unreported_calls', 0)
+                if unknown:
+                    row['data']['error'] += f' Reported token totals exclude {unknown} request(s) with unknown usage; do not assume zero cost.'
+                row['data']['error_code'] = code
                 self.save(c, row)
                 task = self.service.detail(c, bounty_id)
-                self.service.event(c, bounty_id, 'ai_failed', row['actor'], task['status'], {'run_id': row['id']})
+                self.service.event(c, bounty_id, 'ai_failed', row['actor'], task['status'],
+                    {'run_id': row['id'], 'code': code, 'usage': row['data']['usage']})
 
     def retry(self, c, actor, payload):
         row = self.record(c, payload['id'])
@@ -509,6 +559,7 @@ class AIRuns:
             row['data']['model_choice'] = payload['model']
         row['status'] = 'queued'
         row['data'].pop('error', None)
+        row['data'].pop('error_code', None)
         self.save(c, row)
         task = self.service.detail(c, payload['id'])
         self.service.event(c, payload['id'], 'ai_retried', actor, task['status'])
