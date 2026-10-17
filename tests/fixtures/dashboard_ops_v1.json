@@ -1,0 +1,31 @@
+{
+  "contract": "dashboard_ops_v1/R2",
+  "review_notes": [
+    "Candidate: parent accounting tail was clipped; full ACK pending.",
+    "Cases deep-merge raw over base; previous_from references an earlier normalized case.",
+    "Any ambiguous ledger invalidates all three derived amounts; confirm against restored tail.",
+    "Stale retention requires identical nonempty source_id; confirm against restored tail."
+  ],
+  "base": {
+    "sources": {
+      "ledger": {"status":"ok","source_id":"synthetic-ledger","observed_at":"2026-01-01T00:00:00Z","last_attempt_at":"2026-01-01T00:00:00Z","error_code":null,"data":{"ceiling_cents":199800,"baseline_cents":1000,"reservations_complete":true,"holds":[{"id":"a","state":"pending","held_cents":100},{"id":"b","state":"reported_upper","held_cents":200},{"id":"c","state":"unknown_conservative","held_cents":300}],"provenance":"synthetic fixture"}},
+      "session_usage": {"status":"ok","source_id":"synthetic-usage","observed_at":"2026-01-01T00:00:00Z","last_attempt_at":null,"error_code":null,"data":{"reported_upper_cents":99999}},
+      "wallet": {"status":"ok","source_id":"synthetic-wallet","observed_at":null,"last_attempt_at":null,"error_code":null,"data":{"gold":777}},
+      "codex": {"status":"ok","source_id":"synthetic-codex","observed_at":null,"last_attempt_at":null,"error_code":null,"data":{"amount":42,"unit":"synthetic allowance"}},
+      "leases": {"status":"ok","source_id":"synthetic-leases","observed_at":null,"last_attempt_at":null,"error_code":null,"data":{"records":[],"verified_live_count":null,"interrupted_occupied_count":null}},
+      "git": {"status":"ok","source_id":"synthetic-git","observed_at":null,"last_attempt_at":null,"error_code":null,"data":{"commit":null}}
+    }
+  },
+  "cases": [
+    {"id":"all_hold_states","raw":{},"previous_from":null,"expected":{"ledger":{"held_upper_bound_cents":600,"source_headroom_cents":198200,"guarded_headroom_cents":198200},"commit":null}},
+    {"id":"missing_budget","raw":{"sources":{"ledger":{"data":{"ceiling_cents":null}}}},"previous_from":null,"expected":{"ledger":{"held_upper_bound_cents":null,"source_headroom_cents":null,"guarded_headroom_cents":null}}},
+    {"id":"incomplete","raw":{"sources":{"ledger":{"data":{"reservations_complete":false}}}},"previous_from":null,"expected":{"ledger":{"held_upper_bound_cents":null,"source_headroom_cents":null,"guarded_headroom_cents":null}}},
+    {"id":"excessive_ceiling","raw":{"sources":{"ledger":{"data":{"ceiling_cents":300000}}}},"previous_from":null,"expected":{"ledger":{"held_upper_bound_cents":600,"source_headroom_cents":298400,"guarded_headroom_cents":198200}}},
+    {"id":"negative_headroom","raw":{"sources":{"ledger":{"data":{"baseline_cents":200000}}}},"previous_from":null,"expected":{"ledger":{"held_upper_bound_cents":600,"source_headroom_cents":-800,"guarded_headroom_cents":-800}}},
+    {"id":"duplicate_ids","raw":{"sources":{"ledger":{"data":{"holds":[{"id":"a","state":"pending","held_cents":100},{"id":"a","state":"unknown_conservative","held_cents":100}]}}}},"previous_from":null,"expected":{"ledger":{"held_upper_bound_cents":null,"source_headroom_cents":null,"guarded_headroom_cents":null}}},
+    {"id":"unsafe_cents","raw":{"sources":{"ledger":{"data":{"baseline_cents":9007199254740992}}}},"previous_from":null,"expected":{"ledger":{"held_upper_bound_cents":null,"source_headroom_cents":null,"guarded_headroom_cents":null}}},
+    {"id":"independent_resources","raw":{"sources":{"wallet":{"data":{"gold":123456}},"codex":{"data":{"amount":999999}},"session_usage":{"data":{"reported_upper_cents":180000}}}},"previous_from":null,"expected":{"ledger":{"held_upper_bound_cents":600,"source_headroom_cents":198200,"guarded_headroom_cents":198200},"gold":123456,"codex_amount":999999,"usage_upper":180000}},
+    {"id":"same_source_stale","raw":{"sources":{"ledger":{"status":"unavailable","last_attempt_at":"2026-01-02T00:00:00Z","error_code":"read_failed","data":null}}},"previous_from":"all_hold_states","expected":{"ledger":{"held_upper_bound_cents":600,"source_headroom_cents":198200,"guarded_headroom_cents":198200},"status":"stale","observed_at":"2026-01-01T00:00:00Z","last_attempt_at":"2026-01-02T00:00:00Z"}},
+    {"id":"changed_source","raw":{"sources":{"ledger":{"status":"unavailable","source_id":"different-ledger","error_code":"read_failed","data":null}}},"previous_from":"all_hold_states","expected":{"status":"unavailable","data":null}}
+  ]
+}
