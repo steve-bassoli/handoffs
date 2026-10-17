@@ -132,17 +132,57 @@ def test_followups_require_confirmation_and_retain_lineage(tmp_path):
         assert (before['available_gold'], before['reserved_gold']) == (after['available_gold'], after['reserved_gold'])
 
 
-def test_three_question_limit_across_turns(tmp_path):
+def test_questions_can_continue_past_three_across_turns(tmp_path):
     model = FakeLuna([decision('ask', questions=['One?', 'Two?']), decision('ask', questions=['Three?']),
-                      decision('ask', questions=['Four?'])])
+                      decision('ask', questions=['Four?', 'Five?', 'Six?', 'Seven?']),
+                      decision('deliver', files=[{'path': 'calc.py', 'content': 'fixed'}], instructions='Verify locally')])
+    with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
+        bounty = post_bounty(client).json()['id']
+        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
+        write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['a', 'b']})
+        write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['c']})
+        assert get_run(client, bounty)['question_count'] == 7
+        assert get_run(client, bounty)['status'] == 'needs_input'
+        assert len(get_run(client, bounty)['conversation']) == 5
+        assert write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['d', 'e', 'f', 'g']}).status_code == 200
+        assert get_run(client, bounty)['status'] == 'ready'
+        assert get_run(client, bounty)['question_count'] == 7
+        assert model.calls == 4
+
+
+def test_empty_question_outcome_still_fails(tmp_path):
+    with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=FakeLuna([decision('ask')]))) as client:
+        bounty = post_bounty(client).json()['id']
+        write(client, f'/bounties/{bounty}/ai/start', {})
+        assert get_run(client, bounty)['status'] == 'failed'
+
+
+def test_pending_run_uses_new_model_only_on_next_explicit_turn(tmp_path):
+    model = FakeLuna([decision('ask', questions=['Source?']), decision('ask', questions=['Revision?'])])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
         bounty = post_bounty(client).json()['id']
         write(client, f'/bounties/{bounty}/ai/start', {})
-        write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['a', 'b']})
-        write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['c']})
-        assert get_run(client, bounty)['question_count'] == 3
-        assert get_run(client, bounty)['status'] == 'failed'
-        assert len(get_run(client, bounty)['conversation']) == 4
+        original = client.get('/api/v1/bounties/' + bounty).json()
+        model.model = 'gpt-5.6-terra'
+        pending = client.get('/api/v1/bounties/' + bounty).json()
+        assert pending['ai_run']['model'] == 'gpt-6-luna'
+        assert pending['ai_run']['next_model'] == 'gpt-5.6-terra'
+        assert pending['events'] == original['events'] and model.calls == 1
+        write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['Attached source']})
+        current = client.get('/api/v1/bounties/' + bounty).json()
+        assert current['ai_run']['model'] == 'gpt-5.6-terra'
+        assert current['ai_run']['conversation'][:1] == original['ai_run']['conversation']
+        changed = next(event for event in current['events'] if event['kind'] == 'ai_model_changed')
+        assert changed['data']['previous_model'] == 'gpt-6-luna'
+        assert changed['data']['model'] == 'gpt-5.6-terra'
+        asks = [event for event in current['events'] if event['kind'] == 'ai_ask']
+        assert [event['data']['model'] for event in asks] == ['gpt-6-luna', 'gpt-5.6-terra']
+        assert model.calls == 2
+
+
+def test_workbench_model_environment_override_is_preserved(monkeypatch):
+    monkeypatch.setenv('HANDOFFS_AI_MODEL', 'explicit-test-model')
+    assert Luna().model == 'explicit-test-model'
 
 
 @pytest.mark.parametrize('path', ['../escape.py', '/absolute.py', 'C:/absolute.py', '.env', '.git/config', 'auth.json'])
@@ -162,13 +202,17 @@ def test_missing_key_does_not_claim_or_create_run(client, monkeypatch):
 
 def test_provider_tools_and_api_key_stay_out_of_payload(monkeypatch):
     monkeypatch.setenv('OPENAI_API_KEY', 'test-api-key')
+    monkeypatch.delenv('HANDOFFS_AI_MODEL', raising=False)
     requests = []
     def handler(request):
         payload = json.loads(request.content)
         requests.append(payload)
         assert 'test-api-key' not in request.content.decode()
         assert request.headers['Authorization'] == 'Bearer test-api-key'
-        assert payload['model'] == 'gpt-6-luna'
+        assert payload['model'] == 'gpt-5.6-terra'
+        context = json.loads(payload['input'][0]['content'])
+        assert context['question_count'] == 4 and 'remaining_questions' not in context
+        assert 'There is no total question limit.' in payload['instructions']
         assert payload['store'] is False
         if len(requests) == 1:
             output = [{'type': 'function_call', 'name': 'read_file', 'call_id': 'call-1', 'arguments': '{"path":"calc.py"}'}]
@@ -178,7 +222,7 @@ def test_provider_tools_and_api_key_stay_out_of_payload(monkeypatch):
         return httpx.Response(200, json={'status': 'completed', 'output': output, 'usage': {'input_tokens': 10, 'output_tokens': 5}})
     result, usage = Luna(httpx.MockTransport(handler)).generate(
         {'title': 'Task', 'goal': 'Fix', 'criteria': ['Works'], 'repository': '', 'context_links': []},
-        {'source': {'calc.py': 'source'}, 'context': '', 'conversation': [], 'question_count': 0})
+        {'source': {'calc.py': 'source'}, 'context': '', 'conversation': [], 'question_count': 4})
     assert result.questions == ['Version?']
     assert usage == {'api_calls': 2, 'input_tokens': 20, 'output_tokens': 10}
 

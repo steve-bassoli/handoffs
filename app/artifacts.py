@@ -101,7 +101,7 @@ def files_for(service, bounty_id):
         'List every response file except manifest.json in files with path and lowercase SHA-256 of its UTF-8 bytes. '
         'Use relative paths only; no secrets, keys, dependency trees, or nested ZIPs. '
         'Report actual checks separately from proposed commands and outstanding live prerequisites. '
-        'If blocked, ask at most three consequential questions and return findings plus draft follow-ups; never invent evidence. '
+        'If blocked, ask concise, necessary questions without a total question limit and return findings plus draft follow-ups; never invent evidence. '
         'The user can attach the response on the bounty page and optionally the original ZIP to validate linkage. '
         'Attaching a response does not verify work, close a task, pay rewards, or create follow-ups.\n')
     files = {path: content if isinstance(content, bytes) else content.encode('utf-8') for path, content in files.items()}

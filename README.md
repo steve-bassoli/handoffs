@@ -63,7 +63,7 @@ $env:HANDOFFS_DEMO_USER = 'steve'
 
 Supply and retain `-OperationId <guid>` for writes; reuse it with identical inputs after an uncertain response. No implicit retries or local packet fallback occur.
 
-## Luna bounty execution
+## AI opportunity preparation
 
 Every bounty detail has an **Artifacts** section before acceptance, with individual
 downloads and **Download all artifacts (ZIP)**. These read-only downloads include
@@ -77,7 +77,7 @@ Every export includes a checksummed `handoff.json`, visible missing-input warnin
 and a response template. Supplied source is not a claim of complete or live-tested
 readiness. ZIP bytes are stable while the stored inputs are unchanged.
 Attach a focused source ZIP while posting to make those files available for review
-before anyone accepts; Luna can reuse that source when the bounty is later started.
+before anyone accepts; the AI can reuse that source when the bounty is later started.
 
 Participants can attach **Source / supporting evidence** or a **Response from a
 fresh session** on the bounty page, including on completed historical bounties.
@@ -87,7 +87,7 @@ lowercase `sha256`. Limits: 200 files / 2 MB unpacked; no secrets or nested ZIPs
 Attach the original bounty ZIP with a response to verify its `input_sha256` and
 bounty ID; without it, linkage is explicitly unverified. Uploads preserve status,
 are auditable/idempotent, and never run code, pay Gold, start AI, or create tasks.
-Support files under `source/` can be reused by a later Luna run; response contents
+Support files under `source/` can be reused by a later AI run; response contents
 are evidence, not automatically applied source. Downloads include both packages.
 Use `/#opp=<id>` to link directly to an opportunity page. Existing `/#bounty=<id>` links still work.
 
@@ -104,7 +104,7 @@ The optional notes should state prerequisites, exact checks/exit codes, and any
 outstanding live verification. The builder does not execute supplied code.
 
 Set `OPENAI_API_KEY` in the server environment and restart the server. The default
-test model is `gpt-6-luna`; `HANDOFFS_AI_MODEL` can select another explicitly chosen
+workbench model is `gpt-5.6-terra`; `HANDOFFS_AI_MODEL` can select another explicitly chosen
 model. The key is used only in the server's Authorization header.
 
 New bounties default to HIGH; select HIGH/MEDIUM/LOW explicitly when posting.
@@ -112,11 +112,14 @@ Participants can reopen a completed record without an existing AI run as HIGH
 for decomposition. This appends an audited event and preserves previous completion,
 assignment, attachments and Gold; it never erases or repays the earlier work.
 
-Open a bounty and choose **Propose child bounties with Luna** for HIGH/MEDIUM,
-or **Start with Luna** for LOW. Attach a focused ZIP of UTF-8 source
+Open an opportunity and choose **Propose child opportunities with AI** for HIGH/MEDIUM,
+or **Start with AI** for LOW. Attach a focused ZIP of UTF-8 source
 files (up to 200 files / 2 MB unpacked), excluding secrets, Git data, and dependency
-trees. Luna can list/read the supplied files, asks at most three questions total,
-and records API calls, tokens, elapsed time, questions and answers in the task.
+trees. The AI can list/read the supplied files and ask necessary questions without
+a total question limit. Each turn waits for an explicit developer reply; per-turn
+tool-call, timeout and output bounds remain. API calls, tokens, elapsed time,
+questions and answers are recorded in the task. Existing runs use the configured
+model on their next submitted turn, preserving prior model history.
 Repository URLs and context links are references; this prototype does not fetch
 private repositories or execute the generated code on the host.
 
@@ -150,7 +153,7 @@ Three is the design primitive, not a quota for filler. Every proposal set must
 explain `why_three`, give each child a `work_type` (`implementation` or `verification`)
 and zero-based `parent_criteria`, and cover all parent criteria. Review prior
 evidence and existing prerequisites before proposing work. Facts, safety, human
-decisions and the at-most-three question budget are not overridden by this rule.
+decisions are not overridden by this rule; developer questions have no total cap.
 The engine checks structure and coverage; humans still review semantic boundaries.
 
 Implementation LOWs deliver exactly one executable LOW plan leaf and a minimal
@@ -162,7 +165,7 @@ outcomes remain ready for explicit human verification; no reward is issued by AI
 Existing history and drafts are not rewritten. Older proposal sets lacking the
 current rationale/type/coverage contract remain inspectable but fail approval.
 
-HIGH/MEDIUM bounties cannot deliver implementations. Luna processes the original
+HIGH/MEDIUM bounties cannot deliver implementations. The AI processes the original
 requirements, attached fresh-session responses, provenance, and current support
 evidence into typed child-bounty proposals, not merely plan nodes. The same strict
 split rules apply to those proposals. A LOW bounty cannot create child bounties.

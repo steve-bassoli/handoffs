@@ -64,7 +64,7 @@ class AIStart(BaseModel):
 
 
 class AIAnswers(BaseModel):
-    answers: list[str] = Field(min_length=1, max_length=3)
+    answers: list[str] = Field(min_length=1)
     source_zip: str = Field(default='', max_length=4000000)
 
 

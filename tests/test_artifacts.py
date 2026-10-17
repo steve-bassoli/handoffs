@@ -24,6 +24,8 @@ def test_all_downloads_available_before_acceptance_without_writes(client):
     response = client.get(inventory['download_url'], headers={'X-Demo-User': 'nate'})
     assert response.status_code == 200
     with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        assert 'without a total question limit' in archive.read('START_HERE.md').decode()
+        assert 'ask at most three' not in archive.read('START_HERE.md').decode()
         assert archive.read('posted-source/guide.md') == b'Review these instructions'
         assert archive.read('posted-source/src/example.py') == b'print(1)\n'
         assert json.loads(archive.read('bounty.json'))['criteria'] == ['Inspect source']

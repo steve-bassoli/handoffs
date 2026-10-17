@@ -367,18 +367,18 @@ async function aiSection(data, detail) {
   const id = data.id;
   const owner = data.ai_run?.actor === user;
   const box = element('section', undefined, 'ai-panel');
-  box.append(element('h3', 'Luna workbench'));
+  box.append(element('h3', 'AI workbench'));
   if (!data.ai_run && (!data.legacy || data.events.some(event => event.kind === 'reopened')) && ['open', 'working', 'blocked'].includes(data.status)
       && (!data.claimant || data.claimant === user) && (!data.target || data.target === user)) {
     box.append(element('p', data.complexity === 'LOW'
       ? (data.work_type === 'verification'
-        ? 'Verification-only LOW: Luna prepares evidence for human review, not source changes or a commit. It does not run checks.'
-        : 'Implementation LOW: Luna prepares one minimal change for one managed commit. Local verification is required.')
-      : `Rule of three: Luna researches this ${data.complexity} opportunity and proposes exactly three criterion-covered children. You must approve the complete set. Decomposition does not complete the parent.`));
+        ? 'Verification-only LOW: AI prepares evidence for human review, not source changes or a commit. It does not run checks.'
+        : 'Implementation LOW: AI prepares one minimal change for one managed commit. Local verification is required.')
+      : `Rule of three: AI researches this ${data.complexity} opportunity and proposes exactly three criterion-covered children. You must approve the complete set. Decomposition does not complete the parent.`));
     const form = element('form');
     const label = element('label', 'Additional context'); const context = element('textarea'); label.append(context); form.append(label);
     const source = sourceInput(form);
-    form.append(element('button', data.complexity === 'LOW' ? 'Start with Luna' : 'Propose child opportunities with Luna', 'primary'));
+    form.append(element('button', data.complexity === 'LOW' ? 'Start with AI' : 'Propose child opportunities with AI', 'primary'));
     form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/start`, {context: context.value, source_zip: await source()})); };
     box.append(form);
   }
@@ -386,7 +386,8 @@ async function aiSection(data, detail) {
   if (ai) {
     const usage = ai.usage;
     box.append(element('span', ai.status.replaceAll('_', ' '), 'pill'),
-      element('p', `${ai.model} · ${ai.question_count}/3 questions · ${usage.api_calls} API calls · ${usage.input_tokens} input / ${usage.output_tokens} output tokens · ${(usage.elapsed_ms / 1000).toFixed(1)}s`));
+      element('p', `${ai.model} · ${ai.question_count} questions · ${usage.api_calls} API calls · ${usage.input_tokens} input / ${usage.output_tokens} output tokens · ${(usage.elapsed_ms / 1000).toFixed(1)}s`));
+    if (ai.next_model && ai.next_model !== ai.model) box.append(element('p', `Next reply uses ${ai.next_model}. Earlier turns retain their recorded model.`));
     if (ai.result) box.append(element('p', ai.result.summary, 'content'));
     if (ai.result?.action === 'evidence') box.append(element('p', 'Verification-only LOW · prepared evidence, no source patch or forced commit. The API agent has not executed checks. Human verification is still required.'));
     if (ai.result?.plan?.length) {
@@ -406,7 +407,7 @@ async function aiSection(data, detail) {
     for (const turn of ai.conversation) {
       const list = element('ul');
       for (const text of turn.questions || turn.answers) list.append(element('li', text));
-      box.append(element('strong', turn.questions ? 'Luna asked' : 'Developer answered'), list);
+      box.append(element('strong', turn.questions ? 'AI asked' : 'Developer answered'), list);
     }
     if (ai.status === 'needs_input' && owner) {
       const form = element('form'); const answers = [];
@@ -414,7 +415,7 @@ async function aiSection(data, detail) {
         const label = element('label', question); const answer = element('textarea'); answer.required = true; label.append(answer); form.append(label); answers.push(answer);
       }
       const source = sourceInput(form);
-      form.append(element('button', 'Send answers to Luna', 'primary'));
+      form.append(element('button', 'Send answers to AI', 'primary'));
       form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/answers`, {answers: answers.map(a => a.value), source_zip: await source()})); };
       box.append(form);
     }
@@ -456,11 +457,11 @@ async function aiSection(data, detail) {
     if (ai.status === 'failed') {
       box.append(element('p', ai.error));
       if (owner) {
-        const retry = element('button', 'Retry Luna'); retry.onclick = () => run(() => mutate(`/bounties/${id}/ai/retry`)); box.append(retry);
+        const retry = element('button', 'Retry AI'); retry.onclick = () => run(() => mutate(`/bounties/${id}/ai/retry`)); box.append(retry);
       }
     }
     if (['queued', 'running'].includes(ai.status)) {
-      box.append(element('p', 'Luna is investigating. You can leave this page and return.'));
+      box.append(element('p', 'AI is investigating. You can leave this page and return.'));
       aiPoll = setTimeout(() => { if (selected === id) run(() => show(id)); }, 2000);
     }
   }
