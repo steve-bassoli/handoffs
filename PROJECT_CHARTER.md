@@ -134,16 +134,16 @@ failed attempts and prior evidence. Link shared prerequisites instead of creatin
 duplicate tasks. A closed LOW exposes its accepted proof directly, without making
 the user hunt through transcripts or artifact directories.
 
-### Rule of Three
+### Grounded decomposition; three when it fits
 
-HIGH decomposes into exactly three HIGHs or exactly three MEDIUMs, without mixed
-levels. HIGH branches eventually reach MEDIUM; each MEDIUM decomposes into exactly
-three LOWs. A genuinely LOW root needs no artificial parents. Consider only the
-alternatives a real design decision warrants; never force three. The existing
-task-decomposition contract below is not permission to invent facts, questions
-or filler tasks. Explain why the three responsibilities cover the
-parent criteria and how their outcomes combine. Reconsider a boundary that cannot
-support a defensible split.
+HIGH decomposes into multiple HIGHs or multiple MEDIUMs, without mixed levels.
+HIGH branches eventually reach MEDIUM; each MEDIUM decomposes into multiple LOWs.
+A decomposition has at least two meaningful children, not a prescribed total.
+A genuinely LOW root needs no artificial parents. Consider only the alternatives
+a real design decision warrants; never force three. This supersedes the historical
+exact-three cardinality rule. Explain how the responsibilities cover the parent
+criteria and how their outcomes combine. Never invent facts, questions or filler
+tasks to meet a count. Reconsider a boundary without a defensible split.
 
 Only LOW work is executable. An implementation LOW owns one minimal managed commit
 for its immutable plan/leaf receipt. A verification LOW produces evidence without
@@ -156,7 +156,7 @@ acceptance.
 One sufficient primary proof artifact is required before completing a LOW bounty:
 a video, an image, or a text artifact. There is no two-factor requirement, no
 mandatory pair of videos, and no requirement to manufacture three proofs. The
-rule of three governs design and decomposition, not proof count. Supporting
+rule of three can inform design; it never prescribes a proof count. Supporting
 material is optional; one artifact must be sufficient for the claimed outcome.
 
 Bind the proof to the bounty, relevant acceptance criteria, baseline and candidate
@@ -176,11 +176,11 @@ inspectable does not guarantee the AI judgment is correct.
 Gremlins supplies compatibility evidence as its relevant capabilities become
 available. The closure rule must not label Gremlins checks as executed before
 they exist or run. A HIGH or MEDIUM closes only when its integrated acceptance
-criteria have evidence, not merely because three children were created or closed.
+criteria have evidence, not merely because children were created or closed.
 
 ### Current Prototype Boundary
 
-The local engine enforces typed LOW outcomes, ternary decomposition, managed
+The local engine enforces typed LOW outcomes, grounded decomposition, managed
 commit receipts, shared prerequisite cycle checks and separate parent acceptance.
 Posted, Claimed and Closed are lifecycle projections; cancellation and supersession
 are Closed dispositions, not successful verification.
@@ -195,7 +195,7 @@ One immutable primary proof is bound to criteria, revisions, environment, source
 and prerequisite receipts. Current passing AI review and explicit human LOW
 verification gate completion and payment. Replacement proof preserves history;
 changed context invalidates acceptance. Historical closures are not retroactively
-verified. Composite acceptance needs three verified children and its own reviewed
+verified. Composite acceptance needs all approved children verified and its own reviewed
 integration proof. Funded verified completion releases existing escrow once;
 decomposition neither mints nor duplicates Gold.
 

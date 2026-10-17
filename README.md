@@ -133,8 +133,9 @@ criteria and run history. Drop it into a fresh Codex chat for local verification
 Use **Confirm locally verified** with evidence to close the task. Generated test
 commands are explicitly unexecuted until the developer runs them.
 
-Complexity is enforced in the engine: **HIGH → exactly 3 HIGHs or exactly 3 MEDIUMs;
-MEDIUM → exactly 3 LOWs**. HIGH cannot mix child levels, and its descendants must
+Complexity is enforced in the engine: **HIGH → multiple HIGHs or multiple MEDIUMs;
+MEDIUM → multiple LOWs**. A split needs at least two meaningful children, never a
+forced three. HIGH cannot mix child levels, and its descendants must
 eventually reach LOW. Only HIGH/MEDIUM/LOW are valid labels. A LOW root is valid; filler tasks
 are not. Invalid or missing delivery plans cannot publish a fix. The hierarchy is
 displayed with the run and included in the fix ZIP alongside the standalone guard.
@@ -154,8 +155,8 @@ and managed commits are serialized. Verification leaves cannot commit. Rewriting
 history or changing the approved plan to evade receipts is not permitted; this
 guard is not enforcement over arbitrary Git clients. Decomposition alone never publishes new bounties.
 
-Three is the design primitive, not a quota for filler. Every proposal set must
-explain `why_three`, give each child a `work_type` (`implementation` or `verification`)
+Three is useful only when it fits, never a quota. Every proposal set must
+explain its split in the compatible `why_three` field (regardless of count), give each child a `work_type` (`implementation` or `verification`)
 and zero-based `parent_criteria`, and cover all parent criteria. Review prior
 evidence and existing prerequisites before proposing work. Facts, safety, human
 decisions are not overridden by this rule; developer questions have no total cap.
@@ -209,7 +210,7 @@ inconsistent verdicts and unsupported MP4 review fail closed as inconclusive.
 Text/JSON and PNG/JPEG are supported by the adapter; provider access is tested only
 with fixtures. Restarted reviews require explicit retry, never automatic spending.
 The separate LOW human decision is not another artifact. HIGH/MEDIUM acceptance
-needs three verified children, shared prerequisites and separate integration proof.
+needs all approved children verified, shared prerequisites and separate integration proof.
 Historical closures without proof remain historical.
 
 Routes under `/api/v1/bounties/{id}`: `POST profile`, `POST dependencies`,

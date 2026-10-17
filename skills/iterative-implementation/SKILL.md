@@ -26,21 +26,22 @@ that do not provide the narrowest evidence for a criterion.
 ## Complexity gate
 
 Use HIGH, MEDIUM, and LOW only; retired labels are invalid, not aliases.
-Every HIGH must have exactly 3 HIGH children or exactly 3 MEDIUM children,
-never a mixture. HIGH descendants must eventually decompose to MEDIUM and LOW;
+Every HIGH has multiple HIGH children or multiple MEDIUM children, never a
+mixture. HIGH descendants must eventually decompose to MEDIUM and LOW;
 do not evade decomposition through an unbounded chain of HIGHs. Every MEDIUM
-must have exactly 3 LOW children. LOW is a leaf: no children. Only LOW is
+has multiple LOW children. A split has at least two meaningful children; never
+force three. LOW is a leaf: no children. Only LOW is
 executable. An implementation LOW owns one minimal managed commit; a
 verification LOW produces auditable evidence, not a forced commit. A genuinely
 LOW task can be a root.
-Do not pad with fake tasks or relabel work to bypass decomposition. If three
-meaningful children cannot be defined, reconsider the boundary or classification.
+Do not pad with fake tasks or relabel work to bypass decomposition. If a meaningful
+split cannot be defined, reconsider the boundary or classification.
 Ask only for genuinely missing information; do not execute the parent.
 
 Consider alternatives only when a real design decision warrants them; never force
-three. Choose the smallest grounded boundary. The existing task-decomposition
-contract is not a universal count for questions, choices, proofs or resources.
-Explain why the selected three responsibilities cover the parent, map each child
+three. Choose the smallest grounded boundary. No universal count applies to
+questions, choices, proofs or resources. This supersedes the historical exact-three
+task count. Explain why the selected responsibilities cover the parent, map each child
 to parent criterion indexes, and preserve dependencies and existing prerequisite
 task references. Do not duplicate work already satisfied by retained evidence.
 Three never overrides facts, safety, approval requirements, or the question budget.

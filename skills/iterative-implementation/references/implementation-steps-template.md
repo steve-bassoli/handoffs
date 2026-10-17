@@ -2,9 +2,10 @@
 
 Retain JSON with a `steps` array. Each node contains `id`, `title`, `complexity`,
 `children`, and `files`, plus the criterion/implementation/validation notes below.
-HIGH has exactly three HIGH children or exactly three MEDIUM children,
-without mixing levels. Descendants eventually reach MEDIUM, which has exactly
-three LOW children. LOW has no children. Only HIGH/MEDIUM/LOW are valid labels.
+HIGH has multiple HIGH children or multiple MEDIUM children, without mixing levels.
+Descendants eventually reach MEDIUM, which has multiple LOW children. A split has
+at least two meaningful children, not a prescribed total. Never force three.
+LOW has no children. Only HIGH/MEDIUM/LOW are valid labels.
 Only implementation LOW leaves declare commit files; verification LOW leaves retain
 evidence instead. Parents have an empty files array. A genuinely LOW
 root needs no artificial parents. Never pad with fake tasks.
@@ -30,8 +31,9 @@ The status artifact uses the same ids with `open`, `done`, `blocked`, or
 `skipped`, plus one short evidence note. Do not create plan items for optional
 improvements.
 
-For each proposed trio, retain `why_three`: explain its distinct responsibilities,
-criterion coverage, dependency order, and how the three results satisfy the parent.
+For each proposed split, retain a rationale (the compatible API field is still
+named `why_three` regardless of child count): explain its distinct responsibilities,
+criterion coverage, dependency order, and how the results satisfy the parent.
 All parent criteria must be covered. Cite retained evidence and existing tasks so
 the split does not manufacture duplicate work. A label alone does not establish
 that a leaf is small; each LOW needs one bounded, independently verifiable outcome.
