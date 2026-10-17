@@ -6,7 +6,7 @@ import sqlite3
 import httpx
 import pytest
 
-from app.api_budget import CEILING_CENTS, BudgetError, available, initialize, raise_ceiling, reserve, upper_cents
+from app.api_budget import CEILING_CENTS, BudgetError, available, initialize, raise_ceiling, reconcile_unknown, reserve, upper_cents
 
 
 NOW = datetime(2026, 10, 17, 6, tzinfo=timezone.utc)
@@ -173,3 +173,19 @@ def test_earlier_owner_ceiling_stays_valid_until_raised(tmp_path):
     assert available(path) == 99900
     raise_ceiling(path, 'Owner chat: $999 more')
     assert available(path) == CEILING_CENTS == 199800
+
+
+def test_owner_reconcile_keeps_unknown_envelope_and_unblocks_paid_work(tmp_path):
+    path = tmp_path / 'budget.sqlite'
+    initialize(path, 0, 0, 'Owner')
+    permit = reserve('gpt-6-astra', 32000, path=path, now=NOW)
+    permit.settle(None)
+    held = CEILING_CENTS - available(path)
+    with pytest.raises(BudgetError):
+        reserve('gpt-6-astra', 32000, path=path, now=NOW)
+    with pytest.raises(BudgetError):
+        reconcile_unknown(path, '')
+    assert reconcile_unknown(path, 'Owner: keep conservative hold') == 1
+    assert CEILING_CENTS - available(path) == held, 'The unknown envelope stays counted as spent'
+    reserve('gpt-6-astra', 32000, path=path, now=NOW)
+    assert reconcile_unknown(path, 'nothing left') == 0

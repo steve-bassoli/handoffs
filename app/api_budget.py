@@ -72,6 +72,25 @@ def raise_ceiling(path, provenance):
                    (CEILING_CENTS, f'{prior} | Ceiling {ceiling} -> {CEILING_CENTS} cents: {provenance}'))
 
 
+
+def reconcile_unknown(path, provenance):
+    """Explicit local owner checkpoint: keep every unknown call's full envelope as spent and let paid work continue.
+
+    Never reduces a hold, never retries the call, and never clears an overrun.
+    """
+    if not isinstance(provenance, str) or not provenance.strip():
+        raise BudgetError('A sourced owner authorization is required')
+    with connection(path) as db:
+        db.execute('BEGIN IMMEDIATE')
+        rows = db.execute("SELECT id, held FROM calls WHERE state='unknown'").fetchall()
+        if not rows:
+            return 0
+        db.execute("UPDATE calls SET state='unknown_conservative' WHERE state='unknown'")
+        prior = db.execute('SELECT provenance FROM budget WHERE id=1').fetchone()[0]
+        db.execute('UPDATE budget SET provenance=? WHERE id=1', (
+            f"{prior} | Conservative hold kept for {len(rows)} unknown call(s), {sum(h for _, h in rows)} cents: {provenance}",))
+        return len(rows)
+
 def connection(path):
     if not Path(path).is_file():
         raise BudgetError('API budget accounting is unavailable; no paid request was sent')
