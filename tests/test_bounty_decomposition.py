@@ -95,8 +95,8 @@ def test_reopened_high_processes_original_and_response_then_waits_for_full_human
             assert one(c, 'SELECT COUNT(*) AS n FROM gold_transactions')['n'] == 0
 
 
-@pytest.mark.parametrize('parent,levels', [('HIGH', ['MEDIUM'] * 2), ('HIGH', ['LOW'] * 3),
-    ('HIGH', ['HIGH', 'MEDIUM']), ('MEDIUM', ['LOW'] * 2), ('LOW', ['HIGH'] * 2)])
+@pytest.mark.parametrize('parent,levels', [('HIGH', ['MEDIUM']), ('HIGH', ['LOW'] * 3),
+    ('HIGH', ['HIGH', 'MEDIUM']), ('MEDIUM', ['LOW']), ('LOW', ['HIGH'] * 2)])
 def test_invalid_child_bounty_splits_cannot_publish_proposals(tmp_path, parent, levels):
     proposals = [{'title': f'Child {index}', 'goal': 'Scope', 'criteria': ['Evidence'], 'complexity': level}
                  for index, level in enumerate(levels)]
