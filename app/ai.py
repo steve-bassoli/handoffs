@@ -26,6 +26,9 @@ WORKBENCH_MODELS = {
     'luna': ('Luna', 'gpt-6-luna'),
 }
 
+API_KEY_PREFIX = 'sk-' + 'proj-'
+PRIVATE_KEY_HEADER = '-----BEGIN ' + 'PRIVATE KEY-----'
+
 
 def selected_model(data, default):
     choice = data.get('model_choice')
@@ -158,7 +161,7 @@ def read_source(encoded):
                 if path in files:
                     raise RuleError('Duplicate source path in ZIP', 422)
                 content = archive.read(info).decode('utf-8-sig')
-                if 'sk-proj-' in content or '-----BEGIN PRIVATE KEY-----' in content:
+                if API_KEY_PREFIX in content or PRIVATE_KEY_HEADER in content:
                     raise RuleError('Remove secrets from the source ZIP', 422)
                 files[path] = content
         return files
@@ -373,7 +376,7 @@ class AIRuns:
             if len(source) > 200 or sum(len(content.encode()) for content in source.values()) > 2_000_000:
                 raise RuleError('Combined supplied source exceeds 200 files / 2 MB; attach a focused source ZIP for this run', 422)
         context = payload.get('context', '')
-        if 'sk-proj-' in context:
+        if API_KEY_PREFIX in context:
             raise RuleError('Keep API keys in the server environment, never task context', 422)
         if task['legacy']:
             source['_bounty/original-context.md'] = task['legacy']['context']
@@ -418,7 +421,7 @@ class AIRuns:
         answers = payload['answers']
         if len(answers) != len(questions) or any(not answer.strip() for answer in answers):
             raise RuleError('Provide one non-empty answer per question', 422)
-        if any('sk-proj-' in answer for answer in answers):
+        if any(API_KEY_PREFIX in answer for answer in answers):
             raise RuleError('Keep API keys in the server environment, never answers', 422)
         extra = read_source(payload.get('source_zip'))
         row['data']['source'].update(extra)
@@ -507,7 +510,7 @@ class AIRuns:
             if len(paths) != len(set(paths)):
                 raise ValueError('Duplicate artifact path')
             stage = 'secret_check'
-            if any('sk-proj-' in f.content or '-----BEGIN PRIVATE KEY-----' in f.content for f in decision.files):
+            if any(API_KEY_PREFIX in f.content or PRIVATE_KEY_HEADER in f.content for f in decision.files):
                 raise ValueError('Secret in model output')
             stage = 'result_storage'
             with self.db.write() as c:
