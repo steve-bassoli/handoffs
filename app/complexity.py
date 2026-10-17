@@ -8,12 +8,12 @@ import subprocess
 
 
 def validate_bounty_split(parent, levels):
-    if parent == 'HIGH' and len(levels) == 3 and (all(level == 'HIGH' for level in levels) or
+    if parent == 'HIGH' and len(levels) >= 2 and (all(level == 'HIGH' for level in levels) or
                                                 all(level == 'MEDIUM' for level in levels)):
         return levels[0]
-    if parent == 'MEDIUM' and len(levels) == 3 and all(level == 'LOW' for level in levels):
+    if parent == 'MEDIUM' and len(levels) >= 2 and all(level == 'LOW' for level in levels):
         return 'LOW'
-    raise ValueError('HIGH needs exactly 3 HIGHs or 3 MEDIUMs; MEDIUM needs exactly 3 LOWs; LOW cannot decompose')
+    raise ValueError('HIGH needs multiple HIGHs or MEDIUMs without mixed levels; MEDIUM needs multiple LOWs; LOW cannot decompose')
 
 
 def validate_plan(steps):

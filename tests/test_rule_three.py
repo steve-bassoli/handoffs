@@ -67,15 +67,18 @@ def test_wrong_outcomes_cannot_publish_artifacts(tmp_path, level, kind, action, 
         assert client.get(f'/api/v1/bounties/{bounty}/ai/artifact').status_code == 409
 
 
-@pytest.mark.parametrize('level,count', [('HIGH', 2), ('HIGH', 4), ('MEDIUM', 2), ('MEDIUM', 4)])
-def test_nonternary_high_and_medium_proposals_fail(tmp_path, level, count):
+@pytest.mark.parametrize('level,count', [('HIGH', 2), ('HIGH', 3), ('HIGH', 4), ('MEDIUM', 2), ('MEDIUM', 3), ('MEDIUM', 4)])
+def test_grounded_high_and_medium_proposals_do_not_force_three(tmp_path, level, count):
     child_level = 'HIGH' if level == 'HIGH' else 'LOW'
     proposals = [{'title': f'Child {i}', 'goal': 'Bounded', 'criteria': ['Proof'], 'complexity': child_level} for i in range(count)]
     with TestClient(create_app(tmp_path / 'count.sqlite', ai_model=FakeLuna([decision('followups', proposals=proposals)]))) as client:
         bounty = post(client, level)
         write(client, f'/bounties/{bounty}/ai/start', {})
-        assert get_run(client, bounty)['status'] == 'failed'
+        assert get_run(client, bounty)['status'] == 'followups_pending'
         assert len(client.get(f'/api/v1/bounties/{bounty}/lineage').json()['items']) == 1
+        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': list(range(count - 1))}).status_code == 422
+        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': list(range(count))}).status_code == 200
+        assert len(client.get(f'/api/v1/bounties/{bounty}/lineage').json()['items']) == count + 1
 
 
 def test_three_typed_low_proposals_preserve_coverage_kind_and_human_approval(tmp_path):

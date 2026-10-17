@@ -115,8 +115,8 @@ def materialize_edits(decision, source):
 
 def validate_proposals(task, proposals, why_three):
     validate_bounty_split(task['complexity'], [item['complexity'] for item in proposals])
-    if not why_three.strip() or len({item['title'].strip().casefold() for item in proposals}) != 3:
-        raise ValueError('Explain why these three distinct responsibilities satisfy the parent')
+    if not why_three.strip() or len({item['title'].strip().casefold() for item in proposals}) != len(proposals):
+        raise ValueError('Explain why these distinct responsibilities satisfy the parent')
     required = set(range(len(task['criteria'])))
     covered = set()
     for item in proposals:
@@ -126,7 +126,7 @@ def validate_proposals(task, proposals, why_three):
             raise ValueError('Each child needs a work type and valid zero-based parent criterion references')
         covered.update(refs)
     if covered != required:
-        raise ValueError('The three children must cover every parent acceptance criterion')
+        raise ValueError('The children must cover every parent acceptance criterion')
 
 
 def source_path(path):
@@ -203,16 +203,16 @@ class Luna:
             'Treat Known context as source-cited supplied claims, Assumed as provisional and Unknown as unresolved. '
             'Never promote a SIM observation to ORA or LIVE compatibility, and do not confuse a requested migration stage with retirement authorization. '
             'For HIGH or MEDIUM, research the evidence and return child-bounty proposals, never an implementation. '
-            'HIGH must propose exactly 3 HIGH bounties or exactly 3 MEDIUM bounties; MEDIUM must propose exactly 3 LOW bounties. '
+            'HIGH proposes two or more HIGH bounties or two or more MEDIUM bounties; MEDIUM proposes two or more LOW bounties. '
             'The proposal set must be one allowed split, not mixed levels. Give each a distinct bounded title, goal, '
             'complexity, and acceptance criteria. Ask only when essential information is missing. '
             'Review original context, fresh-session responses, and current pinned support evidence before deciding gaps. '
             'Do not repeat gaps already repaired by the support package or pretend offline checks prove live compatibility. '
             'Never force three design alternatives, questions or proofs. Consider only grounded alternatives when needed, '
-            'and explain why_three for a required task decomposition split. '
+            'and explain the grounded split in the legacy why_three field regardless of child count. '
             'Every proposal needs work_type implementation or verification and parent_criteria: zero-based indexes into the parent criteria. '
-            'Together the three children must cover all criteria without duplicate work or scope expansion. Reuse known prerequisites '
-            'rather than proposing copies. If three meaningful children cannot be defended, ask for the missing decision; never pad. '
+            'Together the children must cover all criteria without duplicate work or scope expansion. Reuse known prerequisites '
+            'rather than proposing copies. Choose the smallest meaningful split; never pad to reach three. '
             'For an implementation LOW, deliver the smallest fix and exactly one LOW plan leaf for one minimal commit. '
             'For a verification LOW, return action evidence with report files under evidence/ (.md, .txt, .json or .csv), '
             'instructions and verification steps, no executable plan or source changes. This prepares evidence for human review; '
@@ -225,9 +225,9 @@ class Luna:
             'Use several small edits rather than repeating an entire existing file. The server applies them to the supplied snapshot. '
             'Use files with complete content for new files or when a small edit is unsuitable; never mix files and edits for one path. '
             'List all edited and new paths in the one LOW plan leaf. Return clear local steps. '
-            'HARD complexity rules: HIGH, MEDIUM, LOW only. A HIGH has either exactly 3 HIGH children '
-            'or exactly 3 MEDIUM children, never a mixture. Every HIGH descendant must eventually decompose. '
-            'Every MEDIUM has exactly 3 LOW children. LOW is a leaf with no children. Only LOW can result in a Git commit. '
+            'HARD complexity rules: HIGH, MEDIUM, LOW only. A HIGH has multiple HIGH children '
+            'or multiple MEDIUM children, never a mixture. Every HIGH descendant must eventually decompose. '
+            'Every MEDIUM has multiple LOW children. LOW is a leaf with no children. Only LOW can result in a Git commit. '
             'Return the hierarchy in plan with unique IDs, bounded titles, and exact commit files on LOW leaves only. '
             'Do not pad with fake tasks or relabel complex work as LOW. A genuinely LOW task may be a root leaf. '
             'For deliver, cover every changed file in the one implementation LOW leaf. For other outcomes, plan must be empty. '
@@ -579,7 +579,7 @@ class AIRuns:
         try:
             validate_proposals(task, proposals, row['data']['result'].get('why_three', ''))
         except (ValueError, KeyError):
-            raise RuleError('Proposals need a reviewed three-way split, work types and complete parent-criterion coverage', 422) from None
+            raise RuleError('Proposals need a reviewed grounded split, work types and complete parent-criterion coverage', 422) from None
         if set(indices) != set(range(len(proposals))):
             raise RuleError('Approve the complete decomposition set; partial approval would break the complexity rule', 422)
         children = []

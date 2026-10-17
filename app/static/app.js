@@ -387,7 +387,7 @@ async function aiSection(data, detail) {
       ? (data.work_type === 'verification'
         ? 'Verification-only LOW: AI prepares evidence for human review, not source changes or a commit. It does not run checks.'
         : 'Implementation LOW: AI prepares one minimal change for one managed commit. Local verification is required.')
-      : `Rule of three: AI researches this ${data.complexity} opportunity and proposes exactly three criterion-covered children. You must approve the complete set. Decomposition does not complete the parent.`));
+      : `AI researches this ${data.complexity} opportunity and proposes a grounded, criterion-covered split. Three only when it fits. You must approve the complete set. Decomposition does not complete the parent.`));
     const form = element('form');
     const model = modelInput(form, data);
     const label = element('label', 'Additional context'); const context = element('textarea'); label.append(context); form.append(label);
@@ -451,11 +451,11 @@ async function aiSection(data, detail) {
         element('p', 'No child tickets exist yet. Approve the complete set to preserve the complexity rule. The parent remains unresolved until its acceptance criteria are verified.'));
       const form = element('form'); const choices = [];
       const covered = new Set(ai.result.proposals.flatMap(proposal => proposal.parent_criteria || []));
-      const currentContract = ai.result.proposals.length === 3 && ai.result.why_three?.trim()
+      const currentContract = ai.result.proposals.length >= 2 && ai.result.why_three?.trim()
         && data.criteria.every((_, index) => covered.has(index))
         && ai.result.proposals.every(proposal => proposal.work_type && proposal.parent_criteria?.length);
-      if (ai.result.why_three) form.append(element('p', `Why these three: ${ai.result.why_three}`));
-      if (!currentContract) form.append(element('p', 'Preserved draft: this set needs a refreshed review with work types, parent-criterion coverage and a three-way rationale before approval. No tickets were created.'));
+      if (ai.result.why_three) form.append(element('p', `Why this split: ${ai.result.why_three}`));
+      if (!currentContract) form.append(element('p', 'Preserved draft: this set needs a refreshed review with work types, parent-criterion coverage and a grounded rationale before approval. No tickets were created.'));
       ai.result.proposals.forEach((proposal, index) => {
         const card = element('div', undefined, 'evidence'); const label = element('label', `${proposal.complexity} · ${proposal.title}`);
         const choice = element('input'); choice.type = 'checkbox'; choice.value = index; label.prepend(choice); card.append(label, element('p', proposal.goal));

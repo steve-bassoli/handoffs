@@ -20,7 +20,7 @@ def test_medium_has_three_low_leaves_and_low_is_canonical():
     assert validate_plan([step()])[1][0]['complexity'] == 'LOW'
 
 
-@pytest.mark.parametrize('count', [3])
+@pytest.mark.parametrize('count', [2, 3, 4])
 def test_high_can_split_into_multiple_highs_that_eventually_reach_low(count):
     plan = [step('parent', 'HIGH', [tree(f'branch{i}')[0] for i in range(count)])]
     normalized, leaves = validate_plan(plan)
@@ -30,19 +30,22 @@ def test_high_can_split_into_multiple_highs_that_eventually_reach_low(count):
 
 
 @pytest.mark.parametrize('bad', [
-    [step('root', 'HIGH')], [step('root', 'MEDIUM', [step('s1'), step('s2')])],
-    [step('root', 'MEDIUM', [step('s1'), step('s2'), step('s3'), step('s4')])],
+    [step('root', 'HIGH')], [step('root', 'MEDIUM', [step('s1')])],
     [step('root', 'HIGH', [step('s1'), step('s2'), step('s3')])],
     [step('root', 'LOW', [step('child')])], [step('same'), step('same')],
     [step(files=['../outside'])], [step(complexity='easy')],
     [step(complexity='SMALL')], [step(complexity='LARGE')], [step('root', 'HIGH', [tree('child')[0]])],
-    [step('root', 'HIGH', [tree(f'h{i}')[0] for i in range(2)])],
-    [step('root', 'HIGH', [tree(f'h{i}')[0] for i in range(4)])],
     [step('root', 'HIGH', [tree('h')[0], step('medium', 'MEDIUM', [step('l1'), step('l2'), step('l3')])])],
 ])
 def test_invalid_plans_fail_closed(bad):
     with pytest.raises(ValueError):
         validate_plan(bad)
+
+
+@pytest.mark.parametrize('count', [2, 3, 4])
+def test_medium_accepts_meaningful_counts_without_forcing_three(count):
+    _, leaves = validate_plan([step('parent', 'MEDIUM', [step(f'low{i}') for i in range(count)])])
+    assert len(leaves) == count
 
 
 def test_only_selected_low_leaf_can_commit_its_declared_staged_files(tmp_path):

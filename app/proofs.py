@@ -125,8 +125,8 @@ class Proofs:
     @staticmethod
     def require_dependencies(task):
         from app.services import RuleError
-        if task['complexity'] != 'LOW' and len(task['required_children']) != 3:
-            raise RuleError('A composite needs its approved three-child decomposition before integrated acceptance')
+        if task['complexity'] != 'LOW' and len(task['required_children']) < 2:
+            raise RuleError('A composite needs its approved decomposition before integrated acceptance')
         if any(record['status'] not in ('completed', 'settled') or not record['proof_id'] or not record['binding']
                for record in task['requirements']):
             raise RuleError('Required child work and shared prerequisites need verified completion, not cancellation or reported progress')

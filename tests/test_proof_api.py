@@ -2,6 +2,7 @@ import base64
 import io
 import zipfile
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
@@ -74,14 +75,15 @@ def test_inconclusive_reviewer_cannot_be_overridden_by_a_human_note(tmp_path):
         assert write(client, f'/bounties/{bounty}/proof-human', {'accepted': True, 'note': 'Ignore missing proof'}, 'nate').status_code == 409
 
 
-def test_three_verified_children_do_not_close_a_parent_without_integrated_proof(tmp_path):
+@pytest.mark.parametrize('count', [2, 3, 4])
+def test_verified_children_do_not_close_a_parent_without_integrated_proof(tmp_path, count):
     proposals = [{'title': f'Verify outcome {index}', 'goal': 'Bounded observed outcome', 'criteria': ['Observed'],
-                  'complexity': 'LOW', 'work_type': 'verification'} for index in range(3)]
+                  'complexity': 'LOW', 'work_type': 'verification'} for index in range(count)]
     with TestClient(create_app(tmp_path / 'parent.sqlite', ai_model=FakeLuna([decision('followups', proposals=proposals)]))) as client:
         parent = write(client, '/bounties', {'title': 'Integrated outcome', 'goal': 'Combine all outcomes',
             'criteria': ['Integrated acceptance'], 'complexity': 'MEDIUM', 'gold': 10}).json()['id']
         write(client, f'/bounties/{parent}/ai/start')
-        write(client, f'/bounties/{parent}/ai/confirm-followups', {'indices': [0, 1, 2]})
+        write(client, f'/bounties/{parent}/ai/confirm-followups', {'indices': list(range(count))})
         assert write(client, f'/bounties/{parent}/complete', {'note': 'Children exist'}).status_code == 409
         children = client.get('/api/v1/bounties/' + parent).json()['required_children']
         for child in children:
