@@ -100,6 +100,12 @@ Maintaining the service does not confer ownership of participants' resources.
 Follow the constitution's consent, ledger-enforcement and independent-verification
 architecture requirements before claiming those protections are implemented.
 
+The [ledger safeguards](PLAN/LEDGER_SAFEGUARDS.md) define the read-only checkpoint
+foundation and the boundary for any future independent blockchain witness.
+Checkpoints can expose changes to independently retained snapshots; they do not
+prove consent, prevent confiscation or make the platform incorruptible. No chain,
+token, public personal-data export or participant-paid network fee is introduced.
+
 ## Routine local deployment
 
 The user explicitly authorizes automatic deployment of completed, verified change
