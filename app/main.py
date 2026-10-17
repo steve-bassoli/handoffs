@@ -21,6 +21,7 @@ from app.proofs import Proofs, ProofUpload
 from app.proof_reviewer import ProofReviewer
 from app.gremlins import Comparison, compare, sabotage, witness
 from app.agent_roster import roster
+from app.automation_mode import AUTOMATION_HEADER, current as current_mode
 
 
 RESEARCH_PATH = Path(__file__).resolve().parents[1] / 'PLAN' / 'AI_RESEARCH.md'
@@ -115,12 +116,21 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         service.ai.recover()
         service.proofs.recover()
         app.state.service = service
+        app.state.mode_path = Path(os.environ.get('HANDOFFS_AUTOMATION_MODE', Path(path).with_name('automation-mode.json')))
         try:
             yield
         finally:
             db.engine.dispose()
 
     app = FastAPI(title='The Commons', lifespan=lifespan)
+
+    @app.middleware('http')
+    async def automation_guard(request: Request, call_next):
+        # Automation tools label their writes; manual mode refuses them so only humans change tickets.
+        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and request.headers.get(AUTOMATION_HEADER):
+            if not current_mode(getattr(request.app.state, 'mode_path', None))['automated_writes']:
+                return JSONResponse(status_code=403, content={'detail': 'Manual mode: only humans create or update tickets'})
+        return await call_next(request)
 
     @app.exception_handler(RuleError)
     async def rule_error(request: Request, error: RuleError):
@@ -184,6 +194,12 @@ this page does not query the live Codex quota meter.</p>
         from app.storage import all_rows
         with request.app.state.service.db.engine.connect() as c:
             return all_rows(c, 'SELECT * FROM users ORDER BY id')
+
+    @app.get('/api/v1/automation-mode')
+    def automation_mode(request: Request, user=Depends(actor)):
+        record = current_mode(request.app.state.mode_path)
+        return JSONResponse({key: record.get(key) for key in ('mode', 'summary', 'agents', 'automated_writes', 'set_by', 'set_utc')},
+                            headers={'Cache-Control': 'no-store'})
 
     @app.get('/api/v1/agents')
     def agents(user=Depends(actor)):

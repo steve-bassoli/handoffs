@@ -28,7 +28,7 @@ const stats = async () => {};
   assert.equal(hash, '/#agents');
   assert.equal($('agents').hidden, false);
   assert.equal($('board').hidden, true);
-  assert.deepEqual(calls, [['/agents']], 'Roster must only GET, with no paid start');
+  assert.deepEqual(calls, [['/agents'], ['/automation-mode']], 'Roster must only GET, with no paid start');
   const row = $('agent-rows').children[0];
   assert.equal(row.children[0].title, 'abc12345extra');
   assert.deepEqual(row.children.slice(1).map(cell => cell.textContent), ['Working?', '—', 1, '?', '?', '?']);

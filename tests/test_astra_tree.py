@@ -171,6 +171,6 @@ def test_luna_plan_sends_luna_with_proven_effort_and_output_ceiling(tmp_path):
     session = tmp_path / 'session'
     session.mkdir()
     summary = Tree(plan_value, session, 30, transport=httpx.MockTransport(respond)).run()
-    assert set(payloads) == {('gpt-6-luna', 'low', 32000)} and summary['model'] == 'gpt-6-luna'
+    assert set(payloads) == {('gpt-6-luna', 'low', 12000)} and set(summary['models'].values()) == {'gpt-6-luna'}
     with pytest.raises(ValueError):
-        Tree({**plan_value, 'model': 'sol'}, tmp_path, 30)
+        Tree({**plan_value, 'model': 'nova'}, tmp_path, 30)

@@ -19,12 +19,12 @@ import httpx
 from app.agent_conduit import MISSION, converse, digest, read_source, save, stamp
 from app.api_budget import upper_cents
 from app.astra_agents import agent_lease
+from app.automation_mode import MODES as AUTOMATION_MODES, MODEL_SETTINGS, current, models_by_level
 
 MESSAGE_LIMIT = 4000
 MAX_MESSAGES = 10
 LEVELS = {1: 'HIGH', 2: 'MEDIUM', 3: 'LOW'}
-# Model id, reasoning effort and output ceiling per plan choice. Luna uses the workbench-proven 'low' effort.
-MODELS = {'astra': ('gpt-6-astra', 'max', None), 'luna': ('gpt-6-luna', 'low', 32000)}
+MODELS = MODEL_SETTINGS  # Single-model plans (no automation mode): astra, sol, terra or luna for every level.
 SHARED = ('messages is an array of {to, text}; to is an agent name, "parent", "children", "siblings" or "all". '
           'files are proposed relative path/content objects, never applied. pressure is 1-3.')
 ROLE_RULES = {
@@ -77,18 +77,27 @@ def outgoing(sender, candidate, names, nodes=None):
 
 
 class Tree:
-    def __init__(self, plan, session, minutes, transport=None, clock=time.monotonic):
+    def __init__(self, plan, session, minutes, transport=None, clock=time.monotonic, mode=None):
         self.plan, self.session, self.transport, self.clock = plan, Path(session), transport, clock
         self.started = clock()
-        if plan.get('model', 'astra') not in MODELS:
+        self.mode = mode
+        if mode is not None:
+            if mode not in AUTOMATION_MODES:
+                raise ValueError('Automation mode must be one of ' + ', '.join(AUTOMATION_MODES))
+            self.level_models = models_by_level(mode)
+        elif plan.get('model', 'astra') in MODELS:
+            self.level_models = {level: MODELS[plan.get('model', 'astra')] for level in (1, 2, 3)}
+        else:
             raise ValueError('Plan model must be one of ' + ', '.join(MODELS))
-        self.model, self.effort, self.max_output = MODELS[plan.get('model', 'astra')]
         self.deadline = self.started + minutes * 60
         self.nodes = {'coordinator': {'role': 'Coordinates the tree.', 'shelf': plan['coordinator']['shelf'],
                                       'parent': None, 'level': 1, 'max_requests': 3, 'children': []}}
         self.add('coordinator', plan.get('children', plan.get('workers', [])))
         if len(self.nodes) > 13:
             raise ValueError('A tree has at most thirteen nodes')
+        if mode is not None and (len(self.nodes) > AUTOMATION_MODES[mode]['agents'] or
+                                 max(node['level'] for node in self.nodes.values()) > len(self.level_models)):
+            raise ValueError(f"{mode} mode allows {AUTOMATION_MODES[mode]['summary']}")
         self.names = list(self.nodes)
         self.phases = [[name for name in self.names if self.nodes[name]['level'] == level] for level in (1, 2, 3)]
         self.phases = [phase for phase in self.phases if phase]
@@ -152,6 +161,7 @@ class Tree:
 
     def turn(self, name, round_number, final=False):
         content = self.content(name, round_number, final)
+        model, effort, max_output = self.level_models[self.nodes[name]['level']]
         history = [{'role': 'user', 'content': json.dumps(content, ensure_ascii=False)}]
         with self.client() as client:
             state, receipts, used, candidate = converse(
@@ -160,9 +170,9 @@ class Tree:
                 first_ordinal=self.ordinals[name],
                 candidate_name=f'round-{round_number:02}{"-final" if final else ""}.json',
                 answer_by=None if final else self.deadline - 300, stop_at=None if final else self.deadline, clock=self.clock,
-                model=self.model, effort=self.effort, max_output=self.max_output)
+                model=model, effort=effort, max_output=max_output)
         self.ordinals[name] += len(receipts)  # Refused dispatches save nothing, so ordinals stay unique.
-        record = {'round': round_number, 'agent': name, 'level': LEVELS[self.nodes[name]['level']], 'state': state,
+        record = {'round': round_number, 'agent': name, 'level': LEVELS[self.nodes[name]['level']], 'model': model, 'state': state,
                   'requests': len(receipts), 'final': final, 'receipts': receipts,
                   'summary': clip((candidate or {}).get('summary', ''), 2000)}
         self.log({'event': 'turn', **{k: v for k, v in record.items() if k != 'receipts'}})
@@ -217,6 +227,8 @@ class Tree:
                             finished = True
                         elif root.get('done') is True and round_number > 1:
                             finished = 'done'
+                        if len(self.phases) == 1 and not finished:
+                            finished = 'done'  # A single-agent tree answers once.
                         if finished:
                             break
                     elif depth == len(self.phases) - 1:
@@ -230,10 +242,11 @@ class Tree:
 
     def finish(self):
         receipts = [receipt for record in self.rounds for receipt in record['receipts']]
-        upper = sum(upper_cents(self.model, r['usage']['input_tokens'], r['usage']['output_tokens'])
-                    for r in receipts if r.get('usage'))
+        upper = sum(upper_cents(record['model'], r['usage']['input_tokens'], r['usage']['output_tokens'])
+                    for record in self.rounds for r in record['receipts'] if r.get('usage'))
         root = self.last['coordinator']
-        summary = {'at_utc': stamp(), 'model': self.model, 'elapsed_minutes': round((self.clock() - self.started) / 60, 1),
+        summary = {'at_utc': stamp(), 'mode': self.mode, 'models': {LEVELS[level]: settings[0] for level, settings in self.level_models.items()},
+                   'elapsed_minutes': round((self.clock() - self.started) / 60, 1),
                    'turns': [{k: v for k, v in record.items() if k != 'receipts'} for record in self.rounds],
                    'requests': len(receipts), 'unknown_usage': sum(r['usage_state'] != 'reported' for r in receipts),
                    'reported_input_tokens': sum(r.get('usage', {}).get('input_tokens', 0) for r in receipts),
@@ -255,9 +268,16 @@ def main():
         parser.exit(2, 'No API key; no request dispatched\n')
     if not 0 < args.minutes <= 60:
         parser.exit(2, 'Session length must be within (0, 60] minutes\n')
-    args.session.mkdir(parents=True)
     plan = json.loads(args.plan.read_text(encoding='utf-8'))
-    print(json.dumps(Tree(plan, args.session, args.minutes).run(), indent=2))
+    mode = current()['mode']  # The system-wide owner setting always decides the tree shape and models.
+    if plan.get('mode') not in (None, mode):
+        parser.exit(2, f"Plan asks for {plan['mode']} mode but the system is in {mode} mode\n")
+    try:
+        tree = Tree(plan, args.session, args.minutes, mode=mode)
+    except ValueError as error:
+        parser.exit(2, f'{error}\n')
+    args.session.mkdir(parents=True)  # Only after the plan fits the mode.
+    print(json.dumps(tree.run(), indent=2))
 
 
 if __name__ == '__main__':

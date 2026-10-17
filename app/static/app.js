@@ -85,6 +85,8 @@ async function agentRoster() {
   try {
     const data = await api('/agents');
     if (view !== 'agents') return;
+    const mode = await api('/automation-mode');
+    $('agents-mode').textContent = mode.mode ? `Mode: ${mode.mode} · ${mode.summary}` : '';
     $('agents-summary').textContent = !data.available ? 'Agent registry unavailable.' :
       data.items.length ? `${data.items.length} registered runs · refresh to check for changes` : 'No registered Astra runs yet.';
     for (const agent of data.items) {
