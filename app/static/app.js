@@ -254,7 +254,7 @@ function renderSignoffs(items) {
     }
     card.append(element('h3', item.action), element('p', item.summary),
       element('p', `Requested by ${item.requested_by} · ${item.requested_principal}`, 'meta'),
-      element('p', item.created_at, 'meta'), payload, label, controls);
+      element('p', new Date(item.created_at * 1000).toLocaleString(), 'meta'), payload, label, controls);  // created_at is Unix seconds
     list.append(card);
   }
   syncSignoffAuth();
