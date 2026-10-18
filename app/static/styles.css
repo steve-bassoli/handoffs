@@ -89,6 +89,13 @@ button.loading:disabled { opacity: 1; cursor: progress; }
 .tx small { display: block; color: var(--muted); margin-top: 4px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
 .content { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
+.history-timeline { margin: 28px 0; }
+.history-event { display: grid; gap: 6px; padding: 18px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.history-event > strong { font-weight: 500; }
+.history-detail, .history-actor, .history-time { color: var(--muted); }
+.history-actor, .history-time { font-size: 12px; }
+.history-event details { padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 3px; }
+.history-event summary { cursor: pointer; }
 .detail-head { margin-top: 24px; }
 code { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .evidence { padding: 24px; background: #fff; border: 1px solid var(--line); border-radius: 3px; margin: 12px 0; }
