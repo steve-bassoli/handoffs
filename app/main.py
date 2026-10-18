@@ -25,6 +25,7 @@ from app.proof_reviewer import ProofReviewer
 from app.intake_screen import IntakeScreen
 from app.gremlins import Comparison, compare, sabotage, witness
 from app.agent_roster import roster
+from app.effects import effect_table
 from app.automation_mode import AUTOMATION_HEADER, ACTION_INTENT_HEADER, current as current_mode
 
 
@@ -336,6 +337,10 @@ this page does not query the live Codex quota meter.</p>
         record = current_mode(request.app.state.mode_path)
         return JSONResponse({key: record.get(key) for key in ('mode', 'summary', 'agents', 'automated_writes', 'set_by', 'set_utc')},
                             headers={'Cache-Control': 'no-store'})
+
+    @app.get('/api/v1/effects')
+    def effects(user=Depends(actor)):
+        return JSONResponse(effect_table(), headers={'Cache-Control': 'no-store'})
 
     @app.get('/api/v1/agents')
     def agents(user=Depends(actor)):
