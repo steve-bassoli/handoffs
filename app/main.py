@@ -178,7 +178,7 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         finally:
             db.engine.dispose()
 
-    app = FastAPI(title='The Commons', lifespan=lifespan)
+    app = FastAPI(title='ASE', lifespan=lifespan)
 
     from app.signoffs import router as signoffs_router
     app.include_router(signoffs_router)
@@ -302,7 +302,7 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="30">
-<title>The Commons · AI research</title>
+<title>ASE · AI research</title>
 <style>
 body {{ margin: 0; border-top: 3px solid #f23f2c; color: #212529; background: #fff; font: 16px/1.6 Arial, sans-serif; }}
 main {{ max-width: 1000px; margin: auto; padding: 24px; }}
@@ -315,7 +315,7 @@ summary {{ cursor: pointer; color: #c53024; }}
 </style>
 </head>
 <body><main>
-<h1>The Commons · AI research</h1>
+<h1>ASE · AI research</h1>
 <p>Local read-only observer. Refreshes the recorded research every 30 seconds;
 this page does not query the live Codex quota meter.</p>
 <section><h2>Latest recorded section</h2><pre>{escape(latest)}</pre></section>

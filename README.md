@@ -1,4 +1,6 @@
-# The Commons
+# ASE: Auditable Self-improving Ecosystem
+
+Formerly HANDOFFS and The Commons; the `handoffs` folder, MCP server id and repository name are unchanged for now.
 
 Ask freely. Share freely. Build together.
 
@@ -8,7 +10,7 @@ configuration, MCP names, API routes, database and artifact identifiers remain
 unchanged. This is a public-identity update, not an economic or data migration.
 
 The [project charter](PROJECT_CHARTER.md) defines the
-Watson REST/MCP, Gremlins and The Commons target, the rule of three, and one sufficient
+Watson REST/MCP, Gremlins and the ASE target, the rule of three, and one sufficient
 proof artifact before LOW completion. It distinguishes the target from current
 prototype enforcement.
 

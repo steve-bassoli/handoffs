@@ -17,7 +17,7 @@ DEMO_USER = os.environ.get('HANDOFFS_DEMO_USER', 'steve')
 server = FastMCP(
     'handoffs',
     instructions=(
-        'HANDOFFS coordinates tasks and Gold through its service. '
+        'ASE (Auditable Self-improving Ecosystem, formerly HANDOFFS and The Commons) coordinates tasks and Gold through its service. '
         'Identity and PR verification are simulated. Listing or previewing never starts work. '
         'Post, take and deliver only when the user requests the action. '
         'An explicit claim also requests processing in the current session: read the downloaded verified package '

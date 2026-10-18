@@ -1,8 +1,8 @@
-# The Commons Project Charter
+# ASE Project Charter
 
 Ask freely. Share freely. Build together.
 
-The Commons is the public project name, formerly HANDOFFS. Existing `handoffs`
+ASE (Auditable Self-improving Ecosystem) is the project name since 2026-10-18, formerly The Commons and before that HANDOFFS. Existing `handoffs`
 package names, `HANDOFFS_*` configuration, MCP connection names, API routes and
 stored identifiers remain compatible. Renaming the product does not migrate its
 economy or rewrite its history.
@@ -11,14 +11,14 @@ Decision recorded October 16, 2026. This charter governs the modernization targe
 and development workflow. It does not certify that the prototype already meets it.
 
 The goal is seamless AI integration of Watson maintenance and usability through
-three cooperating systems: Watson services, Gremlins, and The Commons. AI performs
+three cooperating systems: Watson services, Gremlins, and ASE. AI performs
 investigation, decomposition, implementation and evidence preparation. Humans use
 the Watson application to verify LOW tasks, rather than to drive routine work.
 Human authority over policy, access, task creation and deployment remains intact.
 
 ## Human purpose and resource commitments
 
-The Commons exists to enrich and empower people, not to make them earn the right to
+ASE exists to enrich and empower people, not to make them earn the right to
 participate. The governing [empowerment constitution](PLAN/EMPOWERMENT_CONSTITUTION.md)
 adopts two currencies and one growth stat: Credits for shared human/token access,
 ADMIRATION for freely given recognition, and GROWTH for demonstrated learning and
@@ -61,7 +61,7 @@ The motivating exchange and evaluation criteria are retained in
 
 ### Shared compute, equal participation
 
-Personal token quota is not an admission requirement. The Commons should smooth
+Personal token quota is not an admission requirement. ASE should smooth
 access to human guidance, shared compute and reusable knowledge across the company,
 so people without personal AI funding can still contribute and benefit. This trio
 describes complementary needs, not a mandatory shape for every design. Never force
@@ -82,7 +82,7 @@ participate. Token wealth and AI fluency do not purchase authority over people.
 This commitment has no required numerical shape. Its motivating observation is
 retained in [AI research](PLAN/AI_RESEARCH.md#sharing-capability-without-concentrating-power).
 
-The Commons improves itself through ordinary tasks: a bounded outcome,
+ASE improves itself through ordinary tasks: a bounded outcome,
 pinned source, an inspectable patch and recorded checks. AI may prepare the work;
 it must not approve its own proof, publish unconfirmed child tasks, or
 deploy untested generated code. Human LOW verification remains explicit. Preserve
@@ -119,7 +119,7 @@ The product direction is sustainable human participation and reliable AI work,
 not output at any cost. Watson modernization remains an application of that
 purpose. Human health is not interchangeable with model behavior: AI health here
 means operational capacity and reliability, not evidence of feelings, suffering
-or a clinical condition. The Commons is not a diagnostic or treatment service.
+or a clinical condition. ASE is not a diagnostic or treatment service.
 
 PRESSURE is a self-reported integer from 1 to 3: 1 means ready, 2 means reduce
 load and checkpoint, 3 means STOP NOW. At 3, stop further agent tool work and
@@ -205,7 +205,7 @@ keys or request new billing credentials merely to remove a guard. Codex quota
 and participant Gold remain separate. No live account balance is inferred.
 
 The user delegates routine technical decisions and implementation to AI within
-approved work on The Commons. AI investigates, decomposes, implements and validates
+approved work on ASE. AI investigates, decomposes, implements and validates
 the smallest sufficient change, continuing ready LOW steps without repeated
 permission requests. Humans supply purpose, domain knowledge and consequential
 choices; explicit human LOW verification and participant consent remain real
@@ -265,7 +265,7 @@ finish line was reached. Explicit human LOW verification remains separate.
 ## Routine local deployment
 
 The user explicitly authorizes automatic deployment of completed, verified change
-batches to the existing The Commons port-8000 service on this workstation. For
+batches to the existing ASE port-8000 service on this workstation. For
 this setup, publish from `C:/work/modern_watson/handoffs` to the existing canonical
 checkout `C:/hackathon/handoffs`, using a full tested commit SHA and the established
 publisher. Reuse the configured database and existing approved loopback/private
@@ -311,9 +311,9 @@ Harness availability, a generated test, a proposed command or a simulator pass
 does not establish live Watson compatibility. Do not perform production writes,
 weaken security or obtain new access merely to make a test pass.
 
-## 3 The Commons
+## 3 ASE
 
-The Commons already has an MCP server. It coordinates AI-driven maintenance and
+ASE already has an MCP server. It coordinates AI-driven maintenance and
 provides a navigable audit trail from HIGH inception through decomposition,
 dependencies, implementation, verification and completion. Preserve revisions,
 failed attempts and prior evidence. Link shared prerequisites instead of creating

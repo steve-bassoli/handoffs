@@ -51,10 +51,10 @@ Retain a JSON plan with `steps`; each item has a unique `id`, bounded `title`,
 LOW items declare `work_type`: `implementation` or `verification`; verification
 leaves have empty commit files. Retain
 criterion mapping and implementation/validation notes on the same items. Run
-`python -m app.complexity validate --plan <plan-file>` from The Commons checkout
+`python -m app.complexity validate --plan <plan-file>` from the ASE checkout
 before execution. Exported fix ZIPs include `tools/complexity.py`; there use
 `python tools/complexity.py` for the same validation and commit actions instead.
-Do not assume another target repository contains the Commons module.
+Do not assume another target repository contains the ASE module.
 This replaces the previous easy/medium-only and automatic HIGH-task rule.
 
 A proposed task is not authorized work. Do not create or publish a quest, mutate Git,
