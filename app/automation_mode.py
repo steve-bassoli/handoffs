@@ -51,12 +51,17 @@ def current(path=None):
     return {'mode': 'manual', 'set_by': None, 'set_utc': None, 'note': 'default (no owner setting)', **MODES['manual']}
 
 
-def set_mode(mode, by, note, path=None):
+LIVE_MODE_FILE = Path(__file__).resolve().parents[1] / '.data' / 'automation-mode.json'
+
+
+def set_mode(mode, by, note, path=None, *, signoff_id=None, db=None):
     if mode not in MODES:
         raise ValueError('Mode must be one of ' + ', '.join(MODES))
     if not isinstance(by, str) or not by.strip() or not isinstance(note, str) or not note.strip():
         raise ValueError('An owner name and a reason are required')
     path = Path(path or mode_path())
+    # The live owner setting always needs a consumed sign-off; scratch files (tests, fixtures) do not.
+    needs_signoff = signoff_id is not None or path.resolve() == LIVE_MODE_FILE.resolve()
     try:
         history = json.loads(path.read_text(encoding='utf-8')).get('history', [])
     except (OSError, ValueError, AttributeError):
@@ -64,8 +69,17 @@ def set_mode(mode, by, note, path=None):
     stamp = datetime.now(timezone.utc).isoformat()
     record = {'mode': mode, 'set_by': by, 'set_utc': stamp, 'note': note,
               'history': history + [{'mode': mode, 'set_by': by, 'set_utc': stamp, 'note': note}]}
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(record, indent=1), encoding='utf-8')
+    from app.executor_signoffs import consume_signoff, FAIL_CLOSED
+    if needs_signoff:
+        if not signoff_id:
+            from app.services import RuleError
+            raise RuleError('Changing the live automation mode requires --signoff', 403)
+        consume_signoff('automation_mode', {'mode': mode, 'note': note}, signoff_id=signoff_id, db=db)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(record, indent=1), encoding='utf-8')
+    except Exception as error:
+        raise ValueError(FAIL_CLOSED) from error
     return current(path)
 
 
@@ -98,11 +112,15 @@ def main():
     parser.add_argument('--mode', choices=list(MODES))
     parser.add_argument('--by')
     parser.add_argument('--note')
+    parser.add_argument('--signoff')
+    parser.add_argument('--db', help='Main ASE approval database, not the mode file')
     args = parser.parse_args()
     if args.action == 'set':
         if not (args.mode and args.by and args.note):
             parser.error('set requires --mode, --by and --note')
-        set_mode(args.mode, args.by, args.note)
+        if not args.signoff:
+            parser.error('set requires --signoff')
+        set_mode(args.mode, args.by, args.note, signoff_id=args.signoff, db=args.db)
     record = current()
     print(json.dumps({key: record[key] for key in ('mode', 'summary', 'agents', 'automated_writes', 'set_by', 'set_utc', 'note')}, indent=1))
 

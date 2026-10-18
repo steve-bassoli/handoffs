@@ -9,11 +9,12 @@ import sys
 from urllib.parse import urlsplit
 
 
-def publish(repository, remote, branch, expected_url, commit, receipt, authorized=False):
+def publish(repository, remote, branch, expected_url, commit, receipt, authorized=False, *, signoff_id, db=None):
     result = {'state': 'blocked', 'published': False, 'commit': commit,
               'remote': remote, 'branch': branch, 'push_attempted': False,
               'remote_commit': None, 'next_action': 'Resolve the reported blocker and rerun with the same commit.'}
     destination = Path(receipt)
+    consumed = False
 
     def save():
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -62,6 +63,10 @@ def publish(repository, remote, branch, expected_url, commit, receipt, authorize
             if len(lines) != 1 or lines[0].split()[1] != ref:
                 raise ValueError('Remote branch verification returned unexpected refs')
             return lines[0].split()[0]
+        from app.executor_signoffs import consume_signoff
+        consume_signoff('publish', {'repository_remote_branch': remote + '/' + branch, 'commit': commit}, signoff_id=signoff_id, db=db)
+        consumed = True
+        result['signoff_consumed'] = True
         result['remote_commit'] = remote_head()
         if result['remote_commit'] != commit:
             result['push_attempted'] = True
@@ -71,8 +76,10 @@ def publish(repository, remote, branch, expected_url, commit, receipt, authorize
         if result['remote_commit'] != commit:
             raise ValueError('Push returned but exact remote HEAD verification failed')
         result.update(state='published', published=True, next_action=None)
-    except (ValueError, OSError, subprocess.TimeoutExpired) as error:
+    except Exception as error:
         result['error'] = str(error) if isinstance(error, ValueError) else type(error).__name__
+        if consumed:
+            result['next_action'] = 'Sign-off was consumed; publication failed or is uncertain. Verify remote state and request a new sign-off; do not automatically retry.'
     save()
     return result
 
@@ -83,6 +90,8 @@ def main():
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--authorized', action='store_true',
                         help='Attest applicable user/standing publication authority; not an authentication mechanism')
+    parser.add_argument('--signoff', dest='signoff_id', required=True)
+    parser.add_argument('--db', help='Main ASE approval database')
     args = vars(parser.parse_args())
     result = publish(**args)
     print(json.dumps(result))

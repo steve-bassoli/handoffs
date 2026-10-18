@@ -5,6 +5,14 @@ import subprocess
 
 import pytest
 
+import app.executor_signoffs as executor_signoffs
+
+
+@pytest.fixture(autouse=True)
+def stub_signoff(monkeypatch):
+    # These tests cover git delivery; sign-off consumption is tested in test_executor_signoffs.
+    monkeypatch.setattr(executor_signoffs, 'consume_signoff', lambda *args, **kwargs: None)
+
 spec = importlib.util.spec_from_file_location('publication', Path(__file__).parents[1] / 'scripts/publish-task.py')
 publication = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publication)
@@ -33,6 +41,7 @@ def publish(repo, **changes):
     local, remote, commit, receipt = repo
     args = dict(repository=local, remote='origin', branch='main', expected_url=str(remote),
                 commit=commit, receipt=receipt, authorized=True)
+    args.setdefault('signoff_id', 'test-signoff')
     args.update(changes)
     result = publication.publish(**args)
     assert json.loads(receipt.read_text()) == result

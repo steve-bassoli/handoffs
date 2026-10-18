@@ -100,6 +100,42 @@ def connection(path):
     return sqlite3.connect(Path(path).resolve().as_uri() + '?mode=rw', uri=True, timeout=10)
 
 
+def extend_prices(path, until_iso, provenance, *, signoff_id, db=None):
+    """Owner-authorized external-store effect; approval commits before mutation."""
+    from app.executor_signoffs import consume_signoff, FAIL_CLOSED
+    try:
+        until = datetime.fromisoformat(until_iso)
+    except (TypeError, ValueError):
+        raise BudgetError('Use an ISO timestamp with an explicit timezone') from None
+    if until.tzinfo is None or until.utcoffset() is None:
+        raise BudgetError('Use an ISO timestamp with an explicit timezone')
+    if not isinstance(provenance, str) or not provenance.strip():
+        raise BudgetError('A sourced owner authorization is required')
+    consume_signoff('price_checkpoint', {'until': until_iso, 'provenance': provenance}, signoff_id=signoff_id, db=db)
+    try:
+        with connection(path) as ledger:
+            ledger.execute('BEGIN IMMEDIATE')
+            ledger.execute('SELECT ceiling FROM budget WHERE id=1').fetchone()
+            ledger.execute('CREATE TABLE IF NOT EXISTS price_checkpoints (id INTEGER PRIMARY KEY, until_iso TEXT NOT NULL, provenance TEXT NOT NULL)')
+            ledger.execute('INSERT INTO price_checkpoints(until_iso,provenance) VALUES (?,?)', (until.isoformat(), provenance))
+    except Exception as error:
+        raise BudgetError(FAIL_CLOSED) from error
+
+
+def prices_expire(db):
+    expiry = PRICES_EXPIRE
+    if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='price_checkpoints'").fetchone():
+        for (value,) in db.execute('SELECT until_iso FROM price_checkpoints'):
+            try:
+                checkpoint = datetime.fromisoformat(value)
+                if checkpoint.tzinfo is None or checkpoint.utcoffset() is None:
+                    raise ValueError('Missing timezone')
+                expiry = max(expiry, checkpoint)
+            except (TypeError, ValueError):
+                raise BudgetError('Invalid stored API price checkpoint') from None
+    return expiry
+
+
 def available(path=None):
     try:
         with connection(path or budget_path()) as db:
@@ -145,8 +181,7 @@ class Reservation:
 def reserve(model, max_output_tokens, transport=None, path=None, now=None):
     if isinstance(transport, httpx.MockTransport):
         return Reservation()
-    if (now or datetime.now(timezone.utc)) >= PRICES_EXPIRE:
-        raise BudgetError('API price checkpoint is stale; verify it before paid work')
+    checkpoint_now = now or datetime.now(timezone.utc)
     if type(max_output_tokens) is not int or not 1 <= max_output_tokens <= 128000:
         raise BudgetError('Invalid output ceiling')
     bound = upper_cents(model, MAX_INPUT, max_output_tokens)
@@ -156,6 +191,8 @@ def reserve(model, max_output_tokens, transport=None, path=None, now=None):
             db.execute('BEGIN IMMEDIATE')
             ceiling, baseline = db.execute('SELECT ceiling,baseline FROM budget WHERE id=1').fetchone()
             held = db.execute('SELECT COALESCE(SUM(held),0) FROM calls').fetchone()[0]
+            if checkpoint_now >= prices_expire(db):
+                raise BudgetError('API price checkpoint is stale; verify it before paid work')
             if db.execute("SELECT COUNT(*) FROM calls WHERE state IN ('unknown','overrun')").fetchone()[0]:
                 raise BudgetError('Reconcile unknown API usage before more paid work')
             if ceiling not in AUTHORIZED_CEILINGS or min(baseline, held) < 0 or baseline + held + bound > ceiling:
@@ -164,3 +201,22 @@ def reserve(model, max_output_tokens, transport=None, path=None, now=None):
     except (sqlite3.Error, TypeError, OSError):
         raise BudgetError('API budget accounting is unavailable; no paid request was sent') from None
     return Reservation(path, identifier, model)
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest='command', required=True)
+    extend = commands.add_parser('extend-prices')
+    extend.add_argument('--path', default=str(budget_path()), help='Budget database')
+    extend.add_argument('--db', help='Main ASE approval database')
+    extend.add_argument('--until', required=True)
+    extend.add_argument('--provenance', required=True)
+    extend.add_argument('--signoff', required=True)
+    args = parser.parse_args()
+    extend_prices(args.path, args.until, args.provenance, signoff_id=args.signoff, db=args.db)
+
+
+if __name__ == '__main__':
+    main()
+
