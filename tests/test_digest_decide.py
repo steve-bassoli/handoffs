@@ -113,6 +113,20 @@ def test_intake_veto_yes_overrides_and_no_upholds(tmp_path, monkeypatch):
         assert [e['kind'] for e in events][-2:] == ['intake_veto_upheld', 'digest_decided']
 
 
+def test_a_finished_task_leaves_no_veto_waiting(tmp_path, monkeypatch):
+    monkeypatch.setattr(prototype, 'RELEASE_MARKER', tmp_path / 'RELEASED')
+    monkeypatch.setenv('HANDOFFS_DEMO_IDENTITY', 'allow')
+    monkeypatch.setenv('HANDOFFS_INTAKE_SCREEN', 'observe')
+    with TestClient(create_app(tmp_path / 'done.sqlite', intake_screen=VetoScreen())) as client:
+        client.app.state.credentials.set_password('steve', 'synthetic test password only')
+        token = client.post('/api/v1/auth/login', json={'username': 'steve', 'password': 'synthetic test password only'}).json()['access_token']
+        client.human = {'Authorization': 'Bearer ' + token}
+        task_id = proofed_task(client)
+        assert item(client, 'intake_veto', task_id) is not None
+        assert decide(client, item(client, 'human_close', task_id), 'yes').status_code == 200
+        assert item(client, 'intake_veto', task_id) is None
+
+
 def test_human_close_needs_current_proof_and_records_the_decision(board):
     bare = proofed_task(board, proof=False)
     assert decide(board, item(board, 'human_close', bare), 'yes').status_code == 409

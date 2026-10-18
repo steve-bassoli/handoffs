@@ -126,7 +126,7 @@ class Batch(BaseModel):
 
 @router.post('/decide-batch')
 def decide_batch(payload: Batch, request: Request, idempotency_key: str = Header(min_length=1, max_length=150)):
-    """Decision digest LOW-6: Yes to selected items. Each item is decided through the single-item path with its own
+    """Decision digest LOW-6: Accept selected items (decision yes). Each item is decided through the single-item path with its own
     derived idempotency key and reports its own outcome; there is no cross-item atomicity, and a retry with the same
     batch key returns each item's original result instead of deciding twice."""
     identity = signed_in_person(request)

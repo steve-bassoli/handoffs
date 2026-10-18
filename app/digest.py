@@ -106,7 +106,9 @@ def build_digest(service, user):
         claimant = next((e['actor'] for e in reversed(history) if e['kind'] == 'taken'), None)
         task = {**row, 'status': latest['state'], 'complexity': complexity, 'claimant': claimant}
         screened = next((e for e in reversed(history) if e['kind'] == 'intake_screened'), None)
-        if screened and screened['data'].get('verdict') in {'veto', 'unavailable'}:
+        # A finished task has nothing left for a veto decision to allow or stop.
+        finished = task['status'] in ('completed', 'settled', 'cancelled', 'superseded')
+        if screened and screened['data'].get('verdict') in {'veto', 'unavailable'} and not finished:
             data = screened['data']
             digest = data['text_sha256']
             overridden = any(e['kind'] in ('intake_overridden', 'intake_veto_upheld')

@@ -94,7 +94,7 @@ def test_digest_inert_rendering_and_explicit_choices():
     assert "'Reversible'" in render and "'Irreversible'" in render
     assert 'No recommendation yet' in render
     assert 'choice.checked = false' in render
-    assert "[['Yes', 'yes'], ['No', 'no'], ['Change', 'change']]" in render
+    assert "[['Accept', 'yes'], ['Decline', 'no'], ['Change', 'change']]" in render
     assert 'note.value.trim()' in render
     assert 'selected.length > 50' in render
     assert 'Sign in to decide' in render

@@ -300,7 +300,7 @@ function syncSignoffAuth() {
   if ($('signoffs-refresh')) $('signoffs-refresh').disabled = digestBusy;
   if (digestBatchButton) {
     const count = digestEntries.filter(entry => entry.choice?.checked).length;
-    digestBatchButton.textContent = `Yes to selected (${count})`;
+    digestBatchButton.textContent = `Accept selected (${count})`;
     digestBatchButton.disabled = locked || !count;
   }
 }
@@ -337,7 +337,7 @@ async function submitDigest(path, body, auth, actor) {
       for (const row of result.results || []) {
         const entry = digestEntries.find(entry => entry.item.kind === row.kind && entry.item.id === row.id);
         const label = entry?.item.title || row.id;
-        const detail = row.ok ? 'Yes recorded' : row.status === 409 ? 'Changed since you looked; refresh' :
+        const detail = row.ok ? 'Accepted' : row.status === 409 ? 'Changed since you looked; refresh' :
           `Not recorded: ${typeof row.detail === 'string' ? row.detail : JSON.stringify(row.detail)}`;
         outcomes.append(element('p', `${row.kind} · ${label}: ${detail}`, row.ok ? 'meta' : 'error'));
       }
@@ -372,6 +372,12 @@ async function submitDigest(path, body, auth, actor) {
   }
 }
 function renderSignoffs(items) {
+  // Steve, 2026-10-18: Accept / Decline / Change reads clearer than Yes / No / Change; the API values stay yes/no/change.
+  const DIGEST_CHOICES = [['Accept', 'yes'], ['Decline', 'no'], ['Change', 'change']];
+  const DIGEST_MEANING = {
+    signoff: 'Accept approves this request (nothing runs yet). Decline rejects it. Change asks for a revision and keeps it waiting.',
+    intake_veto: "Accept lets this task go ahead despite the screen's objection. Decline keeps it blocked. Change asks for a revised task.",
+    human_close: 'Accept accepts the proof and completes the task. Decline rejects the proof; the task stays open. Change asks for more work.'};
   const list = $('signoff-cards'); list.replaceChildren();
   digestEntries = []; digestBatchButton = null;
   const auth = session, actor = user;
@@ -388,13 +394,14 @@ function renderSignoffs(items) {
       element('p', effect.reason || 'Consequence details unavailable.', 'meta'),
       element('p', item.why_waiting));
     const recommendation = item.recommendation;
+    const advised = DIGEST_CHOICES.find(([, decision]) => decision === recommendation?.disposition)?.[0] || recommendation?.disposition;
     card.append(element('p', !recommendation || recommendation.status === 'unavailable' ? 'No recommendation yet' :
-      `Recommendation: ${recommendation.disposition} · ${recommendation.rationale}`));
+      `Recommended: ${advised} · ${recommendation.rationale}`));
     const provenance = item.provenance || {};
     card.append(element('small', `Requested by ${provenance.requested_by || 'unknown'} · ${provenance.requested_principal || 'unknown'}${provenance.construction ? ' · Construction: ' + String(provenance.construction) : ''}`));
     const entry = {item, choice: null}; digestEntries.push(entry);
     if (digestEligible(item)) {
-      const selectLabel = element('label', 'Include in Yes to selected');
+      const selectLabel = element('label', 'Include in Accept selected');
       const choice = element('input'); choice.type = 'checkbox'; choice.checked = false;
       choice.dataset.digestControl = 'true'; choice.style.width = 'auto';
       choice.onchange = syncSignoffAuth;
@@ -402,7 +409,7 @@ function renderSignoffs(items) {
       const {label, note} = digestNote('Decision note (required)');
       const controls = element('div', undefined, 'actions');
       controls.style.display = 'flex'; controls.style.flexWrap = 'wrap'; controls.style.gap = '8px';
-      for (const [text, decision] of [['Yes', 'yes'], ['No', 'no'], ['Change', 'change']]) {
+      for (const [text, decision] of DIGEST_CHOICES) {
         const button = element('button', text); button.type = 'button';
         button.dataset.digestControl = 'true'; button.dataset.decision = decision;
         button.onclick = () => run(async () => {
@@ -412,7 +419,7 @@ function renderSignoffs(items) {
         });
         controls.append(button);
       }
-      card.append(label, controls);
+      card.append(element('p', DIGEST_MEANING[item.kind] || '', 'meta'), label, controls);
     } else card.append(element('p', 'Decision unavailable: missing or unsupported item version.', 'error'));
     if (!session) card.append(element('p', 'Sign in to decide', 'meta'));
     list.append(card);
@@ -420,7 +427,7 @@ function renderSignoffs(items) {
   if (digestEntries.some(entry => entry.choice)) {
     const bar = element('div', undefined, 'card');
     const {label, note} = digestNote('Note for selected decisions (required)');
-    digestBatchButton = element('button', 'Yes to selected (0)', 'primary');
+    digestBatchButton = element('button', 'Accept selected (0)', 'primary');
     digestBatchButton.type = 'button'; digestBatchButton.dataset.digestControl = 'true';
     digestBatchButton.onclick = () => run(async () => {
       if (!session || session !== auth || actor !== user || digestBusy || digestUncertain) return;
