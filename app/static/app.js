@@ -53,23 +53,29 @@ async function stats() {
     const box = element('div', undefined, 'stat'); box.append(element('span', label), element('strong', String(value))); $('stats').append(box);
   }
 }
+let boardRequest = 0;
 async function board() {
+  // Only the latest request may publish; a slower earlier response is dropped, errors included.
+  const ticket = ++boardRequest;
   const mine = view === 'mine', picker = $('assigned-by');
   if ($('mine-filters')) $('mine-filters').hidden = !mine;
   // My Tasks hides closed work unless asked; the picker narrows to one poster.
   const filters = !mine || !picker ? '' : (($('show-closed').checked ? '' : '&status=open,pending,working,blocked,delivered,awaiting_approval') +
     (picker.value ? '&creator=' + encodeURIComponent(picker.value) : ''));
-  const result = await api(`/tasks?view=${view}&limit=${pageSize}&offset=${offset}&q=${encodeURIComponent($('search').value)}${filters}`);
+  let result;
+  try { result = await api(`/tasks?view=${view}&limit=${pageSize}&offset=${offset}&q=${encodeURIComponent($('search').value)}${filters}`); }
+  catch (error) { if (ticket === boardRequest) throw error; return; }
+  if (ticket !== boardRequest) return;
   if (mine && picker) {
     const chosen = picker.value; picker.replaceChildren(new Option('Anyone', ''));
     for (const name of new Set([...(result.creators || []), ...(chosen ? [chosen] : [])])) picker.append(new Option(name, name));
     picker.value = chosen;
   }
   $('cards').replaceChildren();
-  if (!result.items.length) $('cards').append(element('div', mine && (picker?.value || !$('show-closed').checked) ? 'No tasks match these filters. Try Show closed or Assigned by Anyone.' : view === 'mine' ? 'Tasks you post or volunteer for will appear here.' : 'Nothing open right now. Post a task when you have useful work to share.', 'empty'));
+  if (!result.items.length) $('cards').append(element('div', mine && (picker?.value || !$('show-closed').checked) ? 'No tasks match these filters. Try Show closed or Posted by Anyone.' : view === 'mine' ? 'Tasks you post or volunteer for will appear here.' : 'Nothing open right now. Post a task when you have useful work to share.', 'empty'));
   for (const item of result.items) {
     const card = element('article', undefined, 'card');
-    if (item.phase === 'Closed') card.style.opacity = '0.65';
+    if (item.phase === 'Closed') card.classList.add('closed-card');
     const top = element('div'); top.append(element('span', item.phase || item.status, 'pill'), element('span', item.complexity, 'pill'));
     if (item.funded) top.append(element('span', `${item.gold} GOLD`, 'pill task-gold'));
     const button = element('button', 'View task'); button.onclick = () => run(() => show(item.id));
@@ -133,6 +139,7 @@ async function navigate(nextView) {
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   view = nextView; selected = null;
+  if (typeof boardRequest !== 'undefined') boardRequest++;
   if (typeof window !== 'undefined' && window.commonsNavigation) window.commonsNavigation.update(view, user);
   else {
     if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user);

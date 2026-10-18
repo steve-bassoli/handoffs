@@ -42,6 +42,7 @@ nav button { background: transparent; color: var(--muted); border: 0; border-rad
 nav button.selected { color: var(--accent); border-bottom-color: var(--accent); background: transparent; }
 nav a { display: inline-block; color: var(--muted); padding: 12px 20px; text-decoration: none; }
 nav a:hover { color: var(--accent); }
+.card.closed-card { background: #f5f5f5; border-style: dashed; }
 .tasks-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 4px; }
 .tasks-toolbar button[aria-current] { color: #fff; background: var(--accent); border-color: var(--accent); }
 .tasks-toolbar .primary { margin-left: auto; }

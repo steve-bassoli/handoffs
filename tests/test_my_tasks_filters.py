@@ -38,3 +38,40 @@ def test_my_tasks_page_defaults_to_open_and_has_assigned_by_picker():
 def test_static_scripts_revalidate_so_deploys_are_not_stale(client):
     response = client.get('/static/app.js')
     assert response.status_code == 200 and response.headers['cache-control'] == 'no-cache'
+
+
+def test_only_the_latest_board_request_publishes():
+    import shutil
+    import subprocess
+    import pytest
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('Node is needed for the pure JavaScript board check')
+    checks = r'''
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync('app/static/app.js', 'utf8');
+const board = source.slice(source.indexOf('let boardRequest = 0;'), source.indexOf('async function transactions()'));
+const node = () => ({hidden: false, checked: true, value: '', disabled: false, textContent: '', children: [],
+  append(...items) { this.children.push(...items); }, replaceChildren(...items) { this.children = items; }});
+const nodes = {};
+const pending = [];
+const context = {view: 'mine', offset: 0, pageSize: 12, Option: function (text, value) { this.text = text; this.value = value; },
+  $: id => nodes[id] || (nodes[id] = node()),
+  element: (tag, text) => ({tag, text, classList: {add() {}}, append() {}, querySelector: () => ({textContent: ''})}),
+  api: path => new Promise(resolve => pending.push({path, resolve})), run: f => f(), show() {}};
+vm.runInNewContext(board + '\nthis.board = board;', context);
+(async () => {
+  const first = context.board(), second = context.board();
+  const card = title => ({id: title, title, phase: 'Posted', status: 'open', complexity: 'LOW', creator: 'steve', funded: 0});
+  pending[1].resolve({items: [card('new')], creators: ['steve']});
+  await second;
+  pending[0].resolve({items: [card('old-a'), card('old-b')], creators: ['nate']});
+  await first;
+  assert.equal(nodes.cards.children.length, 1, 'stale response must not replace the latest cards');
+  assert.match(nodes['mine-note'].textContent, /· 1 open shown$/, 'the note describes the latest result, not the stale one');
+})().catch(error => { console.error(error); process.exitCode = 1; });
+'''
+    result = subprocess.run([node, '-e', checks], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
