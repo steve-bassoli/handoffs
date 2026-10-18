@@ -413,6 +413,10 @@ this page does not query the live Codex quota meter.</p>
     def index():
         return FileResponse(static / 'index.html')
 
+    @app.get('/min', include_in_schema=False)
+    def min_page():
+        return FileResponse(static / 'min.html', headers={'Cache-Control': 'no-store'})
+
     return app
 
 
