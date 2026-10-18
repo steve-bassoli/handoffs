@@ -56,8 +56,20 @@ def decode_upload(value):
     return proof, raw
 
 
-def human_closable(complexity, children):
-    """LOW always; MEDIUM only while undecomposed (prototyping). HIGH never closes human-only."""
+def accepted_receipt(record):
+    return record['status'] in ('completed', 'settled') and bool(record['proof_id']) and bool(record['binding'])
+
+
+def dependency_route(complexity, children, requirements):
+    # Steve, 2026-10-18: an undecomposed HIGH whose work was split into 2+ dependencies closes on those dependencies.
+    return complexity == 'HIGH' and not children and len(requirements) >= 2
+
+
+def human_closable(complexity, children, requirements=()):
+    """LOW always; MEDIUM only while undecomposed (prototyping). An undecomposed HIGH only once it has two or more
+    dependencies, each accepted with proof; a decomposed HIGH never closes human-only."""
+    if complexity == 'HIGH':
+        return dependency_route(complexity, children, requirements) and all(accepted_receipt(r) for r in requirements)
     return complexity == 'LOW' or (complexity == 'MEDIUM' and not children)
 
 
@@ -130,7 +142,7 @@ class Proofs:
             ready = fresh and review and review.get('verdict') == 'pass' and review['binding'] == proof['binding']
             human_current = bool(fresh and human and human['accepted'] and human['binding'] == proof['binding']
                 and human['review_id'] == (review['review_id'] if review else None))
-            human_only = bool(human_closable(task['complexity'], children) and human_current and human.get('review_basis') == 'human-only')
+            human_only = bool(human_closable(task['complexity'], children, requirements) and human_current and human.get('review_basis') == 'human-only')
             accepted = bool(human_only or (ready and (task['complexity'] != 'LOW' or human_current)))
             public = {key: value for key, value in proof.items() if key != 'content_base64'} | {
                 'fresh': fresh, 'review': review, 'human': human, 'accepted': accepted,
@@ -154,10 +166,9 @@ class Proofs:
     def require_dependencies(task):
         from app.services import RuleError
         # Prototyping: an undecomposed MEDIUM may close human-only like a LOW; HIGH still needs its LOWs.
-        if not human_closable(task['complexity'], task['required_children']) and len(task['required_children']) < 2:
+        if not human_closable(task['complexity'], task['required_children'], task['requirements']) and len(task['required_children']) < 2                 and not dependency_route(task['complexity'], task['required_children'], task['requirements']):
             raise RuleError('A composite needs its approved decomposition before integrated acceptance')
-        if any(record['status'] not in ('completed', 'settled') or not record['proof_id'] or not record['binding']
-               for record in task['requirements']):
+        if not all(accepted_receipt(record) for record in task['requirements']):
             raise RuleError('Required child work and shared prerequisites need verified completion, not cancellation or reported progress')
 
     def attach(self, c, actor, payload):
@@ -251,9 +262,9 @@ class Proofs:
         task = self.owner(c, actor, payload['id'])
         proof = task['proof']
         basis = payload.get('review_basis', 'ai-reviewed')
-        closable = task['complexity'] == 'LOW' or (basis == 'human-only' and human_closable(task['complexity'], task['required_children']))
+        closable = task['complexity'] == 'LOW' or (basis == 'human-only' and human_closable(task['complexity'], task['required_children'], task['requirements']))
         if not closable or not proof or not proof['fresh']:
-            raise RuleError('Human verification requires a LOW, or an undecomposed MEDIUM, with current proof')
+            raise RuleError('Human verification requires a LOW, an undecomposed MEDIUM, or a HIGH whose 2+ dependencies are accepted, with current proof')
         if event_intent.get() == 'autonomous' or (event_via.get() is not None and event_intent.get() != 'user-directed'):
             raise RuleError('Human verification requires an explicit user-directed action', 403)
         review = proof['review']

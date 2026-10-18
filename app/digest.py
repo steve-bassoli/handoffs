@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Request
 
 from app.effects import classify
+from app.proofs import human_closable
 from app.prototype import door_off
 from app.recommendations import Recommendations
 from app.services import RuleError
@@ -49,10 +50,22 @@ def _identity(service, user):
     return user
 
 
-def _closable(task, children):
+def _closable(task, children, requirements=()):
     return bool(task.get('claimant')) and task['status'] in {'working', 'blocked'} and (
-        task['complexity'] == 'LOW' or
-        (task['complexity'] == 'MEDIUM' and not children))
+        human_closable(task['complexity'], children, requirements))
+
+
+def _receipts(history, histories):
+    # Same receipt shape as Proofs.requirements, read from the already-loaded event histories.
+    depends_on = next((e['data']['depends_on'] for e in reversed(history) if e['kind'] == 'dependencies_set'), [])
+    receipts = []
+    for identifier in sorted(set(depends_on)):
+        events = histories.get(identifier, [])
+        acceptance = next((e['data'] for e in reversed(events)
+                           if e['kind'] in ('proof_completed', 'locally_verified', 'paid')), {})
+        receipts.append({'id': identifier, 'status': events[-1]['state'] if events else None,
+                         'proof_id': acceptance.get('proof_id'), 'binding': acceptance.get('proof_binding')})
+    return receipts
 
 
 def build_digest(service, user):
@@ -118,7 +131,7 @@ def build_digest(service, user):
                 add('intake_veto', row['id'], row['title'], data['reason'],
                     'intake_override', digest, screened['actor'], data.get('principal'))
         kids = children.get(row['id'], [])
-        if _closable(task, kids):
+        if _closable(task, kids, _receipts(history, histories) if complexity == 'HIGH' and not kids else ()):
             # Versioned binding includes all event mutations and child identities.
             _, revision = canonical_payload({'schema_version': 1,
                 'kind': 'human_close', 'id': row['id'], 'title': row['title'],

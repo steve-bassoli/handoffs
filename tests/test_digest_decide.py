@@ -139,6 +139,43 @@ def test_human_close_needs_current_proof_and_records_the_decision(board):
     assert audit['decision'] == 'yes' and audit['decided_by'] == 'steve' and audit['principal'] == 'human'
 
 
+def attach_proof(client, task_id):
+    write(client, f'/tasks/{task_id}/profile', {'validation_scope': 'SIM', 'migration_stage': 'WRAP', 'baseline_revision': 'a',
+                                               'candidate_revision': 'b', 'environment': 'synthetic'})
+    upload = {'filename': 'evidence.txt', 'media_type': 'text/plain', 'content_base64': base64.b64encode(b'Synthetic evidence').decode(),
+              'description': 'Synthetic evidence'}
+    return write(client, f'/tasks/{task_id}/proofs', upload)
+
+
+def test_a_high_closes_on_two_accepted_dependencies(board):
+    high = write(board, '/tasks', {'title': 'Synthetic HIGH', 'goal': 'Integrate the slices', 'criteria': ['Slices integrate'],
+                                   'gold': 10, 'complexity': 'HIGH'}).json()['id']
+    first, second = proofed_task(board), proofed_task(board)
+    assert write(board, f'/tasks/{high}/dependencies', {'depends_on': [first, second]}).status_code == 200
+    assert write(board, f'/tasks/{high}/take').status_code == 200
+    assert decide(board, item(board, 'human_close', first), 'yes').status_code == 200
+    # One of two dependencies accepted: no proof, no card.
+    assert attach_proof(board, high).status_code != 200
+    assert item(board, 'human_close', high) is None
+    assert decide(board, item(board, 'human_close', second), 'yes').status_code == 200
+    assert attach_proof(board, high).status_code == 200
+    closed = decide(board, item(board, 'human_close', high), 'yes')
+    assert closed.status_code == 200, closed.text
+    assert closed.json()['status'] in ('completed', 'settled')
+
+
+def test_a_high_with_one_dependency_still_needs_a_decomposition(board):
+    high = write(board, '/tasks', {'title': 'Synthetic HIGH', 'goal': 'One slice is not a split', 'criteria': ['Slice integrates'],
+                                   'gold': 10, 'complexity': 'HIGH'}).json()['id']
+    only = proofed_task(board)
+    assert decide(board, item(board, 'human_close', only), 'yes').status_code == 200
+    assert write(board, f'/tasks/{high}/dependencies', {'depends_on': [only]}).status_code == 200
+    assert write(board, f'/tasks/{high}/take').status_code == 200
+    refused = attach_proof(board, high)
+    assert refused.status_code != 200 and 'decomposition' in refused.text
+    assert item(board, 'human_close', high) is None
+
+
 def test_batch_yes_reports_each_item_and_is_safe_to_retry(board):
     a, b = signoff(board), signoff(board)
     stale = {**signoff(board), 'revision': '0' * 64}
