@@ -108,3 +108,35 @@ def decide(service, c, actor, payload, identity):
 def decide_endpoint(payload: Decision, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
     identity = signed_in_person(request)  # Before the operation cache, so a cached result never leaks to non-humans.
     return request.app.state.service.execute(identity['user_id'], idempotency_key, 'ai_digest_decide', payload.model_dump())
+
+
+class BatchItem(BaseModel):
+    model_config = {'extra': 'forbid'}
+    kind: Literal['signoff', 'intake_veto', 'human_close']
+    id: str = Field(min_length=1, max_length=200)
+    revision: str = Field(min_length=64, max_length=64)
+    recommendation_id: str | None = Field(default=None, max_length=200)
+
+
+class Batch(BaseModel):
+    model_config = {'extra': 'forbid', 'str_strip_whitespace': True}
+    items: list[BatchItem] = Field(min_length=1, max_length=50)
+    note: str = Field(min_length=1, max_length=2000)
+
+
+@router.post('/decide-batch')
+def decide_batch(payload: Batch, request: Request, idempotency_key: str = Header(min_length=1, max_length=150)):
+    """Decision digest LOW-6: Yes to selected items. Each item is decided through the single-item path with its own
+    derived idempotency key and reports its own outcome; there is no cross-item atomicity, and a retry with the same
+    batch key returns each item's original result instead of deciding twice."""
+    identity = signed_in_person(request)
+    service, results = request.app.state.service, []
+    for entry in payload.items:
+        body = {'kind': entry.kind, 'id': entry.id, 'revision': entry.revision, 'decision': 'yes', 'note': payload.note,
+                'recommendation_id': entry.recommendation_id}
+        try:
+            outcome = service.execute(identity['user_id'], f'{idempotency_key}:{entry.kind}:{entry.id}', 'ai_digest_decide', body)
+            results.append({'kind': entry.kind, 'id': entry.id, 'ok': True, 'result': outcome})
+        except RuleError as error:
+            results.append({'kind': entry.kind, 'id': entry.id, 'ok': False, 'status': error.status, 'detail': error.message})
+    return {'decided': sum(r['ok'] for r in results), 'failed': sum(not r['ok'] for r in results), 'results': results}

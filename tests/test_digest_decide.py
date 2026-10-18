@@ -123,3 +123,16 @@ def test_human_close_needs_current_proof_and_records_the_decision(board):
     events = board.get('/api/v1/tasks/' + task_id, headers=board.human).json()['events']
     audit = [e for e in events if e['kind'] == 'digest_decided'][-1]['data']
     assert audit['decision'] == 'yes' and audit['decided_by'] == 'steve' and audit['principal'] == 'human'
+
+
+def test_batch_yes_reports_each_item_and_is_safe_to_retry(board):
+    a, b = signoff(board), signoff(board)
+    stale = {**signoff(board), 'revision': '0' * 64}
+    body = {'items': [{'kind': i['kind'], 'id': i['id'], 'revision': i['revision']} for i in (a, b, stale)], 'note': 'Batch synthetic'}
+    first = board.post('/api/v1/digest/decide-batch', json=body, headers={**board.human, 'Idempotency-Key': 'batch-1'}).json()
+    assert first['decided'] == 2 and first['failed'] == 1
+    assert [r['ok'] for r in first['results']] == [True, True, False] and first['results'][2]['status'] == 409
+    again = board.post('/api/v1/digest/decide-batch', json=body, headers={**board.human, 'Idempotency-Key': 'batch-1'}).json()
+    assert [r.get('result') for r in again['results'][:2]] == [r['result'] for r in first['results'][:2]]
+    refused = board.post('/api/v1/digest/decide-batch', json=body, headers={**board.relay, 'Idempotency-Key': 'batch-2'})
+    assert refused.status_code == 403
