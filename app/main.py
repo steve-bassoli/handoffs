@@ -158,6 +158,7 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         app.state.demo_identity = os.environ.get('HANDOFFS_DEMO_IDENTITY', 'allow')
         if app.state.demo_identity not in ('allow', 'refuse'):
             raise ValueError('HANDOFFS_DEMO_IDENTITY must be allow or refuse')
+        service.demo_identity = app.state.demo_identity
         app.state.mode_path = Path(os.environ.get('HANDOFFS_AUTOMATION_MODE', Path(path).with_name('automation-mode.json')))
         app.state.dashboard_sessions = Path(os.environ.get('HANDOFFS_DASHBOARD_SESSIONS', db.path.parent / 'astra-tree')).resolve()
         app.state.dashboard_ledger = Path(os.environ.get('HANDOFFS_API_BUDGET_DB', db.path.with_name('api-budget.sqlite'))).resolve()

@@ -31,9 +31,10 @@ class RuleError(Exception):
 
 
 class Service:
-    def __init__(self, db, verifier, clock=None, grant=None):
+    def __init__(self, db, verifier, clock=None, grant=None, demo_identity='refuse'):
         self.db = db
         self.verifier = verifier
+        self.demo_identity = demo_identity
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.grant = grant if grant is not None else int(os.environ.get('HANDOFFS_MONTHLY_GOLD', '1000'))
         if self.grant <= 0:
@@ -221,6 +222,9 @@ class Service:
                     'offset': offset, 'creators': creators, 'checked_at': now()}
 
     def execute(self, actor, key, action, payload):
+        # Authorization must precede the actor-scoped idempotency cache.
+        if action in ('ai_proof_human', 'close_human'):
+            self.require_human_acceptance(actor)
         fingerprint = hashlib.sha256(encode([action, payload]).encode()).hexdigest()
         with self.db.write() as c:
             cached = one(c, 'SELECT * FROM operations WHERE actor=? AND key=?', (actor, key))
@@ -493,7 +497,17 @@ class Service:
     def do_ai_proof_queue(self, c, actor, payload):
         return self.proofs.queue(c, actor, payload['id'])
 
+    def require_human_acceptance(self, actor):
+        identity = event_identity.get() or {}
+        principal = identity.get('principal')
+        allowed = principal == 'human' or (
+            principal == 'demo-header' and self.demo_identity == 'allow')
+        if (not allowed or identity.get('user_id') != actor
+                or not identity.get('principal_id')):
+            raise RuleError('Human acceptance requires a signed-in person', 403)
+
     def do_ai_proof_human(self, c, actor, payload):
+        self.require_human_acceptance(actor)
         return self.proofs.human(c, actor, payload)
 
     def do_ai_proof_complete(self, c, actor, payload):
