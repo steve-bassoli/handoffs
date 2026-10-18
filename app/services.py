@@ -200,6 +200,42 @@ class Service:
                                                        **({'source_files': source} if source else {})})
         return self.detail(c, bounty_id)
 
+    def do_edit(self, c, actor, payload):
+        bounty = self.detail(c, payload['id'])
+        if actor != bounty['creator']:
+            raise RuleError('Only the creator can edit this task', 403)
+        if bounty['status'] != 'open' or bounty['claimant'] is not None:
+            raise RuleError('Only open, unclaimed tasks can be edited')
+        fields = ('title', 'goal', 'criteria', 'complexity', 'work_type',
+                  'context_links', 'repository', 'target', 'gold')
+        if set(payload) != {'id', *fields}:
+            raise RuleError('Edit requires exactly the editable task fields', 422)
+        target = payload['target']
+        if target and not one(c, 'SELECT id FROM users WHERE id=?', (target,)):
+            raise RuleError('Unknown target', 422)
+        gold = payload['gold']
+        if type(gold) is not int or gold <= 0:
+            raise RuleError('Gold must be a positive integer', 422)
+        changes = {field: {'before': bounty[field], 'after': payload[field]}
+                   for field in fields if bounty[field] != payload[field]}
+        difference = gold - bounty['gold']
+        if difference:
+            if not bounty['funded']:
+                raise RuleError('Gold cannot be changed on an unfunded task')
+            wallet, escrow = 'wallet:' + actor, 'escrow:' + bounty['id']
+            source, destination = (wallet, escrow) if difference > 0 else (escrow, wallet)
+            self.transfer(c, source, destination, abs(difference), 'bounty_edited', bounty['id'])
+        c.exec_driver_sql(
+            'UPDATE bounties SET title=?,goal=?,criteria=?,repository=?,context_links=?,target=?,gold=? WHERE id=?',
+            (payload['title'], payload['goal'], encode(payload['criteria']),
+             payload['repository'], encode(payload['context_links']), target, gold, bounty['id']))
+        # Classification is projected from events; never rewrite an earlier event.
+        classification = {field: payload[field] for field in ('complexity', 'work_type')
+                          if field in changes}
+        self.event(c, bounty['id'], 'edited', actor, 'open',
+                   {'changes': changes, **classification})
+        return self.detail(c, bounty['id'])
+
     def workflow_nodes(self, c):
         records = all_rows(c, '''SELECT b.id,b.title,b.parent_id,e.state AS status FROM bounties b
             JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE bounty_id=b.id)''')

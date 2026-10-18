@@ -107,6 +107,28 @@ def post_bounty(
 
 
 @server.tool(annotations=WRITE)
+def edit_bounty(
+    bounty_id: str,
+    title: str,
+    goal: str,
+    criteria: list[str],
+    gold: Annotated[int, Field(gt=0, strict=True)],
+    operation_id: OperationId,
+    repository: str,
+    context_links: list[str],
+    target: str | None,
+    complexity: Literal['HIGH', 'MEDIUM', 'LOW'],
+    work_type: Literal['implementation', 'verification'],
+) -> dict[str, Any]:
+    """On explicit request, replace editable fields of your open, never-claimed task. Read first; retain operation_id for identical retries. Gold changes move existing reserves, not issue Gold."""
+    return request('POST', '/bounties/' + quote(bounty_id, safe='') + '/edit', operation_id=operation_id, body={
+        'title': title, 'goal': goal, 'criteria': criteria, 'gold': gold,
+        'repository': repository, 'context_links': context_links, 'target': target,
+        'complexity': complexity, 'work_type': work_type,
+    })
+
+
+@server.tool(annotations=WRITE)
 def take_bounty(bounty_id: str, operation_id: OperationId) -> dict[str, Any]:
     """On explicit request, take one available funded bounty for this connection's user. Does not launch development."""
     return request('POST', '/bounties/' + quote(bounty_id, safe='') + '/take',

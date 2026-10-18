@@ -200,6 +200,15 @@ async function show(id) {
   await artifactsSection(data, detail);
   detail.append(element('p', `Requester: ${data.creator} · ${data.claimant ? 'Worker: ' + data.claimant : data.target ? 'Offered to ' + data.target + ' · not claimed' : 'Available to claim'} · ${data.funded ? 'Reserved demo Gold is released only on verified completion.' : 'Unfunded record. No new funding was created.'}`));
   const actions = element('div', undefined, 'actions');
+  if (data.creator === user && data.status === 'open' && !data.claimant) {
+    const edit = element('button', 'Edit');
+    edit.onclick = () => run(async () => {
+      if (current.querySelector('[data-task-editor]')) return;
+      clearTimeout(aiPoll); clearTimeout(proofPoll);
+      const form = taskEditor(data); actions.after(form); form.querySelector('input').focus();
+    });
+    actions.append(edit);
+  }
   const action = (label, suffix) => { const b = element('button', label); b.onclick = () => run(() => mutate(`/bounties/${id}/${suffix}`)); actions.append(b); };
   if (data.funded && data.status === 'open') {
     if (user === data.creator) action('Cancel & refund', 'cancel');
@@ -355,6 +364,34 @@ function labeled(form, title, value = '', tag = 'input', options = []) {
   const label = element('label', title), input = element(tag); input.value = value; input.setAttribute('aria-label', title);
   if (tag === 'select') { for (const text of options) { const option = element('option', text); option.value = text; input.append(option); } input.value = value; }
   label.append(input); form.append(label); return input;
+}
+function taskEditor(data) {
+  const form = element('form'); form.dataset.taskEditor = 'true';
+  form.append(element('h3', 'Edit task'), element('p', 'Editable only before anyone claims it. Saving preserves the task ID, links and prior history.'));
+  const title = labeled(form, 'Title', data.title); title.required = true; title.maxLength = 160;
+  const goal = labeled(form, 'Goal', data.goal, 'textarea'); goal.required = true;
+  const criteria = labeled(form, 'Completion criteria · one per line', data.criteria.join('\n'), 'textarea');
+  const complexity = labeled(form, 'Complexity', data.complexity, 'select', ['HIGH', 'MEDIUM', 'LOW']);
+  const workType = labeled(form, 'Work type', data.work_type, 'select', ['implementation', 'verification']);
+  const links = labeled(form, 'Context links · one per line', data.context_links.join('\n'), 'textarea');
+  const repository = labeled(form, 'Repository', data.repository);
+  const target = labeled(form, 'Offered to', '', 'select');
+  target.append(...[...document.querySelector('[name=target]').options].map(option => option.cloneNode(true)));
+  target.value = data.target || '';
+  const gold = labeled(form, 'Gold', data.gold); gold.type = 'number'; gold.min = '1'; gold.step = '1'; gold.required = true;
+  gold.disabled = !data.funded;
+  const save = element('button', 'Save edits', 'primary'); save.type = 'submit';
+  const cancel = element('button', 'Discard edits'); cancel.type = 'button'; cancel.onclick = () => form.remove();
+  form.append(save, cancel);
+  form.onsubmit = event => {
+    event.preventDefault();
+    run(async () => {
+      await mutate(`/bounties/${data.id}/edit`, {title: title.value, goal: goal.value,
+        criteria: nonemptyLines(criteria.value), complexity: complexity.value, work_type: workType.value,
+        context_links: nonemptyLines(links.value), repository: repository.value, target: target.value || null, gold: Number(gold.value)});
+    });
+  };
+  return form;
 }
 const nonemptyLines = value => value.split('\n').map(line => line.trim()).filter(Boolean);
 async function workflowSection(data, detail) {

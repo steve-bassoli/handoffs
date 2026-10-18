@@ -41,6 +41,19 @@ class PostBounty(BaseModel):
     profile: Profile | None = None
 
 
+class EditBounty(BaseModel):
+    model_config = {'extra': 'forbid'}
+    title: str = Field(min_length=1, max_length=160)
+    goal: str = Field(min_length=1)
+    criteria: list[str] = Field(min_length=1)
+    repository: str
+    context_links: list[str]
+    gold: int = Field(gt=0, strict=True)
+    target: str | None
+    complexity: Literal['HIGH', 'MEDIUM', 'LOW']
+    work_type: Literal['implementation', 'verification']
+
+
 class Progress(BaseModel):
     status: Literal['working', 'blocked']
     note: str = ''
@@ -257,6 +270,11 @@ this page does not query the live Codex quota meter.</p>
     def post(payload: PostBounty, request: Request, user=Depends(actor),
              idempotency_key: str = Header(min_length=1, max_length=200)):
         return request.app.state.service.execute(user, idempotency_key, 'post', payload.model_dump())
+
+    @app.post('/api/v1/bounties/{bounty_id}/edit')
+    def edit(bounty_id: str, payload: EditBounty, request: Request, user=Depends(actor),
+             idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'edit', {'id': bounty_id, **payload.model_dump()})
 
     @app.post('/api/v1/bounties/{bounty_id}/packages')
     def attach_package(bounty_id: str, payload: EvidencePackage, request: Request, user=Depends(actor),

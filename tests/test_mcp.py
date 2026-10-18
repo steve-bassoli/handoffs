@@ -68,7 +68,7 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
     async def scenario():
         async with session(live_api, 'steve', tmp_path) as requester, session(live_api, 'nate', tmp_path) as worker:
             tools = {tool.name: tool for tool in (await requester.list_tools()).tools}
-            assert set(tools) == {'list_bounties', 'get_bounty', 'get_bounty_context', 'get_my_stats', 'post_bounty', 'take_bounty', 'deliver_pr'}
+            assert set(tools) == {'list_bounties', 'get_bounty', 'get_bounty_context', 'get_my_stats', 'post_bounty', 'edit_bounty', 'take_bounty', 'deliver_pr'}
             assert tools['list_bounties'].annotations.readOnlyHint is True
             assert tools['get_bounty'].annotations.readOnlyHint is True
             for name in ('get_my_stats', 'post_bounty', 'take_bounty', 'deliver_pr'):
