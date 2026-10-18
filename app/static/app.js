@@ -434,6 +434,11 @@ function renderSignoffs(items) {
   }
   syncSignoffAuth();
 }
+function coverageGaps(coverage) {
+  if (typeof coverage === 'string') return ` · ${coverage}`;
+  const gaps = Object.entries(coverage || {}).filter(([, state]) => state !== 'complete').map(([kind, state]) => `${kind.replace(/_/g, ' ')}s ${state}`);
+  return gaps.length ? ` · ${gaps.join(', ')}` : '';
+}
 async function signoffs() {
   const ticket = ++signoffRequest, countTicket = ++digestCountRequest;
   const epoch = treeEpoch, auth = session, actor = user;
@@ -452,7 +457,7 @@ async function signoffs() {
   }
   if (ticket !== signoffRequest || epoch !== treeEpoch || auth !== session || actor !== user || view !== 'signoffs') return;
   if (countTicket === digestCountRequest) digestCount(data);
-  $('human-decisions-scope').textContent = `${data.counts.total}${data.complete === false ? '+' : ''} waiting · ${data.complete === false ? 'Partial coverage' : 'Complete coverage'} · ${typeof data.coverage === 'string' ? data.coverage : JSON.stringify(data.coverage)}`;
+  $('human-decisions-scope').textContent = `${data.counts.total}${data.complete === false ? '+' : ''} waiting · ${data.complete === false ? 'Partial coverage' : 'Complete coverage'}${coverageGaps(data.coverage)}`;
   // An unknown write remains locked even after a read: reconcile its audit first.
   renderSignoffs(data.items);
 }
