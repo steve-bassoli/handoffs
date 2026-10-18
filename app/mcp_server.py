@@ -69,9 +69,15 @@ def list_tasks(
     query: str = '',
     limit: Annotated[int, Field(ge=1, le=100)] = 20,
     offset: Annotated[int, Field(ge=0)] = 0,
+    status: list[str] | None = None,
+    creator: str | None = None,
 ) -> dict[str, Any]:
-    """List task metadata. Use mine for posted/taken/targeted work; all includes history. Never claims work."""
+    """List task metadata. Use mine for posted/taken/targeted work; all includes history. Filters intersect with view; use all for whole-board status searches. Never claims work."""
     parameters = httpx.QueryParams({'view': view, 'q': query, 'limit': limit, 'offset': offset})
+    if status is not None:
+        parameters = parameters.set('status', ','.join(status))
+    if creator is not None:
+        parameters = parameters.set('creator', creator)
     return request('GET', '/tasks?' + str(parameters))
 
 

@@ -16,6 +16,9 @@ def test_summary_counts_derived_states_and_lists_only_active_work(client):
     assert active[taken['id']]['claimant'] == 'nate' and active[taken['id']]['status'] == 'working'
     assert active[open_task['id']]['short_id'] == open_task['id'][:8]
     assert active[open_task['id']]['complexity'] == 'LOW'
+    assert active[open_task['id']]['creator'] == open_task['creator'] == 'steve'
+    assert active[taken['id']]['creator'] == taken['creator'] == 'steve'
+    assert active[taken['id']]['creator'] != active[taken['id']]['claimant']
 
 
 def test_status_filter_searches_whole_board_and_rejects_unknown_states(client):

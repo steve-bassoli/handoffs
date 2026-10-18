@@ -187,7 +187,7 @@ class Service:
     def summary(self):
         # A single statement projects all latest states and metadata; no detail() loop.
         with self.db.engine.connect() as c:
-            rows = all_rows(c, '''SELECT b.id,b.title,e.state AS status,
+            rows = all_rows(c, '''SELECT b.id,b.title,b.creator,e.state AS status,
                 (SELECT actor FROM events WHERE task_id=b.id AND kind='taken'
                  ORDER BY seq DESC LIMIT 1) AS claimant,
                 COALESCE((SELECT json_extract(data,'$.complexity') FROM events

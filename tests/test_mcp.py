@@ -93,7 +93,17 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             summary = await call(worker, 'task_summary')
             assert summary['counts'] == {'open': 1}
             assert summary['active'][0]['id'] == task['id']
+            assert summary['active'][0]['creator'] == 'steve'
             assert (await call(worker, 'take_task', {'task_id': task['id'], 'operation_id': 'take-once'}))['claimant'] == 'nate'
+            filtered = await call(worker, 'list_tasks', {
+                'view': 'all', 'status': ['working', 'open'], 'creator': 'steve'})
+            assert [row['id'] for row in filtered['items']] == [task['id']]
+            assert (await call(worker, 'list_tasks', {
+                'view': 'all', 'status': ['open'], 'creator': 'steve'}))['items'] == []
+            assert (await call(worker, 'list_tasks', {
+                'view': 'all', 'status': ['working'], 'creator': 'nate'}))['items'] == []
+            invalid_status = await worker.call_tool('list_tasks', {'status': ['bogus']})
+            assert invalid_status.isError and '422' in invalid_status.content[0].text
             with httpx.Client(base_url=live_api) as fixture_client:
                 verified_proof(fixture_client, task['id'], 'nate')
             delivery = {'task_id': task['id'], 'pr_url': 'https://github.com/example/source/pull/18',
@@ -126,6 +136,38 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             missing = await worker.call_tool('get_task', {'task_id': 'missing'})
             assert missing.isError and '404' in missing.content[0].text
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('status,creator', [
+    (None, None),
+    (['working', 'open'], 'steve'),
+    (['working'], None),
+    (None, 'nate'),
+    ([], ''),
+])
+def test_list_tasks_passes_optional_filters(monkeypatch, status, creator):
+    from app import mcp_server
+    calls = []
+    expected = {'items': [], 'limit': 7, 'offset': 2, 'creators': [], 'checked_at': 'fixture'}
+    def request(method, path):
+        calls.append((method, path))
+        return expected
+    monkeypatch.setattr(mcp_server, 'request', request)
+    assert mcp_server.list_tasks(query='a & b', limit=7, offset=2,
+                                 status=status, creator=creator) == expected
+    assert len(calls) == 1
+    method, path = calls[0]
+    assert method == 'GET' and path.startswith('/tasks?')
+    parameters = httpx.QueryParams(path.split('?', 1)[1])
+    assert parameters['view'] == 'open'
+    assert parameters['q'] == 'a & b'
+    assert parameters['limit'] == '7' and parameters['offset'] == '2'
+    assert ('status' in parameters) == (status is not None)
+    assert ('creator' in parameters) == (creator is not None)
+    if status is not None:
+        assert parameters['status'] == ','.join(status)
+    if creator is not None:
+        assert parameters['creator'] == creator
 
 
 def test_claim_reports_package_failure_and_resumes_same_claim(client, monkeypatch, tmp_path):
