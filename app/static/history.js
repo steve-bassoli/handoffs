@@ -119,7 +119,7 @@
         const actor = Object.prototype.hasOwnProperty.call(data, 'via')
           ? `${event.actor || 'Unknown actor'} via ${data.via}`
           : (event.actor || 'Unknown actor');
-        row.append(make('span', actor, 'history-actor'));
+        row.append(make('span', actor, Object.prototype.hasOwnProperty.call(data, 'via') ? 'history-actor history-via' : 'history-actor'));
         const time = make('time', timestamp(event) === null ? 'Time unavailable' : new Date(timestamp(event)).toLocaleString(), 'history-time');
         if (timestamp(event) !== null) time.dateTime = event.created_at;
         row.append(time);
