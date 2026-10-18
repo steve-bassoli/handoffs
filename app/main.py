@@ -119,6 +119,7 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         app.state.service = service
         app.state.mode_path = Path(os.environ.get('HANDOFFS_AUTOMATION_MODE', Path(path).with_name('automation-mode.json')))
         app.state.dashboard_sessions = Path(os.environ.get('HANDOFFS_DASHBOARD_SESSIONS', db.path.parent / 'astra-tree')).resolve()
+        app.state.dashboard_ledger = Path(os.environ.get('HANDOFFS_API_BUDGET_DB', db.path.with_name('api-budget.sqlite'))).resolve()
         try:
             yield
         finally:
@@ -222,12 +223,16 @@ this page does not query the live Codex quota meter.</p>
                            session: str | None = Query(default=None, max_length=200),
                            x_demo_user: str | None = Header(default=None)):
         from app.dashboard_api import live_snapshot
+        from app.dashboard_panels import add_panels
         if not x_demo_user:
             raise RuleError('Select a dashboard identity', 401)
         user = request.app.state.service.user(DemoIdentity().resolve(x_demo_user))['id']
-        result = live_snapshot(request.app.state.service, user, roster(),
+        roster_data = roster()
+        result = live_snapshot(request.app.state.service, user, roster_data,
             current_mode(request.app.state.mode_path), request.app.state.dashboard_sessions,
             task_id=task, session_id=session)
+        add_panels(request.app.state.service, user, result, roster_data,
+                   request.app.state.dashboard_ledger, Path(__file__).resolve().parents[1], task)
         return JSONResponse(result, headers={'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'})
 
     @app.post('/api/v1/gremlins/{breed}')

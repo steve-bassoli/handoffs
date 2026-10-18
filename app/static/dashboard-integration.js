@@ -48,7 +48,7 @@
         if (!response.ok) return response;
         const snapshot = await response.json();
         if (epoch === generation && snapshot.context) {
-          options(taskSelect, snapshot.context.tasks.map(row => [row.id, row.title]), 'All tasks', task);
+          options(taskSelect, snapshot.context.tasks.map(row => [row.id, row.title]), 'Recent tasks', task);
           options(sessionSelect, snapshot.context.sessions.map(id => [id, id]), 'No session selected', session);
           contextStatus.textContent = 'Selected user: ' + user + ' · ' +
             (task ? 'Selected task: ' + task : 'Task list') + ' · ' +
@@ -66,7 +66,7 @@
     const users = await response.json();
     const selected = params.has('user') ? params.get('user') : localStorage.getItem('handoffs-user');
     options(userSelect, users.map(user => [user.id, user.name]), 'Choose a user', selected);
-    if (params.get('task')) options(taskSelect, [[params.get('task'), params.get('task')]], 'All tasks', params.get('task'));
+    if (params.get('task')) options(taskSelect, [[params.get('task'), params.get('task')]], 'Recent tasks', params.get('task'));
     if (params.get('session')) options(sessionSelect, [[params.get('session'), params.get('session')]], 'No session selected', params.get('session'));
     userSelect.addEventListener('change', connect);
     taskSelect.addEventListener('change', connect);

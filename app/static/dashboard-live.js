@@ -21,13 +21,23 @@
       el.textContent = '';
       if (!s) { line(el, 'No observations received.'); return; }
       line(el, 'Snapshot observed: ' + known(s.observed_at));
-      if (!s.agents.length) line(el, 'No agent evidence available.');
-      s.agents.forEach(a => {
-        line(el, known(a.id) + ' · Reported activity: ' + known(a.reported_activity));
+      const selectedSession = s.context && s.context.selected_session;
+      const agents = selectedSession ? s.agents.filter(a => a.session === selectedSession) : s.agents;
+      if (!agents.length) line(el, 'No agent evidence available.');
+      line(el, 'Showing ' + Math.min(20, agents.length) + ' of ' + agents.length + ' registered observations; includes run history.');
+      agents.slice(0, 20).forEach(a => {
+        line(el, known(a.name || a.id) + ' · Reported activity: ' + known(a.reported_activity));
         line(el, 'Explicit live confirmation: ' + yes(a.live_confirmed) +
           ' · Interrupted occupied lease: ' + yes(a.interrupted_occupied_lease));
         line(el, 'Operational PRESSURE: ' + known(a.pressure) +
           (a.pressure === 3 ? ' — STOP NOW' : a.pressure === 2 ? ' — reduce load / checkpoint' : ''));
+      });
+      if (s.session.plan && Array.isArray(s.session.plan.agents)) {
+        line(el, 'Selected session hierarchy (plan evidence):');
+        s.session.plan.agents.forEach(a => line(el, known(a.name) + ' · Level: ' + known(a.level) + ' · Parent: ' + known(a.parent)));
+      }
+      ['roster', 'mode', 'plan', 'board', 'summary'].forEach(key => {
+        line(el, key + ': ' + known(s.sources[key].status) + ' · Event time: ' + known(s.sources[key].event_at));
       });
     }
     function flow(el, s) {

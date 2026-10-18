@@ -37,8 +37,9 @@ def read_ledger(path, adapter=None, limit=1000):
         conn.execute('PRAGMA query_only=ON')
         conn.execute('BEGIN')
         allowed = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ}
-        conn.set_authorizer(lambda action, *args: (
-            sqlite3.SQLITE_OK if action in allowed else sqlite3.SQLITE_DENY))
+        conn.set_authorizer(lambda action, first, second, *args: (
+            sqlite3.SQLITE_OK if action in allowed or
+            (action == sqlite3.SQLITE_FUNCTION and second == 'sum') else sqlite3.SQLITE_DENY))
         ticks = 0
 
         def progress():

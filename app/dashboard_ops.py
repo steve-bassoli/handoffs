@@ -4,7 +4,7 @@ import math
 import re
 
 MAX = 9007199254740991
-STATES = {'pending', 'reported_upper', 'unknown_conservative'}
+STATES = {'pending', 'reported_upper', 'unknown_conservative', 'unknown', 'overrun'}
 SOURCES = ('ledger', 'session_usage', 'wallet', 'codex', 'leases', 'git')
 ERRORS = {'source_unavailable', 'invalid_data', 'adapter_required',
           'invalid_read_bound', 'ledger_unavailable', 'git_unavailable'}
@@ -45,7 +45,8 @@ def _ledger(data):
             seen.add(ident)
             total += amount
             clean.append({'id': ident, 'state': state, 'held_cents': amount})
-    valid = valid and total <= MAX
+    blocked = any(row['state'] in ('unknown', 'overrun') for row in clean)
+    valid = valid and total <= MAX and not any(row['state'] == 'overrun' for row in clean)
     valid = valid and _cents(baseline) and baseline + total <= MAX
     return {'ceiling_cents': ceiling if _cents(ceiling) else None,
             'baseline_cents': baseline if _cents(baseline) else None,
@@ -54,7 +55,7 @@ def _ledger(data):
             'held_upper_bound_cents': total if valid else None,
             'source_headroom_cents': ceiling - baseline - total if valid else None,
             'guarded_headroom_cents':
-                min(ceiling, 199800) - baseline - total if valid else None}
+                min(ceiling, 199800) - baseline - total if valid and not blocked else None}
 
 
 def _data(name, data):

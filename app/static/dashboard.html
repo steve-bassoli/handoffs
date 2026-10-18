@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mission control</title>
   <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="stylesheet" href="/static/flow.css">
   <script src="/static/dashboard-live.js" defer></script>
+  <script src="/static/flow.js" defer></script>
+  <script src="/static/dashboard-flow.js" defer></script>
+  <script src="/static/dashboard-ops.js" defer></script>
+  <script src="/static/dashboard-panels.js" defer></script>
   <script src="/static/dashboard-integration.js" defer></script>
 </head>
 <body>
@@ -16,7 +21,7 @@
       <p>Read-only observations. Unknown is not confirmation.</p>
       <div class="controls">
         <label>Selected user <select id="dashboard-user"><option value="">Choose a user</option></select></label>
-        <label>Task <select id="dashboard-task"><option value="">All tasks</option></select></label>
+        <label>Task <select id="dashboard-task"><option value="">Recent tasks</option></select></label>
         <label>Session <select id="dashboard-session"><option value="">No session selected</option></select></label>
       </div>
       <p id="dashboard-context-status" role="status">Choose a registered user to connect.</p>

@@ -1,4 +1,5 @@
 import json
+import sqlite3
 
 import pytest
 
@@ -71,3 +72,29 @@ def test_dashboard_page_and_main_navigation_are_connected(client):
     assert 'id="dashboard-task"' in page.text
     assert 'id="dashboard-session"' in page.text
     assert 'Back to Tasks' in page.text
+
+
+def test_ops_flow_use_read_only_sources_and_unknown_usage_blocks_allocation(client, registered):
+    ledger = client.app.state.dashboard_ledger
+    with sqlite3.connect(ledger) as connection:
+        connection.executescript('CREATE TABLE budget(id INTEGER,ceiling INTEGER,baseline INTEGER,provenance TEXT);'
+            'CREATE TABLE calls(id TEXT,state TEXT,held INTEGER);')
+        connection.execute('INSERT INTO budget VALUES (1,199800,100,?)', ('PRIVATE PROVENANCE',))
+        connection.execute('INSERT INTO calls VALUES (?,?,?)', ('call-1', 'unknown', 200))
+    original = ledger.read_bytes()
+    task = post_bounty(client, gold=10).json()['id']
+    result = client.get('/api/dashboard/live', params={'task': task}, headers={'X-Demo-User': 'steve'})
+    assert result.status_code == 200
+    data = result.json()
+    assert data['flow']['tickets'][0]['id'] == task
+    assert any(event['kind'] == 'posted' for event in data['flow']['activity'])
+    source = data['ops']['sources']['ledger']
+    assert source['status'] == 'ok'
+    assert source['data']['held_upper_bound_cents'] == 200
+    assert source['data']['guarded_headroom_cents'] is None
+    assert data['ops']['sources']['wallet']['data']['gold'] == 990
+    assert data['ops']['sources']['codex']['status'] == 'unavailable'
+    assert data['ops']['sources']['leases']['data']['verified_live_count'] is None
+    assert 'PRIVATE' not in result.text
+    assert str(ledger) not in result.text
+    assert ledger.read_bytes() == original

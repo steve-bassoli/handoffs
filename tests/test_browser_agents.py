@@ -16,7 +16,7 @@ const assert = require('node:assert/strict');
 const nodes = new Map();
 const element = (tag, text) => ({tag, textContent: text, children: [], append(...items) { this.children.push(...items); }, replaceChildren() { this.children = []; }});
 const $ = id => { if (!nodes.has(id)) nodes.set(id, element('div')); return nodes.get(id); };
-let view, selected, aiPoll, proofPoll, hash, calls = [];
+let view, selected, aiPoll, proofPoll, hash, calls = []; const user = 'steve';
 let result = {available: true, items: [{id: 'abc12345extra', role: 'worker', level: 1, state: 'active', pressure: 1, credits: null, admiration: null, growth: null}]};
 const api = async (...args) => { calls.push(args); return result; };
 const location = {pathname: '/', search: ''};
@@ -26,6 +26,7 @@ const stats = async () => {};
 (async () => {
   await navigate('agents');
   assert.equal(hash, '/#agents');
+  assert.equal($('dashboard-link').href, '/dashboard?user=steve');
   assert.equal($('agents').hidden, false);
   assert.equal($('board').hidden, true);
   assert.deepEqual(calls, [['/agents'], ['/automation-mode']], 'Roster must only GET, with no paid start');

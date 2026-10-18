@@ -63,6 +63,17 @@ $env:HANDOFFS_DEMO_USER = 'steve'
 
 Supply and retain `-OperationId <guid>` for writes; reuse it with identical inputs after an uncertain response. No implicit retries or local packet fallback occur.
 
+## Mission control
+
+Choose **Dashboard** in the main navigation or **Open dashboard for this task** on
+a task's detail page. The connected `/dashboard` page carries the selected demo
+user/task and reads `/api/dashboard/live` at the shared polling cadence. Select a
+registered session for its confined plan, board and summary metadata. Live shows
+reported agent/mode/source evidence; Flow shows task hierarchy and activity; Ops
+shows read-only sponsor, wallet, usage, lease and Git observations. Unknown Codex
+allowance and confirmed liveness stay unknown. No dashboard read grants Gold,
+starts an agent or calls a paid provider. See [integration details](docs/dashboard_integration.md).
+
 ## AI task preparation
 
 Every task detail has an **Artifacts** section before acceptance, with individual

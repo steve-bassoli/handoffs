@@ -26,7 +26,7 @@
     [heading, evidence, notice, nav, graph, activityHeading, activityNote,
       activityList, issues].forEach(node => root.appendChild(node));
     const rows = new Map();
-    let activityKey = null;
+    let activityKey = null, renderedGraphKey = null, graphNotice = '';
     const string = (value, fallback = 'unknown') =>
       typeof value === 'string' && value.length ? value : fallback;
     root.update = function (next) {
@@ -63,7 +63,7 @@
           'supplied confirmation: ' + ticket.assigned_agent +
           ' (' + string(ticket.assignment_source) + '; not resolved current assignment)';
         row.control.textContent = id + ' — ' + string(ticket.title) + ' — ' +
-          string(ticket.status) + ' — ' + parent + ' — ' + assignment +
+          string(ticket.status) + ' — ' + parent + ' — ' + assignment + ' · Current worker: ' + string(ticket.claimant) +
           (ticket.detail_available ? '' : ' — detail missing') +
           (id === next.current_id ? ' — You are here' : '');
         if (id === next.current_id) row.control.setAttribute('aria-current', 'page');
@@ -83,18 +83,26 @@
       notice.textContent = seen.size ? 'Accessible task list available.' : 'No supplied tasks shown.';
       if (!seen.has(next.current_id)) notice.textContent += ' Current location unknown.';
       if (typeof options.onNavigate !== 'function') notice.textContent += ' Navigation unavailable.';
-      graph.replaceChildren();
-      if (typeof options.renderFlow === 'function') {
+      const nextGraphKey = JSON.stringify([next.tickets, next.current_id]);
+      if (typeof options.renderFlow === 'function' && nextGraphKey !== renderedGraphKey) {
+        const focusedTask = active && typeof active.getAttribute === 'function' ? active.getAttribute('data-task-id') : null;
+        graph.replaceChildren(); graphNotice = '';
         try {
           const node = options.renderFlow(next, {element: make,
             onNavigate: typeof options.onNavigate === 'function' ? options.onNavigate : undefined});
           if (!node || ![1, 11].includes(node.nodeType)) throw new TypeError('No graph node');
           graph.appendChild(node);
+          if (focusedTask && typeof node.querySelectorAll === 'function') {
+            const replacement = Array.from(node.querySelectorAll('[data-task-id]')).find(item => item.getAttribute('data-task-id') === focusedTask);
+            if (replacement && typeof replacement.focus === 'function') replacement.focus();
+          }
+          renderedGraphKey = nextGraphKey;
         } catch (error) {
           graph.replaceChildren();
-          notice.textContent += ' Graph unavailable; use the task list.';
+          graphNotice = ' Graph unavailable; use the task list.';
         }
-      } else notice.textContent += ' Graph not connected; use the task list.';
+      } else if (typeof options.renderFlow !== 'function') graphNotice = ' Graph not connected; use the task list.';
+      notice.textContent += graphNotice;
       const labels = next.activity.map(item => item.ticket_id + ' — ' + item.kind +
         ' — Event time: ' + string(item.event_time) + ' — Source index: ' + item.source_index);
       const key = JSON.stringify(labels);

@@ -21,6 +21,7 @@
     meta.className = 'flow-meta';
     meta.textContent = 'Complexity: ' + value(detail && detail.complexity, 'Unknown') +
       ' · Assigned: ' + assignedAgent(detail) +
+      ' · Worker: ' + value(detail && detail.claimant, 'Unknown') +
       ' · Status: ' + value(detail && detail.status, value(item.status, 'Unknown'));
     return meta;
   }
@@ -67,6 +68,7 @@
       node.className = 'flow-node';
       card = document.createElement('button');
       card.type = 'button';
+      card.setAttribute('data-task-id', id);
       card.className = 'flow-card';
       card.textContent = id + ' — ' + value(item.title, 'Untitled task');
       card.setAttribute('aria-label', 'Open task ' + id + ': ' + value(item.title, 'Untitled task'));
