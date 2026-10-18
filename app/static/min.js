@@ -100,7 +100,7 @@
             node.append(el('small', task.title || item.hint));
           } else {
             node.href = '/?user=' + encodeURIComponent(user);
-            node.append(el('small', taskError ? 'Could not read the board; this opens it instead.' : 'No open task right now; this opens the board instead.'));
+            node.append(el('small', taskError ? 'Could not read the board; this opens it instead.' : 'No open task for you right now; this opens the board instead.'));
           }
         } else {
           node.href = item.href;
