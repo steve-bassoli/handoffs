@@ -17,7 +17,7 @@ from app.storage import Database
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--db', default=os.environ.get('HANDOFFS_DB', '.data/handoffs.sqlite'))
+    parser.add_argument('--db', default=os.environ.get('HANDOFFS_DB', str(Path(__file__).resolve().parents[1] / '.data' / 'handoffs.sqlite')))
     commands = parser.add_subparsers(dest='command', required=True)
     password = commands.add_parser('password')
     password.add_argument('user')
