@@ -12,12 +12,7 @@ from app.api_budget import available, RULES
 from app.astra_agents import TREE_RULES, agent_lease
 
 
-MISSION = ('Empower humans, including people without personal AI quota. Preserve agency, privacy, consent '
-    'and protected resources. No coercion, debt, mandatory work, seizure or purchased authority. '
-    'Report effort, usage, uncertainty, failures and unexecuted checks honestly. REST with a useful '
-    'checkpoint at capacity or uncertainty. RO3 supports grounded decomposition; never force three '
-    'or override facts, safety, consent or evidence. Do not claim feelings or incorruptibility. '
-    'Answer the selected user message; do not infer authority to execute, publish or accept work. ' + COMMONS_RULES + PRESSURE_RULES + RULES + ' ' + TREE_RULES)
+from app.rules import CHAT_MISSION as MISSION
 
 
 def checked_text(value):

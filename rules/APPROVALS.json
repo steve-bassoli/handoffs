@@ -1,0 +1,12 @@
+[
+  {
+    "sha256": "a216db419232e9f435cf6ef9f5257462836beba370193a3ba175bb5dbf836d5a",
+    "approved_by": [
+      "steve"
+    ],
+    "approved_at": "2026-10-18T16:30:00+00:00",
+    "note": "Bootstrap of the existing texts, moved unchanged, under Steve's ro3 via the relay (2026-10-18). Not a second human approval; Nate's review is pending.",
+    "pending_second_approver": "nate",
+    "bootstrap": true
+  }
+]

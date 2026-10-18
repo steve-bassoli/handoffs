@@ -9,12 +9,7 @@ import uuid
 import httpx
 
 
-RULES = ('Empower people without debt or obligation. Report usage and failures honestly; REST at capacity. '
-         'The sponsor funding is $1999 with $1 protected: at most $1998 may be allocated. '
-         'Unknown usage retains its reservation; never automatically retry it. '
-         'https://platform.openai.com/api-keys manages keys and may show per-key spend, not a balance. '
-         'Use https://platform.openai.com/usage or authorized Costs API accounting; never expose keys. '
-         'Codex allowance and participant Gold are separate resources. No inferred human acceptance.')
+from app.rules import RULES
 # Official Standard long-context cache-write/input maximum and output rates, USD/M.
 # https://developers.openai.com/api/docs/pricing, inspected 2026-10-17.
 RATES = {'gpt-6-astra': ('25', '75'), 'gpt-6.1-sol': ('5', '15'),

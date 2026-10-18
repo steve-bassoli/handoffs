@@ -26,22 +26,7 @@ MESSAGE_LIMIT = 4000
 MAX_MESSAGES = 10
 LEVELS = {1: 'HIGH', 2: 'MEDIUM', 3: 'LOW'}
 MODELS = MODEL_SETTINGS  # Single-model plans (no automation mode): astra, sol, terra or luna for every level.
-SHARED = ('messages is an array of {to, text}; to is an agent name, "parent", "children", "siblings" or "all". '
-          'files are proposed relative path/content objects, never applied. pressure is 1-3.')
-ROLE_RULES = {
-    'coordinator': (' TREE ROLE coordinator (HIGH root). You plan rounds for your named children, route questions, '
-        'resolve conflicting claims and decide when the goal is sufficiently met. Reply with one JSON object: summary, '
-        'directives (object: child name -> instruction for the next round), messages, done (true only when no further '
-        'round is useful), synthesis (object with plan, files, checks, limitations, open_questions_for_humans), '
-        'pressure. You cannot launch agents. ' + SHARED),
-    'lead': (' TREE ROLE lead (MEDIUM). Turn your parent directive into LOW instructions for your named workers, review '
-        'their reports, resolve overlaps between them and report upward. Reply with one JSON object: summary, report '
-        '(what your parent needs), directives (object: worker name -> instruction), messages, files, checks, '
-        'limitations, pressure. You cannot launch agents. ' + SHARED),
-    'worker': (' TREE ROLE worker (LOW). Follow your directive, answer questions in your inbox, and use read_source for '
-        'evidence. Reply with one JSON object: summary, findings (array of {claim, evidence, status: '
-        'observed|inferred|unknown}), messages, files, checks, limitations, pressure. ' + SHARED),
-}
+from app.rules import SHARED, ROLE_RULES
 
 
 def clip(value, limit):

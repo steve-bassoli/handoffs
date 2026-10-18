@@ -12,11 +12,7 @@ import httpx
 from app.api_budget import BudgetError, budget_path, connection
 
 
-TREE_RULES = ('Astra delegation stops at three levels including the root: at most three total children '
-    'per parent and thirteen nodes per tree. Level-three agents cannot spawn. A task tree is not '
-    'permission to launch agents. Only the controlled launcher admits agents and binds their parent; '
-    'all agents share the existing sponsor allocation, never a fresh budget per child. '
-    'Report verified live agents separately from interrupted occupied leases.')
+from app.rules import TREE_RULES
 SCHEMA = '''CREATE TABLE IF NOT EXISTS astra_agents (
     id TEXT PRIMARY KEY, parent_id TEXT, tree_id TEXT NOT NULL,
     level INTEGER NOT NULL CHECK(level BETWEEN 1 AND 3), role TEXT NOT NULL,
