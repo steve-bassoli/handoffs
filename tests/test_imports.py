@@ -121,7 +121,7 @@ def test_legacy_requirements_project_for_new_and_existing_imports(tmp_path):
     assert detail['goal'] == 'Read safely.'
     assert detail['criteria'] == ['Only three operations.\nKeep TLS.', 'No live calls.']
     with db.write() as c:
-        c.exec_driver_sql("UPDATE bounties SET goal='Historical imported assignment',criteria='[]',repository='' WHERE id='prove-demo'")
+        c.exec_driver_sql("UPDATE tasks SET goal='Historical imported assignment',criteria='[]',repository='' WHERE id='prove-demo'")
     assert service.get('prove-demo') == detail
     assert import_git(db, repo, 'HEAD')['unchanged'] == 1
     assert git('status', '--porcelain') == ''

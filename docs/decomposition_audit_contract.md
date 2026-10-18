@@ -57,11 +57,11 @@ HIGH splits into more than one HIGH or more than one MEDIUM, never a mix.
 MEDIUM splits into more than one LOW. LOW never splits.
 Behavioral tests propose two/four-child positives and singleton, mixed,
 wrong-level and LOW-parent negatives through both validation and spawn APIs.
-Rejected spawns compare complete bounties/events snapshots; a late invalid child
+Rejected spawns compare complete tasks/events snapshots; a late invalid child
 also checks rollback. These are proposed checks, not recorded test successes.
 
 The prior AST guard recognizes only literal first-argument SQL calls to an
-attribute named exec_driver_sql, with unquoted INSERT INTO bounties column
+attribute named exec_driver_sql, with unquoted INSERT INTO tasks column
 lists and an exact case-insensitive parent_id column token. SQL case and
 whitespace variants are recognized; similarly named columns are not parent_id.
 It does not broaden parsing to quoted identifiers, schemas, alternate INSERT

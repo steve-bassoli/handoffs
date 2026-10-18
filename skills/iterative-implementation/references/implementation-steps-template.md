@@ -45,7 +45,7 @@ Decompose HIGH and MEDIUM before execution. If a decision or dependency is still
 blocked, retain a proposal instead of publishing a new task:
 
 ```text
-bounty: <stable-id>
+task: <stable-id>
 parent-criterion: <verbatim criterion>
 objective: <bounded blocked outcome>
 reason: <unresolved decision or dependency after decomposition>
@@ -55,4 +55,4 @@ status: proposed
 ```
 
 The proposal remains an artifact until the human explicitly approves publishing
-that specific bounty.
+that specific task.

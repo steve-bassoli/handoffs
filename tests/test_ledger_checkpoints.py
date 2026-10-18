@@ -13,7 +13,7 @@ def ledger(tmp_path):
     with sqlite3.connect(database) as connection:
         connection.executescript('''
             CREATE TABLE accounts(id TEXT PRIMARY KEY, user_id TEXT, kind TEXT);
-            CREATE TABLE gold_transactions(id TEXT PRIMARY KEY, kind TEXT, bounty_id TEXT, created_at TEXT);
+            CREATE TABLE gold_transactions(id TEXT PRIMARY KEY, kind TEXT, task_id TEXT, created_at TEXT);
             CREATE TABLE gold_entries(seq INTEGER PRIMARY KEY, transaction_id TEXT, account_id TEXT, amount INTEGER);
             CREATE TABLE monthly_allocations(user_id TEXT, month TEXT, gold INTEGER, PRIMARY KEY(user_id, month));
             INSERT INTO accounts VALUES ('wallet-a', 'private-user', 'wallet'), ('issuer', NULL, 'issuer');
@@ -57,7 +57,7 @@ def test_private_nonce_and_deterministic_verification_without_rows_or_db_writes(
     "UPDATE accounts SET id='replacement' WHERE id='wallet-a'",
     "UPDATE gold_transactions SET id='replacement' WHERE id='tx-a'",
     "UPDATE gold_transactions SET kind='replacement' WHERE id='tx-a'",
-    "UPDATE gold_transactions SET bounty_id='other' WHERE id='tx-a'",
+    "UPDATE gold_transactions SET task_id='other' WHERE id='tx-a'",
     "UPDATE gold_transactions SET created_at='later' WHERE id='tx-a'",
     "UPDATE gold_entries SET transaction_id='replacement' WHERE seq=1",
     "UPDATE gold_entries SET account_id='replacement' WHERE seq=1",

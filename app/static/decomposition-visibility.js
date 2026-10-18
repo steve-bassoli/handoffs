@@ -3,7 +3,7 @@
   const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   const string = v => typeof v === 'string';
   const strings = v => Array.isArray(v) && v.every(string);
-  const source = 'app.complexity:DECOMPOSITION,MIN_CHILDREN,validate_bounty_split';
+  const source = 'app.complexity:DECOMPOSITION,MIN_CHILDREN,validate_task_split';
   const reasons = {
     valid: ['split_valid'],
     violation: ['split_invalid'],

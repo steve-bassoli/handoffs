@@ -38,7 +38,7 @@ const labels = {
   ai_started: 'AI run started', taken: 'Work taken', ai_failed: 'AI run failed',
   ai_model_changed: 'AI model changed', ai_retried: 'AI run retried',
   ai_answers: 'AI answers recorded', ai_ask: 'AI asked a question',
-  opportunity_updated: 'Task updated', reopened: 'Task reopened',
+  task_updated: 'Task updated', reopened: 'Task reopened',
   'legacy:assigned': 'Legacy work assigned', 'legacy:completed': 'Legacy work completed',
   working: 'Work resumed', blocked: 'Work blocked', cancelled: 'Task cancelled', edited: 'Task edited',
   followup_confirmed: 'Child task confirmed', followups_confirmed: 'Child tasks confirmed',

@@ -111,8 +111,8 @@ def import_git(db, repository, reference):
         try:
             manifest, directory, packet_files, records = validate_packet(path, files)
             with db.write() as c:
-                bounty_id = manifest['taskId']
-                existing = one(c, 'SELECT * FROM bounties WHERE id=?', (bounty_id,))
+                task_id = manifest['taskId']
+                existing = one(c, 'SELECT * FROM tasks WHERE id=?', (task_id,))
                 if existing:
                     legacy = json.loads(existing['legacy']) if existing['legacy'] else {}
                     if legacy.get('source') != source or legacy.get('directory') != directory:
@@ -121,8 +121,8 @@ def import_git(db, repository, reference):
                     metadata = {'source': source, 'revision': revision, 'directory': directory, 'manifest': manifest,
                                 'context': packet_files[directory + '/context.md']}
                     goal, criteria = legacy_requirements(metadata['context'])
-                    c.exec_driver_sql('INSERT INTO bounties(id,title,goal,criteria,repository,context_links,creator,target,gold,created_at,legacy,funded) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-                                      (bounty_id, manifest['title'], goal or 'Historical imported assignment', encode(criteria), origin.removesuffix('.git'), encode([]),
+                    c.exec_driver_sql('INSERT INTO tasks(id,title,goal,criteria,repository,context_links,creator,target,gold,created_at,legacy,funded) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+                                      (task_id, manifest['title'], goal or 'Historical imported assignment', encode(criteria), origin.removesuffix('.git'), encode([]),
                                        manifest['sender'].lower(), None if manifest['recipient'] == 'OPEN' else manifest['recipient'].lower(),
                                        manifest.get('gold') or 150, manifest['createdUtc'], encode(metadata), 0))
                 imported_events = {r['source_id'] for r in c.exec_driver_sql('SELECT source_id FROM import_records WHERE source=?', (source,)).mappings()}
@@ -130,7 +130,7 @@ def import_git(db, repository, reference):
                 if previous_files - packet_files.keys():
                     raise ValueError('Previously imported files were removed')
                 if existing:
-                    previous_event = one(c, 'SELECT created_at FROM events WHERE bounty_id=? ORDER BY seq DESC LIMIT 1', (bounty_id,))
+                    previous_event = one(c, 'SELECT created_at FROM events WHERE task_id=? ORDER BY seq DESC LIMIT 1', (task_id,))
                     if any(file not in imported_events and stamp(event['createdUtc']) < stamp(previous_event['created_at']) for file, event in records):
                         raise ValueError('New event predates imported history; manual reconciliation needed')
                 # Check immutable files before appending anything; a conflict rolls back this packet.
@@ -147,8 +147,8 @@ def import_git(db, repository, reference):
                     elif kind == 'review-accepted':
                         state = 'completed'
                     if file not in imported_events:
-                        c.exec_driver_sql('INSERT INTO events(bounty_id,kind,actor,state,data,created_at) VALUES (?,?,?,?,?,?)',
-                                          (bounty_id, 'legacy:' + kind, event['actor'].lower(), state,
+                        c.exec_driver_sql('INSERT INTO events(task_id,kind,actor,state,data,created_at) VALUES (?,?,?,?,?,?)',
+                                          (task_id, 'legacy:' + kind, event['actor'].lower(), state,
                                            encode({'source_event': event, 'source_path': file, 'revision': revision}), event['createdUtc']))
                         changed = True
                 report['imported' if changed else 'unchanged'] += 1

@@ -15,7 +15,7 @@ DOMAIN = 'the-commons-ledger-exact-snapshot'
 VERSION = 1
 TABLES = (
     ('accounts', ('id', 'user_id', 'kind'), 'id COLLATE BINARY'),
-    ('gold_transactions', ('id', 'kind', 'bounty_id', 'created_at'), 'id COLLATE BINARY'),
+    ('gold_transactions', ('id', 'kind', 'task_id', 'created_at'), 'id COLLATE BINARY'),
     ('gold_entries', ('seq', 'transaction_id', 'account_id', 'amount'), 'seq'),
     ('monthly_allocations', ('user_id', 'month', 'gold'), 'user_id COLLATE BINARY, month COLLATE BINARY'),
 )

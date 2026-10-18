@@ -14,14 +14,14 @@ import pytest
 
 from app import spawn
 from app.ai import validate_proposals
-from app.complexity import validate_bounty_split
+from app.complexity import validate_task_split
 
 
 ROOT = Path(__file__).resolve().parents[1]
 REVIEWED = {'app/services.py', 'app/spawn.py', 'app/ai.py', 'app/importer.py'}
-VALIDATORS = {'validate_bounty_split', 'validate_proposals'}
-INSERT = re.compile(r'^\s*INSERT\s+INTO\s+bounties\b', re.I)
-COLUMNS = re.compile(r'^\s*INSERT\s+INTO\s+bounties\s*\(([^)]*)\)', re.I)
+VALIDATORS = {'validate_task_split', 'validate_proposals'}
+INSERT = re.compile(r'^\s*INSERT\s+INTO\s+tasks\b', re.I)
+COLUMNS = re.compile(r'^\s*INSERT\s+INTO\s+tasks\s*\(([^)]*)\)', re.I)
 
 
 class Connection:
@@ -57,7 +57,7 @@ class LocalService:
 
     def detail(self, connection, identifier):
         row = connection.exec_driver_sql(
-            'SELECT id, complexity FROM bounties WHERE id=?', (identifier,)
+            'SELECT id, complexity FROM tasks WHERE id=?', (identifier,)
         ).fetchone()
         assert row is not None
         return {'id': row[0], 'complexity': row[1], 'status': 'open',
@@ -74,7 +74,7 @@ class LocalService:
 def database(tmp_path, monkeypatch):
     path = tmp_path / 'boundary.sqlite'
     with sqlite3.connect(str(path)) as connection:
-        connection.execute('''CREATE TABLE bounties (
+        connection.execute('''CREATE TABLE tasks (
             id TEXT PRIMARY KEY, title TEXT, goal TEXT, criteria TEXT,
             repository TEXT, context_links TEXT, creator TEXT, target TEXT,
             gold INTEGER, created_at TEXT, funded INTEGER, parent_id TEXT,
@@ -90,7 +90,7 @@ def database(tmp_path, monkeypatch):
 def seed(path, level):
     with sqlite3.connect(str(path)) as connection:
         connection.execute(
-            'INSERT INTO bounties (id,title,complexity) VALUES (?,?,?)',
+            'INSERT INTO tasks (id,title,complexity) VALUES (?,?,?)',
             ('parent', 'Synthetic parent', level))
         connection.execute('INSERT INTO events VALUES (?,?,?,?,?)',
                            ('parent', 'sentinel', 'tester', 'open', '{}'))
@@ -100,7 +100,7 @@ def snapshot(path):
     with sqlite3.connect(str(path)) as connection:
         return tuple(tuple(connection.execute(
             'SELECT * FROM ' + table + ' ORDER BY rowid'))
-            for table in ('bounties', 'events'))
+            for table in ('tasks', 'events'))
 
 
 def proposals(levels):
@@ -135,7 +135,7 @@ def test_split_boundaries(database, parent, levels, accepted):
     task = {'complexity': parent, 'criteria': ['parent criterion']}
     before = snapshot(database)
     if accepted:
-        assert validate_bounty_split(parent, levels) == levels[0]
+        assert validate_task_split(parent, levels) == levels[0]
         validate_proposals(task, children, 'Each responsibility is distinct.')
         assert snapshot(database) == before  # Pure AI validation performs no writes.
         created = spawn.spawn_children(
@@ -151,7 +151,7 @@ def test_split_boundaries(database, parent, levels, accepted):
             ['followup_confirmed'] * len(levels) + ['followups_confirmed'])
     else:
         with pytest.raises(ValueError):
-            validate_bounty_split(parent, levels)
+            validate_task_split(parent, levels)
         with pytest.raises(ValueError):
             validate_proposals(task, children, 'Distinct responsibilities.')
         assert snapshot(database) == before
@@ -335,11 +335,11 @@ def test_validator_mutants_fail_on_temporary_copies(tmp_path, mutation):
 def test_exception_handler_write_is_discovered_but_unhandled():
     source = '''
 def spawn_children():
-    validate_bounty_split(parent, levels)
+    validate_task_split(parent, levels)
     try:
         pass
     except ValueError:
-        c.exec_driver_sql('INSERT INTO bounties(id,parent_id) VALUES (?,?)')
+        c.exec_driver_sql('INSERT INTO tasks(id,parent_id) VALUES (?,?)')
 '''
     sites = scan(source)
     assert len(sites) == 1
@@ -350,8 +350,8 @@ def spawn_children():
 def test_same_line_calls_are_independent_sites():
     source = '''
 def spawn_children():
-    validate_bounty_split(parent, levels)
-    c.exec_driver_sql('INSERT INTO bounties(id,parent_id) VALUES (?,?)'); c.exec_driver_sql('INSERT INTO bounties(id,parent_id) VALUES (?,?)')
+    validate_task_split(parent, levels)
+    c.exec_driver_sql('INSERT INTO tasks(id,parent_id) VALUES (?,?)'); c.exec_driver_sql('INSERT INTO tasks(id,parent_id) VALUES (?,?)')
 '''
     sites = scan(source)
     assert len(sites) == 2
@@ -363,8 +363,8 @@ def spawn_children():
 def test_comment_validator_does_not_guard_a_write():
     sites = scan('''
 def spawn_children():
-    # validate_bounty_split(parent, levels)
-    c.exec_driver_sql('INSERT INTO bounties(id,parent_id) VALUES (?,?)')
+    # validate_task_split(parent, levels)
+    c.exec_driver_sql('INSERT INTO tasks(id,parent_id) VALUES (?,?)')
 ''')
     assert len(sites) == 1
     assert violations('app/spawn.py', sites)
@@ -374,8 +374,8 @@ def test_nested_validator_does_not_guard_outer_function():
     sites = scan('''
 def spawn_children():
     def helper():
-        validate_bounty_split(parent, levels)
-    c.exec_driver_sql('INSERT INTO bounties(id,parent_id) VALUES (?,?)')
+        validate_task_split(parent, levels)
+    c.exec_driver_sql('INSERT INTO tasks(id,parent_id) VALUES (?,?)')
 ''')
     assert len(sites) == 1
     assert violations('app/spawn.py', sites)
@@ -384,8 +384,8 @@ def spawn_children():
 def test_unknown_module_direct_write_fails_even_with_validator():
     sites = scan('''
 def other():
-    validate_bounty_split(parent, levels)
-    c.exec_driver_sql('INSERT INTO bounties(id,parent_id) VALUES (?,?)')
+    validate_task_split(parent, levels)
+    c.exec_driver_sql('INSERT INTO tasks(id,parent_id) VALUES (?,?)')
 ''')
     assert len(sites) == 1
     assert 'unclassified direct write' in violations('app/unknown.py', sites)[0]
@@ -396,7 +396,7 @@ def other():
 def test_standalone_classification_uses_exact_column_token(column, accepted):
     sites = scan(f'''
 def do_post():
-    c.exec_driver_sql('  insert  into  bounties (id, {column}) VALUES (?,?)')
+    c.exec_driver_sql('  insert  into  tasks (id, {column}) VALUES (?,?)')
 ''')
     assert len(sites) == 1
     assert (not violations('app/services.py', sites)) is accepted

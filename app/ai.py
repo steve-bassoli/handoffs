@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.services import RuleError, encode, now
 from app.storage import all_rows, one
-from app.complexity import validate_bounty_split, validate_plan
+from app.complexity import validate_task_split, validate_plan
 from app.workflow import ROLES
 
 
@@ -119,7 +119,7 @@ def materialize_edits(decision, source):
 
 
 def validate_proposals(task, proposals, why_three):
-    validate_bounty_split(task['complexity'], [item['complexity'] for item in proposals])
+    validate_task_split(task['complexity'], [item['complexity'] for item in proposals])
     if not why_three.strip() or len({item['title'].strip().casefold() for item in proposals}) != len(proposals):
         raise ValueError('Explain why these distinct responsibilities satisfy the parent')
     required = set(range(len(task['criteria'])))
@@ -278,7 +278,7 @@ class Luna:
                     json={'model': selected_model(data, self.model), 'service_tier': 'default', 'store': False, 'instructions': instructions,
                           'input': messages, 'tools': tools, 'reasoning': {'effort': 'low'},
                           'max_output_tokens': 12000,
-                          'text': {'format': {'type': 'json_schema', 'name': 'bounty_decision',
+                          'text': {'format': {'type': 'json_schema', 'name': 'task_decision',
                                               'strict': True, 'schema': schema}}})
                 try:
                     result = response.json()
@@ -346,13 +346,13 @@ class AIRuns:
                 row['status'] = 'failed'
                 row['data']['error'] = 'The server restarted during this turn. Retry when ready.'
                 self.save(c, row)
-                task = self.service.detail(c, row['bounty_id'])
-                self.service.event(c, row['bounty_id'], 'ai_interrupted', row['actor'], task['status'],
+                task = self.service.detail(c, row['task_id'])
+                self.service.event(c, row['task_id'], 'ai_interrupted', row['actor'], task['status'],
                     {'run_id': row['id'], 'stage': 'restart'} |
                     ({'request_ordinal': row['data']['request_ordinal']} if 'request_ordinal' in row['data'] else {}))
 
-    def record(self, c, bounty_id):
-        row = one(c, 'SELECT * FROM ai_runs WHERE bounty_id=?', (bounty_id,))
+    def record(self, c, task_id):
+        row = one(c, 'SELECT * FROM ai_runs WHERE task_id=?', (task_id,))
         if not row:
             raise RuleError('No AI run for this task', 404)
         row['data'] = json.loads(row['data'])
@@ -370,7 +370,7 @@ class AIRuns:
             'model_choice': data.get('model_choice'), 'question_count': data['question_count'],
             'conversation': data['conversation'], 'result': result,
             'usage': data['usage'], 'error': data.get('error'),
-            'download_url': f"/api/v1/bounties/{row['bounty_id']}/ai/artifact" if result and result['action'] in ('deliver', 'evidence') and row['status'] in ('ready', 'completed') else None,
+            'download_url': f"/api/v1/tasks/{row['task_id']}/ai/artifact" if result and result['action'] in ('deliver', 'evidence') and row['status'] in ('ready', 'completed') else None,
         }
 
     def save(self, c, row):
@@ -386,7 +386,7 @@ class AIRuns:
             raise RuleError('Only the worker can start this AI run', 403)
         if task['target'] not in (None, actor):
             raise RuleError('This task is assigned to another user', 403)
-        if one(c, 'SELECT id FROM ai_runs WHERE bounty_id=?', (task['id'],)):
+        if one(c, 'SELECT id FROM ai_runs WHERE task_id=?', (task['id'],)):
             raise RuleError('This task already has an AI run')
         self.model.check()
         source = read_source(payload.get('source_zip'))
@@ -402,7 +402,7 @@ class AIRuns:
         if API_KEY_PREFIX in context:
             raise RuleError('Keep API keys in the server environment, never task context', 422)
         if task['legacy']:
-            source['_bounty/original-context.md'] = task['legacy']['context']
+            source['_task/original-context.md'] = task['legacy']['context']
         evidence = []
         for event in task['events']:
             if event['kind'] == 'package_attached':
@@ -412,9 +412,9 @@ class AIRuns:
                                  'note': package['note']})
                 for path, content in package['files'].items():
                     if package['kind'] == 'response' or path == 'SETUP_AND_CHECKS.md':
-                        source[f"_bounty/packages/{event['seq']}/" + path] = content
+                        source[f"_task/packages/{event['seq']}/" + path] = content
         if evidence:
-            source['_bounty/package-provenance.json'] = encode(evidence)
+            source['_task/package-provenance.json'] = encode(evidence)
         if len(source) > 200 or sum(len(content.encode()) for content in source.values()) > 2_000_000:
             raise RuleError('Combined source and evidence exceed 200 files / 2 MB', 422)
         if task['parent_id'] and not source:
@@ -459,21 +459,21 @@ class AIRuns:
             'source_sha256': {path: hashlib.sha256(content.encode()).hexdigest() for path, content in extra.items()}})
         return self.service.detail(c, payload['id'])
 
-    def generate(self, bounty_id):
+    def generate(self, task_id):
         with self.db.write() as c:
-            row = self.record(c, bounty_id)
+            row = self.record(c, task_id)
             if row['status'] != 'queued':
                 return
             model = selected_model(row['data'], self.model.model)
             if row['data']['model'] != model:
                 previous_model = row['data']['model']
                 row['data']['model'] = model
-                task = self.service.detail(c, bounty_id)
-                self.service.event(c, bounty_id, 'ai_model_changed', row['actor'], task['status'],
+                task = self.service.detail(c, task_id)
+                self.service.event(c, task_id, 'ai_model_changed', row['actor'], task['status'],
                     {'run_id': row['id'], 'previous_model': previous_model, 'model': model})
             row['status'] = 'running'
             self.save(c, row)
-            task = self.service.detail(c, bounty_id)
+            task = self.service.detail(c, task_id)
         started = time.monotonic()
         metered = False
         stage = 'provider_response'
@@ -481,7 +481,7 @@ class AIRuns:
         def record_usage(delta, *, request_ordinal=None, response_metadata=None):
             nonlocal metered
             with self.db.write() as c:
-                current = self.record(c, bounty_id)
+                current = self.record(c, task_id)
                 if current['id'] != row['id'] or current['status'] != 'running':
                     raise ValueError('Run changed while metering')
                 for key, value in delta.items():
@@ -495,7 +495,7 @@ class AIRuns:
                     metadata.update(response_metadata)
                     metadata['response_received'] = True
                 self.save(c, current)
-                self.service.event(c, bounty_id, 'ai_usage', current['actor'], task['status'],
+                self.service.event(c, task_id, 'ai_usage', current['actor'], task['status'],
                     {'run_id': current['id'], 'model': model, 'delta': delta} | metadata)
             metered = True
             return request_ordinal
@@ -546,7 +546,7 @@ class AIRuns:
                 raise ValueError('Secret in model output')
             stage = 'result_storage'
             with self.db.write() as c:
-                row = self.record(c, bounty_id)
+                row = self.record(c, task_id)
                 if not metered:
                     for key in ('input_tokens', 'output_tokens', 'api_calls'):
                         row['data']['usage'][key] += usage.get(key, 0)
@@ -561,14 +561,14 @@ class AIRuns:
                     row['status'] = 'ready' if decision.action in ('deliver', 'evidence') else 'followups_pending'
                     state = 'delivered' if decision.action in ('deliver', 'evidence') else 'awaiting_approval'
                 self.save(c, row)
-                self.service.event(c, bounty_id, 'ai_' + decision.action, row['actor'], state,
+                self.service.event(c, task_id, 'ai_' + decision.action, row['actor'], state,
                     {'run_id': row['id'], 'model': row['data']['model'], 'summary': decision.summary, 'questions': decision.questions,
                      'outcome': 'fix_ready_for_local_test' if decision.action == 'deliver' else decision.action,
                      'usage': row['data']['usage']})
         except Exception as error:
             # Never persist provider error bodies, headers, or raw exceptions.
             with self.db.write() as c:
-                row = self.record(c, bounty_id)
+                row = self.record(c, task_id)
                 row['status'] = 'failed'
                 row['data']['usage']['elapsed_ms'] += round((time.monotonic() - started) * 1000)
                 code = ('http_error' if isinstance(error, httpx.HTTPStatusError)
@@ -615,8 +615,8 @@ class AIRuns:
                     row['data']['error'] += f' Reported token totals exclude {unknown} request(s) with unknown usage; do not assume zero cost.'
                 row['data']['error_code'] = code
                 self.save(c, row)
-                task = self.service.detail(c, bounty_id)
-                self.service.event(c, bounty_id, 'ai_failed', row['actor'], task['status'],
+                task = self.service.detail(c, task_id)
+                self.service.event(c, task_id, 'ai_failed', row['actor'], task['status'],
                     {'run_id': row['id'], 'code': code, 'stage': stage, 'usage': row['data']['usage']} |
                     ({'request_ordinal': row['data']['request_ordinal']} if 'request_ordinal' in row['data'] else {}))
 
@@ -658,7 +658,7 @@ class AIRuns:
         for index in indices:
             proposal = proposals[index]
             child = str(uuid4())
-            c.exec_driver_sql('''INSERT INTO bounties(id,title,goal,criteria,repository,context_links,
+            c.exec_driver_sql('''INSERT INTO tasks(id,title,goal,criteria,repository,context_links,
                 creator,target,gold,created_at,funded,parent_id) VALUES (?,?,?,?,?,?,?,?,?,?,0,?)''',
                 (child, proposal['title'], proposal['goal'], encode(proposal['criteria']), task['repository'],
                  encode(task['context_links']), actor, None, 1, now(), task['id']))
@@ -680,12 +680,12 @@ class AIRuns:
             raise RuleError('Only a ready fix can receive local verification')
         return self.service.proofs.complete(c, actor, {'id': payload['id'], 'note': payload['evidence']})
 
-    def artifact(self, bounty_id):
+    def artifact(self, task_id):
         with self.db.engine.connect() as c:
-            row = self.record(c, bounty_id)
+            row = self.record(c, task_id)
             if row['status'] not in ('ready', 'completed') or row['data']['result']['action'] not in ('deliver', 'evidence'):
                 raise RuleError('The fix ZIP is not ready')
-            task = self.service.detail(c, bounty_id)
+            task = self.service.detail(c, task_id)
         result = row['data']['result']
         if result['action'] == 'evidence':
             return self.evidence_artifact(task, row)
@@ -700,7 +700,7 @@ class AIRuns:
                 patch.append(line if line.endswith('\n') else line + '\n\\ No newline at end of file\n')
         start = ('# Start here\n\nDrop this ZIP into a fresh Codex chat and ask it to read this file.\n\n'
                  'Implement only the supplied task criteria. The workspace/ directory contains the supplied source '
-                 'with the proposed changes already applied. Inspect changes.patch, the source, and bounty.json; '
+                 'with the proposed changes already applied. Inspect changes.patch, the source, and task.json; '
                  'install the declared prerequisites, then perform the local verification below. '
                  'No build or tests have been run by the API agent. Report actual results before calling the fix verified.\n\n'
                  'Only LOW plan leaves may produce Git commits. Validate implementation-plan.json with '
@@ -717,7 +717,7 @@ class AIRuns:
                 entry.compress_type = zipfile.ZIP_DEFLATED
                 archive.writestr(entry, content)
             store('START_HERE.md', start)
-            store('bounty.json', encode({key: task[key] for key in ('id', 'parent_id', 'title', 'goal', 'criteria', 'repository', 'context_links')} |
+            store('task.json', encode({key: task[key] for key in ('id', 'parent_id', 'title', 'goal', 'criteria', 'repository', 'context_links')} |
                 {'developer_context': row['data']['context']}))
             store('changes.patch', ''.join(patch))
             store('implementation-plan.json', encode({'steps': archived_plan(result.get('plan', []))}))
@@ -734,7 +734,7 @@ class AIRuns:
             'No tests were executed by the API agent and no acceptance is implied. Review the supplied claims and prerequisites, '
             'perform only authorized checks, and record actual results separately. A human must explicitly confirm verification.\n\n'
             + result['instructions'] + '\n\n## Proposed checks (not executed)\n' + '\n'.join(result['verification']))
-        files['bounty.json'] = encode({key: task[key] for key in ('id', 'parent_id', 'title', 'goal', 'criteria', 'work_type', 'complexity')})
+        files['task.json'] = encode({key: task[key] for key in ('id', 'parent_id', 'title', 'goal', 'criteria', 'work_type', 'complexity')})
         files['history.json'] = encode({'run': self.public(row), 'events': task['events']})
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:

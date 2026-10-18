@@ -3,7 +3,7 @@ import sqlite3
 
 import pytest
 
-from conftest import post_bounty
+from conftest import post_task
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def registered(monkeypatch):
 def test_live_dashboard_requires_selected_identity_and_does_not_mutate(client, registered):
     assert client.get('/api/dashboard/live').status_code == 401
     assert client.get('/api/dashboard/live', headers={'X-Demo-User': 'unknown'}).status_code in (401, 403, 404)
-    task = post_bounty(client).json()['id']
+    task = post_task(client).json()['id']
     with client.app.state.service.db.engine.connect() as connection:
         before = {table: connection.exec_driver_sql('SELECT COUNT(*) FROM ' + table).scalar()
                   for table in ('events', 'gold_entries', 'monthly_allocations', 'operations')}
@@ -82,7 +82,7 @@ def test_ops_flow_use_read_only_sources_and_unknown_usage_blocks_allocation(clie
         connection.execute('INSERT INTO budget VALUES (1,199800,100,?)', ('PRIVATE PROVENANCE',))
         connection.execute('INSERT INTO calls VALUES (?,?,?)', ('call-1', 'unknown', 200))
     original = ledger.read_bytes()
-    task = post_bounty(client, gold=10).json()['id']
+    task = post_task(client, gold=10).json()['id']
     result = client.get('/api/dashboard/live', params={'task': task}, headers={'X-Demo-User': 'steve'})
     assert result.status_code == 200
     data = result.json()

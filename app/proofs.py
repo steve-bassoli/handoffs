@@ -80,11 +80,11 @@ class Proofs:
 
     def requirements(self, c, task):
         from app.storage import all_rows
-        children = all_rows(c, 'SELECT id FROM bounties WHERE parent_id=? ORDER BY id', (task['id'],))
+        children = all_rows(c, 'SELECT id FROM tasks WHERE parent_id=? ORDER BY id', (task['id'],))
         ids = sorted(set(task['depends_on'] + [child['id'] for child in children]))
         receipts = []
         for identifier in ids:
-            events = all_rows(c, 'SELECT kind,state,data FROM events WHERE bounty_id=? ORDER BY seq', (identifier,))
+            events = all_rows(c, 'SELECT kind,state,data FROM events WHERE task_id=? ORDER BY seq', (identifier,))
             acceptance = next((json.loads(event['data']) for event in reversed(events)
                                if event['kind'] in ('proof_completed', 'locally_verified', 'paid')), {})
             receipts.append({'id': identifier, 'status': events[-1]['state'],
@@ -130,7 +130,7 @@ class Proofs:
             public = {key: value for key, value in proof.items() if key != 'content_base64'} | {
                 'fresh': fresh, 'review': review, 'human': human, 'accepted': accepted,
                 'verification_method': ('human-only' if human_only else 'ai-reviewed') if accepted else None,
-                'download_url': f"/api/v1/bounties/{task['id']}/proofs/{proof['proof_id']}"}
+                'download_url': f"/api/v1/tasks/{task['id']}/proofs/{proof['proof_id']}"}
         task['proof'] = public
         task['proof_history'] = [{key: record[key] for key in ('proof_id', 'filename', 'sha256', 'binding')} for record in records]
         task['requirements'] = requirements
@@ -232,8 +232,8 @@ class Proofs:
         from app.storage import all_rows
         from app.proof_reviewer import ProofReviewer
         with self.service.db.write() as c:
-            for record in all_rows(c, "SELECT DISTINCT bounty_id FROM events WHERE kind='proof_review_queued'"):
-                task = self.service.detail(c, record['bounty_id'])
+            for record in all_rows(c, "SELECT DISTINCT task_id FROM events WHERE kind='proof_review_queued'"):
+                task = self.service.detail(c, record['task_id'])
                 finished = {event['data']['review_id'] for event in task['events'] if event['kind'] == 'proof_reviewed'}
                 for event in task['events']:
                     if event['kind'] == 'proof_review_queued' and event['data']['review_id'] not in finished:
@@ -275,9 +275,9 @@ class Proofs:
         receipt = self.require(c, task)
         state = 'completed'
         if task['funded']:
-            self.service.transfer(c, 'escrow:' + task['id'], 'wallet:' + task['claimant'], task['gold'], 'bounty_paid', task['id'])
+            self.service.transfer(c, 'escrow:' + task['id'], 'wallet:' + task['claimant'], task['gold'], 'task_paid', task['id'])
             state = 'settled'
         self.service.event(c, task['id'], 'proof_completed', actor, state,
                            {**receipt, 'note': payload['note'], 'worker': task['claimant']})
-        c.exec_driver_sql("UPDATE ai_runs SET status='completed',updated_at=? WHERE bounty_id=? AND status='ready'", (now(), task['id']))
+        c.exec_driver_sql("UPDATE ai_runs SET status='completed',updated_at=? WHERE task_id=? AND status='ready'", (now(), task['id']))
         return self.service.detail(c, task['id'])

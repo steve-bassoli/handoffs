@@ -94,6 +94,6 @@ def witness(payload):
               'discrepancy': None if result['verdict'] == 'pass' else {
                   'question': 'Which observation violates the pinned behavior contract?',
                   'reproducer_sha256': result['case_sha256'],
-                  'bounty': {'status': 'draft', 'creation_requires_human_approval': True}},
+                  'task': {'status': 'draft', 'creation_requires_human_approval': True}},
               'note': 'Portable synthetic observation report; not a live Watson result or task creation.'}
     return {**record, 'sha256': digest(record)}

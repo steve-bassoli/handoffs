@@ -81,7 +81,7 @@ def test_asks_pressure_first_then_exactly_three_options_per_level():
         assert len(after['choices']) == 3, after['choices']
         assert after['choices'][0]['label'].startswith(first)
         assert after['choices'][0]['href'] == '/?user=nate#task=abc-1'
-        assert after['calls'] == ['/bounties?limit=1'], 'one read, nothing else'
+        assert after['calls'] == ['/tasks?limit=1'], 'one read, nothing else'
         assert after['stored'] == {'commons-min-pressure': str(level)}
         assert not out['anyWrite']
 
@@ -94,7 +94,7 @@ def test_overloaded_options_are_rest_shaped_and_rest_view_starts_nothing():
     assert options[1]['href'] == '/dashboard?user=nate'
     rest = out['steps'][2]
     assert 'Nothing here needs you right now.' in rest['text'] and rest['choices'] == []
-    assert rest['calls'] == ['/bounties?limit=1']
+    assert rest['calls'] == ['/tasks?limit=1']
     assert len(out['steps'][3]['choices']) == 3
 
 

@@ -47,7 +47,7 @@ def _work(run):
     tree = (_json(session / 'plan.json', 4194304) or {}).get('tree')
     node = tree.get(run.name) if isinstance(tree, dict) else None
     if not isinstance(node, dict):
-        return {'name': None, 'session': None, 'task': None, 'directive': None, 'opportunity': None}
+        return {'name': None, 'session': None, 'task': None, 'directive': None, 'task_id': None}
     directive = None
     if node.get('parent'):
         for path in sorted((session / node['parent']).glob('round-*.json'), reverse=True):
@@ -55,16 +55,16 @@ def _work(run):
             if isinstance(directives, dict) and isinstance(directives.get(run.name), str):
                 directive = directives[run.name][:300]
                 break
-    link = _json(session / 'opportunity.json') or {}
+    link = _json(session / 'task.json') or {}
     if not link:
-        campaign = _json(session.parent / 'campaign-opportunity.json') or {}
+        campaign = _json(session.parent / 'campaign-task.json') or {}
         if isinstance(campaign.get('sessions_since'), str) and session.name >= campaign['sessions_since']:
             link = campaign
-    opportunity = link.get('id') if isinstance(link.get('id'), str) else None
+    task_id = link.get('id') if isinstance(link.get('id'), str) else None
     level, role = LEVELS.get(node.get('level'), '?'), str(node.get('role', ''))
     task = role if role.startswith(level) else f'{level} · {role}'
     return {'name': run.name, 'session': session.name, 'task': task[:200],
-            'directive': directive, 'opportunity': opportunity}
+            'directive': directive, 'task_id': task_id}
 
 
 def roster(path=None):

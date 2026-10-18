@@ -25,7 +25,7 @@ Use the PowerShell helper below for other actions or when MCP is not available.
 MCP writes require a retained `operation_id`, equivalent to `OperationId` below.
 
 An explicit user request to accept/claim an open task also requests processing
-in the current coding session. After `take_bounty`, read its `processing`
+in the current coding session. After `take_task`, read its `processing`
 result: it downloads the artifact ZIP, verifies the manifest, and returns the
 local package path, context previews, and a stable execution ID. Continue by
 reading the package/criteria and inspecting the referenced checkout, then do
@@ -37,7 +37,7 @@ The bridge does not invoke a provider or launch another agent. Manual's
 configured worker is Sol; the active host session performs this user-directed
 work. Never claim the bridge changed the host model or started a paid Sol call.
 With the PowerShell fallback, follow Take by downloading the service's
-`/api/v1/bounties/<id>/artifacts/download` with the selected identity, checking
+`/api/v1/tasks/<id>/artifacts/download` with the selected identity, checking
 `handoff.json` hashes, reading context, and continuing in this same session.
 Accepting submitted proof on an already implemented task is a separate human
 decision; it does not request a fresh implementation run.
@@ -46,7 +46,7 @@ Use `scripts/handoffs-client.ps1`. Configure `HANDOFFS_URL` for the shared
 service and `HANDOFFS_DEMO_USER` for the chosen demo user (`steve`, `nate`,
 or `will`). This user selector simulates identity; it is not authentication.
 
-`-Action Board`, `Mine`, `Show -BountyId <id>`, `Stats`, and `Transactions`
+`-Action Board`, `Mine`, `Show -TaskId <id>`, `Stats`, and `Transactions`
 are read-only previews, except that accessing Stats applies any due monthly
 demo Gold allocation. Display compact task ID/title/status/Gold and the user's
 available/reserved balance. Load full context only for a selected task.
@@ -56,7 +56,7 @@ An explicit posting request uses `-Action Post -BodyJson <json>` with
 `context_links`, and `target`. Post reserves the requester's Gold.
 
 On explicit user direction, use `Take`, `Status`, `Deliver`, `Review`, `Settle`,
-or `Cancel` with `-BountyId`. Status body: `status` (`working` or `blocked`)
+or `Cancel` with `-TaskId`. Status body: `status` (`working` or `blocked`)
 and optional `note`. Deliver body: `pr_url` and `evidence`. Review body:
 `decision` (`acknowledged`, `accepted`, or `rejected`) and `note`.
 PR verification is mocked; delivering pays automatically in the demo.

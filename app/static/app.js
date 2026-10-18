@@ -54,13 +54,13 @@ async function stats() {
   }
 }
 async function board() {
-  const result = await api(`/bounties?view=${view}&limit=${pageSize}&offset=${offset}&q=${encodeURIComponent($('search').value)}`);
+  const result = await api(`/tasks?view=${view}&limit=${pageSize}&offset=${offset}&q=${encodeURIComponent($('search').value)}`);
   $('cards').replaceChildren();
   if (!result.items.length) $('cards').append(element('div', view === 'mine' ? 'Tasks you post or volunteer for will appear here.' : 'Nothing open right now. Post a task when you have useful work to share.', 'empty'));
   for (const item of result.items) {
     const card = element('article', undefined, 'card');
     const top = element('div'); top.append(element('span', item.phase || item.status, 'pill'), element('span', item.complexity, 'pill'));
-    if (item.funded) top.append(element('span', `${item.gold} GOLD`, 'pill bounty-gold'));
+    if (item.funded) top.append(element('span', `${item.gold} GOLD`, 'pill task-gold'));
     const button = element('button', 'View task'); button.onclick = () => run(() => show(item.id));
     card.append(top, element('h3', item.title), element('div', `${item.creator} · ${item.claimant ? 'Claimed by ' + item.claimant : item.target ? 'Offered to ' + item.target + ' · not claimed' : 'Available to claim'} · ${item.disposition || item.status.replaceAll('_', ' ')}${item.funded ? '' : ' · Unfunded'}`, 'meta'), button);
     $('cards').append(card);
@@ -96,10 +96,10 @@ async function agentRoster() {
       const name = element('td', `Astra ${agent.name || agent.id.slice(0, 8)}`); name.title = agent.id;
       name.append(element('small', `${agent.role} · level ${agent.level}${agent.session ? ' · ' + agent.session : ''}`)); row.append(name);
       row.append(element('td', {active: 'Working?', released: 'Resting', failed: 'Stopped'}[agent.state] || '?'));
-      const work = element('td', agent.opportunity || agent.task ? undefined : '—');
-      if (agent.opportunity) {
-        const link = element('a', `task ${agent.opportunity.slice(0, 8)}`); link.href = '#task=' + encodeURIComponent(agent.opportunity);
-        link.onclick = event => { event.preventDefault(); run(() => show(agent.opportunity)); }; work.append(link);
+      const work = element('td', agent.task_id || agent.task ? undefined : '—');
+      if (agent.task_id) {
+        const link = element('a', `task ${agent.task_id.slice(0, 8)}`); link.href = '#task=' + encodeURIComponent(agent.task_id);
+        link.onclick = event => { event.preventDefault(); run(() => show(agent.task_id)); }; work.append(link);
       }
       if (agent.task) work.append(element('small', agent.task));
       if (agent.directive) work.append(element('small', agent.directive));
@@ -163,7 +163,7 @@ function acceptNotice(id, title, text, state) {
 }
 async function trackAccept(id, title) {
   clearTimeout(acceptPoll);
-  const status = (await api('/bounties/' + encodeURIComponent(id))).ai_run?.status;
+  const status = (await api('/tasks/' + encodeURIComponent(id))).ai_run?.status;
   const [text, state] = acceptStages[status] || ['Accepted', 'done'];
   acceptNotice(id, title, text, state);
   if (['queued', 'running'].includes(status)) acceptPoll = setTimeout(() => run(() => trackAccept(id, title)), 2000);
@@ -173,7 +173,7 @@ async function accept(data, button) {
   button.textContent = 'Accepting…'; button.classList.add('loading'); button.setAttribute('aria-busy', 'true');
   acceptNotice(data.id, data.title, 'Accepting · assigning you and starting AI preparation', 'working');
   try {
-    await mutate(`/bounties/${data.id}/accept`, {model: data.ai_options.recommended});
+    await mutate(`/tasks/${data.id}/accept`, {model: data.ai_options.recommended});
   } catch (error) {
     button.textContent = 'Accept'; button.classList.remove('loading'); button.removeAttribute('aria-busy');
     acceptNotice(data.id, data.title, 'Not accepted · ' + error.message, 'error');
@@ -185,7 +185,7 @@ async function show(id) {
   if (typeof treeEpoch !== 'undefined') treeEpoch++;
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
-  const data = await api('/bounties/' + encodeURIComponent(id));
+  const data = await api('/tasks/' + encodeURIComponent(id));
   selected = id;
   if (typeof window !== 'undefined' && window.commonsNavigation) window.commonsNavigation.update(view, user, id);
   else {
@@ -200,7 +200,7 @@ async function show(id) {
   const dashboard = element('a', 'Open dashboard for this task');
   dashboard.href = '/dashboard?user=' + encodeURIComponent(user) + '&task=' + encodeURIComponent(id);
   const header = element('div', undefined, 'detail-head'); header.append(element('span', data.phase, 'pill'), element('span', data.complexity, 'pill'), element('span', `Target: ${data.profile?.validation_scope || 'Unclassified'}`, 'pill'));
-  if (data.funded) header.append(element('span', `${data.gold} GOLD`, 'pill bounty-gold'));
+  if (data.funded) header.append(element('span', `${data.gold} GOLD`, 'pill task-gold'));
   header.append(element('h2', data.title), element('code', data.id));
   detail.append(back, dashboard, header, element('h3', 'Goal'), element('p', data.goal, 'content'), element('h3', 'Completion criteria'));
   const rail = element('ol', undefined, 'phase-rail'); rail.setAttribute('aria-label', 'Task lifecycle');
@@ -226,7 +226,7 @@ async function show(id) {
     });
     actions.append(edit);
   }
-  const action = (label, suffix) => { const b = element('button', label); b.onclick = () => run(() => mutate(`/bounties/${id}/${suffix}`)); actions.append(b); };
+  const action = (label, suffix) => { const b = element('button', label); b.onclick = () => run(() => mutate(`/tasks/${id}/${suffix}`)); actions.append(b); };
   if ((data.funded || data.parent_id) && data.status === 'open') {
     if (user === data.creator) action(data.funded ? 'Cancel & refund' : 'Cancel', 'cancel');
     if (!data.target || data.target === user) {
@@ -241,7 +241,7 @@ async function show(id) {
   if (!data.ai_run && ['completed', 'settled'].includes(data.status)
       && [data.creator, data.target, data.claimant, data.completed_by].includes(user)) {
     const reopen = element('button', 'Reopen as HIGH for decomposition');
-    reopen.onclick = () => run(() => mutate(`/bounties/${id}/reopen`, {complexity: 'HIGH',
+    reopen.onclick = () => run(() => mutate(`/tasks/${id}/reopen`, {complexity: 'HIGH',
       note: 'Reopened for bounded child-task proposals. Prior completion and evidence preserved; no new acceptance or rewards.'}));
     actions.append(reopen);
   }
@@ -252,12 +252,12 @@ async function show(id) {
     const noteLabel = element('label', 'Progress note'); const note = element('textarea'); noteLabel.append(note);
     const progressButton = element('button', data.status === 'blocked' ? 'Resume work' : 'Mark blocked');
     progress.append(noteLabel, progressButton);
-    progress.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/status`, {status: data.status === 'blocked' ? 'working' : 'blocked', note: note.value})); };
+    progress.onsubmit = e => { e.preventDefault(); run(() => mutate(`/tasks/${id}/status`, {status: data.status === 'blocked' ? 'working' : 'blocked', note: note.value})); };
     detail.append(progress, element('h3', 'Deliver your PR'));
     const form = element('form'); const urlLabel = element('label', 'PR URL'); const url = element('input'); url.type = 'url'; url.required = true; url.placeholder = 'https://github.com/owner/repo/pull/123'; urlLabel.append(url);
     const evidenceLabel = element('label', 'Completion evidence'); const evidence = element('textarea'); evidence.required = true; evidenceLabel.append(evidence);
     form.append(urlLabel, evidenceLabel, element('p', 'PR delivery cannot bypass the proof gate above.'), element('button', 'Submit PR with verified proof', 'primary'));
-    form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/deliveries`, {pr_url: url.value, evidence: evidence.value})); };
+    form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/tasks/${id}/deliveries`, {pr_url: url.value, evidence: evidence.value})); };
     detail.append(form);
   }
   for (const delivery of data.deliveries) {
@@ -269,7 +269,7 @@ async function show(id) {
     const review = element('form'); const label = element('label', 'Review note'); const note = element('textarea'); note.required = true; label.append(note);
     const choice = element('select'); ['acknowledged', 'accepted', 'rejected'].forEach(value => { const o = element('option', value); o.value = value; choice.append(o); });
     review.append(element('h3', 'Record your review'), label, choice, element('button', 'Save review'));
-    review.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/reviews`, {decision: choice.value, note: note.value})); };
+    review.onsubmit = e => { e.preventDefault(); run(() => mutate(`/tasks/${id}/reviews`, {decision: choice.value, note: note.value})); };
     detail.append(review);
   }
   if (data.legacy) {
@@ -359,15 +359,15 @@ async function showTree(id) {
   for (const section of ['board', 'post', 'wallet', 'gremlins', 'agents']) $(section).hidden = true;
   const current = $('detail');
   current.hidden = false;
-  current.replaceChildren(element('h2', 'Opportunity tree'), element('p', 'Loading hierarchy…'));
+  current.replaceChildren(element('h2', 'Task tree'), element('p', 'Loading hierarchy…'));
   try {
-    const assembly = assembleTicketTree(await api('/bounties/' + encodeURIComponent(id) + '/lineage'), id);
+    const assembly = assembleTicketTree(await api('/tasks/' + encodeURIComponent(id) + '/lineage'), id);
     const detailsById = Object.create(null);
     const warnings = [...assembly.warnings];
     // Sequential, bounded request load: no retries and no write bodies.
     for (const item of assembly.lineage.items) {
       if (epoch !== treeEpoch) return;
-      const path = '/bounties/' + encodeURIComponent(item.id);
+      const path = '/tasks/' + encodeURIComponent(item.id);
       let detail = {};
       try { detail = await api(path); }
       catch (error) { warnings.push('Task details unavailable for ' + item.id + ': ' + error.message); }
@@ -383,14 +383,14 @@ async function showTree(id) {
     const page = element('div');
     const back = element('button', '← Back to board'); back.onclick = () => run(() => navigate('open'));
     const task = element('a', 'Open requested task'); task.href = '#task=' + encodeURIComponent(id);
-    page.append(back, task, element('h2', 'Opportunity tree'),
+    page.append(back, task, element('h2', 'Task tree'),
       element('p', 'Read only · attached evidence packages are not verified completion. Unknown counts are not zero.'));
     for (const warning of warnings) page.append(element('p', warning, 'error'));
     if (typeof window.renderTicketFlow !== 'function') page.append(element('p', 'Tree renderer unavailable.', 'error'));
     else page.append(window.renderTicketFlow({lineage: assembly.lineage, currentId: id, detailsById, taskLinks: true}));
     current.replaceChildren(...page.childNodes);
   } catch (error) {
-    if (epoch === treeEpoch) current.replaceChildren(element('h2', 'Opportunity tree'), element('p', 'Hierarchy unavailable: ' + error.message, 'error'));
+    if (epoch === treeEpoch) current.replaceChildren(element('h2', 'Task tree'), element('p', 'Hierarchy unavailable: ' + error.message, 'error'));
   }
 }
 
@@ -412,7 +412,7 @@ async function downloadArtifact(url, filename) {
 
 async function artifactsSection(task, detail) {
   const id = task.id;
-  const data = await api(`/bounties/${encodeURIComponent(id)}/artifacts`);
+  const data = await api(`/tasks/${encodeURIComponent(id)}/artifacts`);
   const section = element('section', undefined, 'evidence');
   section.append(element('h3', 'Artifacts · available before acceptance'),
     element('p', 'Preview and download everything currently stored with this task. Downloads do not volunteer you or start AI work.'));
@@ -455,7 +455,7 @@ async function artifactsSection(task, detail) {
     const noteLabel = element('label', 'Short note'); const note = element('input'); note.maxLength = 2000; noteLabel.append(note);
     form.append(kindLabel, zipLabel, originalLabel, noteLabel,
       element('p', 'Attaches evidence only. No code runs, status change, Gold payment, or follow-up creation.'), element('button', 'Attach package'));
-    form.onsubmit = event => { event.preventDefault(); run(async () => mutate(`/bounties/${id}/packages`, {
+    form.onsubmit = event => { event.preventDefault(); run(async () => mutate(`/tasks/${id}/packages`, {
       kind: kind.value, package_zip: await encodeSourceZip(zip.files[0]), input_zip: await encodeSourceZip(original.files[0]), note: note.value})); };
     section.append(form);
   }
@@ -497,7 +497,7 @@ function taskEditor(data) {
   form.onsubmit = event => {
     event.preventDefault();
     run(async () => {
-      await mutate(`/bounties/${data.id}/edit`, {title: title.value, goal: goal.value,
+      await mutate(`/tasks/${data.id}/edit`, {title: title.value, goal: goal.value,
         criteria: nonemptyLines(criteria.value), complexity: complexity.value, work_type: workType.value,
         context_links: nonemptyLines(links.value), repository: repository.value, target: target.value || null, gold: Number(gold.value)});
     });
@@ -527,16 +527,16 @@ async function workflowSection(data, detail) {
     form.append(element('p', 'Changing bound context makes existing proof stale.'), element('button', 'Save context'));
     form.onsubmit = event => { event.preventDefault(); run(async () => {
       const facts = nonemptyLines(known.value).map(line => { const at = line.indexOf('|'); if (at < 1 || !line.slice(at + 1).trim()) throw new Error('Each Known item needs a statement | source.'); return {statement: line.slice(0, at).trim(), source: line.slice(at + 1).trim()}; });
-      await mutate(`/bounties/${data.id}/profile`, {validation_scope: scope.value, migration_stage: stage.value,
+      await mutate(`/tasks/${data.id}/profile`, {validation_scope: scope.value, migration_stage: stage.value,
         baseline_revision: baseline.value, candidate_revision: candidate.value, environment: environment.value,
         knowledge: {known: facts, assumed: nonemptyLines(assumed.value), unknown: nonemptyLines(unknown.value)}});
     }); };
   }
   box.append(form);
   const dependencies = element('form'); const ids = labeled(dependencies, 'Shared prerequisites · existing task IDs, one per line', data.depends_on.join('\n'), 'textarea'); ids.disabled = !editable;
-  if (editable) { dependencies.append(element('button', 'Link prerequisites')); dependencies.onsubmit = event => { event.preventDefault(); run(() => mutate(`/bounties/${data.id}/dependencies`, {depends_on: nonemptyLines(ids.value)})); }; }
+  if (editable) { dependencies.append(element('button', 'Link prerequisites')); dependencies.onsubmit = event => { event.preventDefault(); run(() => mutate(`/tasks/${data.id}/dependencies`, {depends_on: nonemptyLines(ids.value)})); }; }
   box.append(dependencies);
-  const graph = await api(`/bounties/${data.id}/constellation`);
+  const graph = await api(`/tasks/${data.id}/constellation`);
   box.append(element('h3', 'Constellation'), element('p', 'Each task appears once. Arrows point from an outcome to required child work or a shared prerequisite.'));
   const nodes = element('div', undefined, 'constellation');
   for (const node of graph.nodes) { const button = element('button', `${node.title} · ${node.phase}`); button.className = node.id === data.id ? 'current-task' : ''; button.onclick = () => run(() => show(node.id)); nodes.append(button); }
@@ -574,24 +574,24 @@ function proofSection(data, detail) {
     }
     for (const criterion of review?.criteria || []) box.append(element('p', `${criterion.index + 1}. ${criterion.verdict} · ${criterion.reason}`));
     if (proof.human) box.append(element('p', `Human LOW verification: ${proof.human.accepted ? 'accepted' : 'rejected'} · ${proof.human.note}`));
-    if (editable && proof.fresh && !['queued', 'running'].includes(review?.verdict)) { const request = element('button', 'Request AI proof review'); request.onclick = () => run(() => mutate(`/bounties/${data.id}/proof-review`)); box.append(request, element('small', 'Explicit request uses the configured provider. Missing access or unsupported video review stays inconclusive.')); }
+    if (editable && proof.fresh && !['queued', 'running'].includes(review?.verdict)) { const request = element('button', 'Request AI proof review'); request.onclick = () => run(() => mutate(`/tasks/${data.id}/proof-review`)); box.append(request, element('small', 'Explicit request uses the configured provider. Missing access or unsupported video review stays inconclusive.')); }
     const humanOnly = !review || (review.verdict === 'inconclusive' && !review.criteria?.some(item => item.verdict === 'fail'));
     if (editable && data.complexity === 'LOW' && proof.fresh && (review?.verdict === 'pass' || humanOnly)) {
       const human = element('form'); const decision = labeled(human, 'Human verification decision', 'Choose…', 'select', ['Choose…', 'Accept', 'Reject']);
       if (humanOnly) human.append(element('p', 'Human-only verification: review the evidence and record your decision. This does not record an AI pass.'));
       const note = labeled(human, 'What did you personally verify?', '', 'textarea'); note.required = true;
-      human.append(element('button', 'Record human decision')); human.onsubmit = event => { event.preventDefault(); run(async () => { if (decision.value === 'Choose…') throw new Error('Explicitly accept or reject the proof.'); await mutate(`/bounties/${data.id}/proof-human`, {accepted: decision.value === 'Accept', note: note.value, review_basis: humanOnly ? 'human-only' : 'ai-reviewed'}); }); }; box.append(human);
+      human.append(element('button', 'Record human decision')); human.onsubmit = event => { event.preventDefault(); run(async () => { if (decision.value === 'Choose…') throw new Error('Explicitly accept or reject the proof.'); await mutate(`/tasks/${data.id}/proof-human`, {accepted: decision.value === 'Accept', note: note.value, review_basis: humanOnly ? 'human-only' : 'ai-reviewed'}); }); }; box.append(human);
     }
-    if (editable && proof.accepted) { const form = element('form'); const note = labeled(form, 'Completion note', '', 'textarea'); note.required = true; form.append(element('button', data.funded ? 'Complete & release reserved demo Gold' : 'Complete verified task', 'primary')); form.onsubmit = event => { event.preventDefault(); run(() => mutate(`/bounties/${data.id}/complete`, {note: note.value})); }; box.append(form); }
+    if (editable && proof.accepted) { const form = element('form'); const note = labeled(form, 'Completion note', '', 'textarea'); note.required = true; form.append(element('button', data.funded ? 'Complete & release reserved demo Gold' : 'Complete verified task', 'primary')); form.onsubmit = event => { event.preventDefault(); run(() => mutate(`/tasks/${data.id}/complete`, {note: note.value})); }; box.append(form); }
     if (['queued', 'running'].includes(review?.verdict)) proofPoll = setTimeout(() => { if (selected === data.id) run(() => show(data.id)); }, 2000);
   } else box.append(element('p', data.phase === 'Closed' ? 'Historical closure · no accepted proof recorded. Not retroactively verified.' : 'No proof yet. Pin revisions and environment in Context before submitting.'));
   if (editable) {
     const form = element('form'); const file = labeled(form, 'Primary proof · text/JSON ≤200 KB, PNG/JPEG/MP4 ≤8 MB'); file.type = 'file'; file.accept = '.txt,.md,.json,.png,.jpg,.jpeg,.mp4'; file.required = true;
     const description = labeled(form, 'How this proves the criteria', '', 'textarea'); description.required = true;
     form.append(element('p', 'Use approved test data. No credentials or private records. A replacement preserves history and needs a new review.'), element('button', proof ? 'Attach replacement proof' : 'Attach proof'));
-    form.onsubmit = event => { event.preventDefault(); run(async () => { const artifact = file.files[0]; if (!artifact || artifact.size > 8000000) throw new Error('Choose one artifact under 8 MB.'); const types = {txt: 'text/plain', md: 'text/plain', json: 'application/json', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', mp4: 'video/mp4'}; const media_type = types[artifact.name.split('.').at(-1).toLowerCase()]; if (!media_type) throw new Error('Unsupported proof format.'); let raw = ''; for (const byte of new Uint8Array(await artifact.arrayBuffer())) raw += String.fromCharCode(byte); await mutate(`/bounties/${data.id}/proofs`, {filename: artifact.name, media_type, content_base64: btoa(raw), description: description.value}); }); }; box.append(form);
+    form.onsubmit = event => { event.preventDefault(); run(async () => { const artifact = file.files[0]; if (!artifact || artifact.size > 8000000) throw new Error('Choose one artifact under 8 MB.'); const types = {txt: 'text/plain', md: 'text/plain', json: 'application/json', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', mp4: 'video/mp4'}; const media_type = types[artifact.name.split('.').at(-1).toLowerCase()]; if (!media_type) throw new Error('Unsupported proof format.'); let raw = ''; for (const byte of new Uint8Array(await artifact.arrayBuffer())) raw += String.fromCharCode(byte); await mutate(`/tasks/${data.id}/proofs`, {filename: artifact.name, media_type, content_base64: btoa(raw), description: description.value}); }); }; box.append(form);
   }
-  if (data.proof_history.length > 1) { const history = element('details'); history.append(element('summary', 'Immutable proof history')); for (const record of data.proof_history) { const button = element('button', `Download ${record.filename} · ${record.sha256.slice(0, 12)}`); button.onclick = () => run(() => downloadArtifact(`/api/v1/bounties/${data.id}/proofs/${record.proof_id}`, record.filename)); history.append(button); } box.append(history); }
+  if (data.proof_history.length > 1) { const history = element('details'); history.append(element('summary', 'Immutable proof history')); for (const record of data.proof_history) { const button = element('button', `Download ${record.filename} · ${record.sha256.slice(0, 12)}`); button.onclick = () => run(() => downloadArtifact(`/api/v1/tasks/${data.id}/proofs/${record.proof_id}`, record.filename)); history.append(button); } box.append(history); }
   detail.append(box);
 }
 function sourceInput(form) {
@@ -631,7 +631,7 @@ async function aiSection(data, detail) {
     const label = element('label', 'Additional context'); const context = element('textarea'); label.append(context); form.append(label);
     const source = sourceInput(form);
     form.append(element('button', data.complexity === 'LOW' ? 'Start with AI' : 'Propose child tasks with AI', 'primary'));
-    form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/start`, {model: model.value, context: context.value, source_zip: await source()})); };
+    form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/tasks/${id}/ai/start`, {model: model.value, context: context.value, source_zip: await source()})); };
     box.append(form);
   }
   const ai = data.ai_run;
@@ -669,7 +669,7 @@ async function aiSection(data, detail) {
       }
       const source = sourceInput(form);
       form.append(element('button', 'Send answers to AI', 'primary'));
-      form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/bounties/${id}/ai/answers`, {model: model.value, answers: answers.map(a => a.value), source_zip: await source()})); };
+      form.onsubmit = e => { e.preventDefault(); run(async () => mutate(`/tasks/${id}/ai/answers`, {model: model.value, answers: answers.map(a => a.value), source_zip: await source()})); };
       box.append(form);
     }
     if (ai.download_url) {
@@ -703,7 +703,7 @@ async function aiSection(data, detail) {
       if (owner) {
         const approve = element('button', `Approve all ${ai.result.proposals.length} child tasks`, 'primary'); approve.disabled = !currentContract;
         form.append(approve);
-        form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/ai/confirm-followups`, {indices: choices.filter(c => c.checked).map(c => Number(c.value))})); };
+        form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/tasks/${id}/ai/confirm-followups`, {indices: choices.filter(c => c.checked).map(c => Number(c.value))})); };
       } else choices.forEach(choice => { choice.disabled = true; });
       box.append(form);
     }
@@ -712,7 +712,7 @@ async function aiSection(data, detail) {
       if (owner) {
         const form = element('form'); const model = modelInput(form, data);
         form.append(element('button', 'Retry AI'));
-        form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/bounties/${id}/ai/retry`, {model: model.value})); }; box.append(form);
+        form.onsubmit = e => { e.preventDefault(); run(() => mutate(`/tasks/${id}/ai/retry`, {model: model.value})); }; box.append(form);
       }
     }
     if (['queued', 'running'].includes(ai.status)) {
@@ -721,11 +721,11 @@ async function aiSection(data, detail) {
     }
   }
   if (box.childElementCount > 1) detail.append(box);
-  const lineage = await api(`/bounties/${id}/lineage`);
+  const lineage = await api(`/tasks/${id}/lineage`);
   if (window.renderTicketFlow && lineage.items.length > 1) {
     try {
       const detailsById = {};
-      await Promise.all(lineage.items.map(async item => { try { detailsById[item.id] = await api('/bounties/' + encodeURIComponent(item.id)); } catch (error) { /* enrichment is optional */ } }));
+      await Promise.all(lineage.items.map(async item => { try { detailsById[item.id] = await api('/tasks/' + encodeURIComponent(item.id)); } catch (error) { /* enrichment is optional */ } }));
       detail.append(window.renderTicketFlow({lineage, currentId: id, detailsById, onNavigate: target => run(() => show(target))}));
       return;
     } catch (error) { /* fall back to the plain list below */ }
@@ -769,7 +769,7 @@ $('post-form').onsubmit = e => {
   run(async () => {
     const form = new FormData(e.target);
     const lines = name => form.get(name).split('\n').map(s => s.trim()).filter(Boolean);
-    const result = await mutate('/bounties', {title: form.get('title'), goal: form.get('goal'), criteria: lines('criteria'),
+    const result = await mutate('/tasks', {title: form.get('title'), goal: form.get('goal'), criteria: lines('criteria'),
       repository: form.get('repository'), context_links: lines('context_links'), complexity: form.get('complexity'), work_type: form.get('work_type'), gold: Number(form.get('gold')), target: form.get('target') || null,
       source_zip: await postSourceZip()});
     if (result) e.target.reset();

@@ -9,12 +9,12 @@ import subprocess
 
 # HIGH SIGNAL decomposition rule, enshrined as data (PROJECT_CHARTER.md, "Grounded decomposition"):
 # a HIGH splits into two or more HIGHs OR two or more MEDIUMs (never mixed); a MEDIUM into two or more LOWs; a LOW never splits.
-# A HIGH-to-HIGH split is itself a HIGH that may split again. Every code path that creates child tickets must call validate_bounty_split.
+# A HIGH-to-HIGH split is itself a HIGH that may split again. Every code path that creates child tickets must call validate_task_split.
 DECOMPOSITION = {'HIGH': ('HIGH', 'MEDIUM'), 'MEDIUM': ('LOW',), 'LOW': ()}
 MIN_CHILDREN = 2
 
 
-def validate_bounty_split(parent, levels):
+def validate_task_split(parent, levels):
     allowed = DECOMPOSITION.get(parent, ())
     if len(levels) >= MIN_CHILDREN and len(set(levels)) == 1 and levels[0] in allowed:
         return levels[0]
@@ -56,7 +56,7 @@ def validate_plan(steps):
             return {**step, 'complexity': level}
         if files:
             raise ValueError('Only LOW leaves declare commit files')
-        child_level = validate_bounty_split(level, [str(child.get('complexity', '')).upper()
+        child_level = validate_task_split(level, [str(child.get('complexity', '')).upper()
                                                   if isinstance(child, dict) else '' for child in children])
         return {**step, 'complexity': level, 'children': [visit(child, child_level) for child in children]}
 

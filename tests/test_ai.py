@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from app.ai import Decision, Luna, archived_plan, read_source
 from app.main import create_app
 from app.services import RuleError
-from conftest import post_bounty, verified_proof, write
+from conftest import post_task, verified_proof, write
 
 
 def source_zip(files=None):
@@ -45,8 +45,8 @@ class FakeLuna:
         return next(self.decisions), {'api_calls': 1, 'input_tokens': 25, 'output_tokens': 10}
 
 
-def get_run(client, bounty):
-    return client.get('/api/v1/bounties/' + bounty).json()['ai_run']
+def get_run(client, task):
+    return client.get('/api/v1/tasks/' + task).json()['ai_run']
 
 
 def test_questions_answers_zip_and_idempotency(tmp_path):
@@ -54,50 +54,50 @@ def test_questions_answers_zip_and_idempotency(tmp_path):
         decision('deliver', files=[{'path': 'calc.py', 'content': 'def add(a, b):\n    return a + b\n'}],
                  instructions='Use Python 3.11. Open workspace/ in Codex.', verification=['python -m unittest'])])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = post_bounty(client).json()['id']
+        task = post_task(client).json()['id']
         payload = {'source_zip': source_zip()}
-        assert write(client, f'/bounties/{bounty}/ai/start', payload, key='start').status_code == 200
-        assert get_run(client, bounty)['status'] == 'needs_input'
-        assert get_run(client, bounty)['question_count'] == 1
-        assert write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['3.11']}, 'nate').status_code == 403
-        assert write(client, f'/bounties/{bounty}/ai/answers', {'answers': []}).status_code == 422
-        assert write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['3.11']}, key='answer').status_code == 200
-        assert get_run(client, bounty)['status'] == 'ready'
-        assert get_run(client, bounty)['usage']['input_tokens'] == 50
-        assert write(client, f'/bounties/{bounty}/ai/start', payload, key='start').status_code == 200
-        assert write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['3.11']}, key='answer').status_code == 200
+        assert write(client, f'/tasks/{task}/ai/start', payload, key='start').status_code == 200
+        assert get_run(client, task)['status'] == 'needs_input'
+        assert get_run(client, task)['question_count'] == 1
+        assert write(client, f'/tasks/{task}/ai/answers', {'answers': ['3.11']}, 'nate').status_code == 403
+        assert write(client, f'/tasks/{task}/ai/answers', {'answers': []}).status_code == 422
+        assert write(client, f'/tasks/{task}/ai/answers', {'answers': ['3.11']}, key='answer').status_code == 200
+        assert get_run(client, task)['status'] == 'ready'
+        assert get_run(client, task)['usage']['input_tokens'] == 50
+        assert write(client, f'/tasks/{task}/ai/start', payload, key='start').status_code == 200
+        assert write(client, f'/tasks/{task}/ai/answers', {'answers': ['3.11']}, key='answer').status_code == 200
         assert model.calls == 2
-        result = client.get(f'/api/v1/bounties/{bounty}/ai/artifact')
+        result = client.get(f'/api/v1/tasks/{task}/ai/artifact')
         assert result.status_code == 200
         with zipfile.ZipFile(io.BytesIO(result.content)) as archive:
             assert archive.read('workspace/calc.py').decode().endswith('return a + b\n')
             assert 'START_HERE.md' in archive.namelist()
             assert 'No build or tests have been run' in archive.read('START_HERE.md').decode()
             assert '-    return a - b' in archive.read('changes.patch').decode()
-            assert json.loads(archive.read('bounty.json'))['id'] == bounty
+            assert json.loads(archive.read('task.json'))['id'] == task
             assert json.loads(archive.read('implementation-plan.json'))['steps'][0]['complexity'] == 'LOW'
             assert 'tools/complexity.py' in archive.namelist()
-        assert client.get(f'/api/v1/bounties/{bounty}/ai/artifact').content == result.content
-        assert client.get(f'/api/v1/bounties/{bounty}').json()['status'] == 'delivered'
-        assert write(client, f'/bounties/{bounty}/ai/complete', {'evidence': 'Local checks passed'}, 'nate').status_code == 403
-        verified_proof(client, bounty)
-        assert write(client, f'/bounties/{bounty}/ai/complete', {'evidence': 'Local checks passed'}, key='verified').json()['phase'] == 'Closed'
-        assert client.get(f'/api/v1/bounties/{bounty}/ai/artifact').status_code == 200
+        assert client.get(f'/api/v1/tasks/{task}/ai/artifact').content == result.content
+        assert client.get(f'/api/v1/tasks/{task}').json()['status'] == 'delivered'
+        assert write(client, f'/tasks/{task}/ai/complete', {'evidence': 'Local checks passed'}, 'nate').status_code == 403
+        verified_proof(client, task)
+        assert write(client, f'/tasks/{task}/ai/complete', {'evidence': 'Local checks passed'}, key='verified').json()['phase'] == 'Closed'
+        assert client.get(f'/api/v1/tasks/{task}/ai/artifact').status_code == 200
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as restarted:
-        assert get_run(restarted, bounty)['status'] == 'completed'
-        assert restarted.get(f'/api/v1/bounties/{bounty}/ai/artifact').status_code == 200
+        assert get_run(restarted, task)['status'] == 'completed'
+        assert restarted.get(f'/api/v1/tasks/{task}/ai/artifact').status_code == 200
 
 
 def test_restart_marks_interrupted_turn_for_explicit_retry(tmp_path):
     model = FakeLuna([decision('ask', questions=['Source?'])])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {})
+        task = post_task(client).json()['id']
+        write(client, f'/tasks/{task}/ai/start', {})
         with client.app.state.service.db.write() as connection:
-            connection.exec_driver_sql("UPDATE ai_runs SET status='running' WHERE bounty_id=?", (bounty,))
+            connection.exec_driver_sql("UPDATE ai_runs SET status='running' WHERE task_id=?", (task,))
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as restarted:
-        assert get_run(restarted, bounty)['status'] == 'failed'
-        assert 'restarted' in get_run(restarted, bounty)['error']
+        assert get_run(restarted, task)['status'] == 'failed'
+        assert 'restarted' in get_run(restarted, task)['error']
 
 
 def test_followups_require_confirmation_and_retain_lineage(tmp_path):
@@ -106,27 +106,27 @@ def test_followups_require_confirmation_and_retain_lineage(tmp_path):
                  {'title': 'Validate integration', 'goal': 'Check parent integration', 'criteria': ['Acceptance observed']}]
     model = FakeLuna([decision('followups', proposals=proposals), decision('ask', questions=['Which contract?'])])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = write(client, '/bounties', {'title': 'Bound the parent', 'goal': 'Research', 'criteria': ['Verified outcome'],
+        task = write(client, '/tasks', {'title': 'Bound the parent', 'goal': 'Research', 'criteria': ['Verified outcome'],
             'gold': 150, 'complexity': 'HIGH'}).json()['id']
         before = client.get('/api/v1/me/stats').json()
-        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
-        assert get_run(client, bounty)['status'] == 'followups_pending'
-        tree = client.get(f'/api/v1/bounties/{bounty}/lineage').json()
+        write(client, f'/tasks/{task}/ai/start', {'source_zip': source_zip()})
+        assert get_run(client, task)['status'] == 'followups_pending'
+        tree = client.get(f'/api/v1/tasks/{task}/lineage').json()
         assert len(tree['items']) == 1
-        assert client.get(f'/api/v1/bounties/{bounty}').json()['status'] == 'awaiting_approval'
-        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0]}, 'nate').status_code == 403
-        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [5]}).status_code == 422
-        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0]}).status_code == 422
-        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0, 1, 2]}, key='confirm').status_code == 200
-        assert write(client, f'/bounties/{bounty}/ai/confirm-followups', {'indices': [0, 1, 2]}, key='confirm').status_code == 200
-        tree = client.get(f'/api/v1/bounties/{bounty}/lineage').json()
+        assert client.get(f'/api/v1/tasks/{task}').json()['status'] == 'awaiting_approval'
+        assert write(client, f'/tasks/{task}/ai/confirm-followups', {'indices': [0]}, 'nate').status_code == 403
+        assert write(client, f'/tasks/{task}/ai/confirm-followups', {'indices': [5]}).status_code == 422
+        assert write(client, f'/tasks/{task}/ai/confirm-followups', {'indices': [0]}).status_code == 422
+        assert write(client, f'/tasks/{task}/ai/confirm-followups', {'indices': [0, 1, 2]}, key='confirm').status_code == 200
+        assert write(client, f'/tasks/{task}/ai/confirm-followups', {'indices': [0, 1, 2]}, key='confirm').status_code == 200
+        tree = client.get(f'/api/v1/tasks/{task}/lineage').json()
         assert len(tree['items']) == 4
-        child = next(item for item in tree['items'] if item['parent_id'] == bounty)
+        child = next(item for item in tree['items'] if item['parent_id'] == task)
         assert child['title'] == 'Find the contract'
-        assert client.get(f'/api/v1/bounties/{bounty}').json()['status'] == 'decomposed'
-        assert client.get(f"/api/v1/bounties/{child['id']}").json()['complexity'] == 'HIGH'
-        assert client.get(f"/api/v1/bounties/{child['id']}/lineage").json()['root_id'] == bounty
-        assert write(client, f"/bounties/{child['id']}/ai/start", {}).status_code == 200
+        assert client.get(f'/api/v1/tasks/{task}').json()['status'] == 'decomposed'
+        assert client.get(f"/api/v1/tasks/{child['id']}").json()['complexity'] == 'HIGH'
+        assert client.get(f"/api/v1/tasks/{child['id']}/lineage").json()['root_id'] == task
+        assert write(client, f"/tasks/{child['id']}/ai/start", {}).status_code == 200
         assert get_run(client, child['id'])['status'] == 'needs_input'
         after = client.get('/api/v1/me/stats').json()
         assert (before['available_gold'], before['reserved_gold']) == (after['available_gold'], after['reserved_gold'])
@@ -137,39 +137,39 @@ def test_questions_can_continue_past_three_across_turns(tmp_path):
                       decision('ask', questions=['Four?', 'Five?', 'Six?', 'Seven?']),
                       decision('deliver', files=[{'path': 'calc.py', 'content': 'fixed'}], instructions='Verify locally')])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
-        write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['a', 'b']})
-        write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['c']})
-        assert get_run(client, bounty)['question_count'] == 7
-        assert get_run(client, bounty)['status'] == 'needs_input'
-        assert len(get_run(client, bounty)['conversation']) == 5
-        assert write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['d', 'e', 'f', 'g']}).status_code == 200
-        assert get_run(client, bounty)['status'] == 'ready'
-        assert get_run(client, bounty)['question_count'] == 7
+        task = post_task(client).json()['id']
+        write(client, f'/tasks/{task}/ai/start', {'source_zip': source_zip()})
+        write(client, f'/tasks/{task}/ai/answers', {'answers': ['a', 'b']})
+        write(client, f'/tasks/{task}/ai/answers', {'answers': ['c']})
+        assert get_run(client, task)['question_count'] == 7
+        assert get_run(client, task)['status'] == 'needs_input'
+        assert len(get_run(client, task)['conversation']) == 5
+        assert write(client, f'/tasks/{task}/ai/answers', {'answers': ['d', 'e', 'f', 'g']}).status_code == 200
+        assert get_run(client, task)['status'] == 'ready'
+        assert get_run(client, task)['question_count'] == 7
         assert model.calls == 4
 
 
 def test_empty_question_outcome_still_fails(tmp_path):
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=FakeLuna([decision('ask')]))) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {})
-        assert get_run(client, bounty)['status'] == 'failed'
+        task = post_task(client).json()['id']
+        write(client, f'/tasks/{task}/ai/start', {})
+        assert get_run(client, task)['status'] == 'failed'
 
 
 def test_pending_run_uses_new_model_only_on_next_explicit_turn(tmp_path):
     model = FakeLuna([decision('ask', questions=['Source?']), decision('ask', questions=['Revision?'])])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {})
-        original = client.get('/api/v1/bounties/' + bounty).json()
+        task = post_task(client).json()['id']
+        write(client, f'/tasks/{task}/ai/start', {})
+        original = client.get('/api/v1/tasks/' + task).json()
         model.model = 'gpt-5.6-terra'
-        pending = client.get('/api/v1/bounties/' + bounty).json()
+        pending = client.get('/api/v1/tasks/' + task).json()
         assert pending['ai_run']['model'] == 'gpt-6-luna'
         assert pending['ai_run']['next_model'] == 'gpt-5.6-terra'
         assert pending['events'] == original['events'] and model.calls == 1
-        write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['Attached source']})
-        current = client.get('/api/v1/bounties/' + bounty).json()
+        write(client, f'/tasks/{task}/ai/answers', {'answers': ['Attached source']})
+        current = client.get('/api/v1/tasks/' + task).json()
         assert current['ai_run']['model'] == 'gpt-5.6-terra'
         assert current['ai_run']['conversation'][:1] == original['ai_run']['conversation']
         changed = next(event for event in current['events'] if event['kind'] == 'ai_model_changed')
@@ -193,10 +193,10 @@ def test_reject_unsafe_source(path):
 
 def test_missing_key_does_not_claim_or_create_run(client, monkeypatch):
     monkeypatch.delenv('OPENAI_API_KEY', raising=False)
-    bounty = post_bounty(client).json()['id']
-    result = write(client, f'/bounties/{bounty}/ai/start', {})
+    task_id = post_task(client).json()['id']
+    result = write(client, f'/tasks/{task_id}/ai/start', {})
     assert result.status_code == 503
-    task = client.get('/api/v1/bounties/' + bounty).json()
+    task = client.get('/api/v1/tasks/' + task_id).json()
     assert task['status'] == 'open' and task['ai_run'] is None
 
 
@@ -235,22 +235,22 @@ def test_picker_choice_is_validated_retained_and_audited(tmp_path, choice, ident
                       decision('ask', questions=['Environment?'])])
     model.model = 'gpt-5.6-terra'
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = post_bounty(client).json()['id']
-        options = client.get('/api/v1/bounties/' + bounty).json()['ai_options']
+        task = post_task(client).json()['id']
+        options = client.get('/api/v1/tasks/' + task).json()['ai_options']
         assert options == {'models': [{'value': 'sol', 'name': 'Sol'}, {'value': 'terra', 'name': 'Terra'},
                                      {'value': 'luna', 'name': 'Luna'}], 'recommended': 'terra'}
         assert model.calls == 0
-        assert write(client, f'/bounties/{bounty}/ai/start', {'model': 'arbitrary-provider'}).status_code == 422
-        assert write(client, f'/bounties/{bounty}/ai/start', {'model': choice}).status_code == 200
-        assert get_run(client, bounty)['model'] == identifier
-        assert get_run(client, bounty)['model_choice'] == choice
-        assert write(client, f'/bounties/{bounty}/ai/answers', {'model': 'sol', 'answers': ['Source']}, 'will').status_code == 403
-        assert model.calls == 1 and get_run(client, bounty)['model_choice'] == choice
-        assert write(client, f'/bounties/{bounty}/ai/answers', {'model': 'bad', 'answers': ['Source']}).status_code == 422
-        assert write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['Source']}).status_code == 200
-        assert get_run(client, bounty)['model'] == identifier
-        assert write(client, f'/bounties/{bounty}/ai/answers', {'model': 'sol', 'answers': ['Revision']}).status_code == 200
-        current = client.get('/api/v1/bounties/' + bounty).json()
+        assert write(client, f'/tasks/{task}/ai/start', {'model': 'arbitrary-provider'}).status_code == 422
+        assert write(client, f'/tasks/{task}/ai/start', {'model': choice}).status_code == 200
+        assert get_run(client, task)['model'] == identifier
+        assert get_run(client, task)['model_choice'] == choice
+        assert write(client, f'/tasks/{task}/ai/answers', {'model': 'sol', 'answers': ['Source']}, 'will').status_code == 403
+        assert model.calls == 1 and get_run(client, task)['model_choice'] == choice
+        assert write(client, f'/tasks/{task}/ai/answers', {'model': 'bad', 'answers': ['Source']}).status_code == 422
+        assert write(client, f'/tasks/{task}/ai/answers', {'answers': ['Source']}).status_code == 200
+        assert get_run(client, task)['model'] == identifier
+        assert write(client, f'/tasks/{task}/ai/answers', {'model': 'sol', 'answers': ['Revision']}).status_code == 200
+        current = client.get('/api/v1/tasks/' + task).json()
         assert current['ai_run']['model'] == 'gpt-6.1-sol'
         assert current['ai_run']['model_choice'] == 'sol' and model.calls == 3
         assert [event['data']['model'] for event in current['events'] if event['kind'] == 'ai_ask'] == [identifier, identifier, 'gpt-6.1-sol']
@@ -259,23 +259,23 @@ def test_picker_choice_is_validated_retained_and_audited(tmp_path, choice, ident
 def test_retry_can_select_a_model_without_bypassing_run_ownership(tmp_path):
     model = FakeLuna([decision('ask'), decision('ask', questions=['Source?'])])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {'model': 'terra'})
-        assert get_run(client, bounty)['status'] == 'failed'
-        assert write(client, f'/bounties/{bounty}/ai/retry', {'model': 'sol'}, 'will').status_code == 403
-        assert write(client, f'/bounties/{bounty}/ai/retry', {'model': 'bad'}).status_code == 422
-        assert write(client, f'/bounties/{bounty}/ai/retry', {'model': 'sol'}).status_code == 200
-        assert get_run(client, bounty)['status'] == 'needs_input'
-        assert get_run(client, bounty)['model'] == 'gpt-6.1-sol'
+        task = post_task(client).json()['id']
+        write(client, f'/tasks/{task}/ai/start', {'model': 'terra'})
+        assert get_run(client, task)['status'] == 'failed'
+        assert write(client, f'/tasks/{task}/ai/retry', {'model': 'sol'}, 'will').status_code == 403
+        assert write(client, f'/tasks/{task}/ai/retry', {'model': 'bad'}).status_code == 422
+        assert write(client, f'/tasks/{task}/ai/retry', {'model': 'sol'}).status_code == 200
+        assert get_run(client, task)['status'] == 'needs_input'
+        assert get_run(client, task)['model'] == 'gpt-6.1-sol'
 
 
 def test_target_and_claimant_are_respected(tmp_path):
     model = FakeLuna([])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = write(client, '/bounties', {'title': 'Targeted', 'goal': 'Fix', 'criteria': ['Works'], 'gold': 10, 'target': 'nate'}).json()['id']
-        assert write(client, f'/bounties/{bounty}/ai/start', {}).status_code == 403
-        write(client, f'/bounties/{bounty}/take', user='nate')
-        assert write(client, f'/bounties/{bounty}/ai/start', {}, user='will').status_code == 403
+        task = write(client, '/tasks', {'title': 'Targeted', 'goal': 'Fix', 'criteria': ['Works'], 'gold': 10, 'target': 'nate'}).json()['id']
+        assert write(client, f'/tasks/{task}/ai/start', {}).status_code == 403
+        write(client, f'/tasks/{task}/take', user='nate')
+        assert write(client, f'/tasks/{task}/ai/start', {}, user='will').status_code == 403
 
 
 @pytest.mark.parametrize('plan', [[], [{'id': 'parent', 'title': 'Too broad', 'complexity': 'MEDIUM', 'children': [], 'files': ['calc.py']}],
@@ -283,10 +283,10 @@ def test_target_and_claimant_are_respected(tmp_path):
 def test_invalid_complexity_cannot_publish_a_fix(tmp_path, plan):
     model = FakeLuna([decision('deliver', files=[{'path': 'calc.py', 'content': 'fixed'}], instructions='Test', plan=plan)])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
-        assert get_run(client, bounty)['status'] == 'failed'
-        assert client.get(f'/api/v1/bounties/{bounty}/ai/artifact').status_code == 409
+        task = post_task(client).json()['id']
+        write(client, f'/tasks/{task}/ai/start', {'source_zip': source_zip()})
+        assert get_run(client, task)['status'] == 'failed'
+        assert client.get(f'/api/v1/tasks/{task}/ai/artifact').status_code == 409
 
 
 def test_retired_labels_are_not_accepted_in_new_model_plans():

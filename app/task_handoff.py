@@ -30,7 +30,7 @@ def read_package(raw, task_id):
             if not name or path.is_absolute() or '..' in path.parts or '\\' in name or ':' in name:
                 raise ValueError('Task package contains an unsafe file path')
         manifest = json.loads(archive.read('handoff.json'))
-        task = json.loads(archive.read('bounty.json'))
+        task = json.loads(archive.read('task.json'))
         if manifest['schema_version'] != 1 or manifest['task_id'] != task_id or task['id'] != task_id:
             raise ValueError('Task package identity does not match the accepted task')
         entries = manifest['files']

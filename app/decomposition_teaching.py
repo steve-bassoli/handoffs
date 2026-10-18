@@ -2,10 +2,10 @@
 import hashlib
 import json
 
-from app.complexity import DECOMPOSITION, MIN_CHILDREN, validate_bounty_split
+from app.complexity import DECOMPOSITION, MIN_CHILDREN, validate_task_split
 
 
-SOURCE = 'app.complexity:DECOMPOSITION,MIN_CHILDREN,validate_bounty_split'
+SOURCE = 'app.complexity:DECOMPOSITION,MIN_CHILDREN,validate_task_split'
 BEGIN = '<!-- BEGIN GENERATED DECOMPOSITION_TEACHING V1 -->'
 END = '<!-- END GENERATED DECOMPOSITION_TEACHING V1 -->'
 
@@ -36,7 +36,7 @@ def _example(identifier, explanation, trace):
     valid = True
     for split in splits:
         try:
-            validate_bounty_split(split['parent'], split['children'])
+            validate_task_split(split['parent'], split['children'])
         except ValueError:
             valid = False
     return {'id': identifier, 'explanation': explanation,

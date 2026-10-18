@@ -8,7 +8,7 @@ import json
 from uuid import uuid4
 
 from app.adapters import DemoDeliveryVerifier
-from app.complexity import validate_bounty_split
+from app.complexity import validate_task_split
 from app.services import RuleError, Service, encode, now
 from app.storage import Database
 
@@ -27,13 +27,13 @@ def spawn_children(database, parent_id, children, actor, source):
             parent = service.detail(c, parent_id)
             if parent['status'] != 'open' or parent['complexity'] not in ('HIGH', 'MEDIUM'):
                 raise RuleError('Spawn only from an open HIGH or MEDIUM ticket')
-            validate_bounty_split(parent['complexity'], [child['complexity'] for child in children])
+            validate_task_split(parent['complexity'], [child['complexity'] for child in children])
             created = []
             for index, child in enumerate(children):
                 if not child.get('title') or not child.get('goal') or not child.get('criteria'):
                     raise ValueError('Each child needs a title, goal and criteria')
                 identifier = str(uuid4())
-                c.exec_driver_sql('''INSERT INTO bounties(id,title,goal,criteria,repository,context_links,
+                c.exec_driver_sql('''INSERT INTO tasks(id,title,goal,criteria,repository,context_links,
                     creator,target,gold,created_at,funded,parent_id) VALUES (?,?,?,?,?,?,?,?,?,?,0,?)''',
                     (identifier, child['title'][:160], child['goal'], encode(child['criteria']), parent['repository'],
                      encode(child.get('context_links') or parent['context_links']), actor, None, 1, now(), parent['id']))

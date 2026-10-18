@@ -26,7 +26,7 @@ assert.notEqual(requestCacheKey('steve:/packages'), requestCacheKey('nate:/packa
 def test_task_links_accept_legacy_hashes_and_write_task_hashes():
     node = shutil.which('node')
     if not node:
-        pytest.skip('Node is needed for the pure JavaScript opportunity-link check')
+        pytest.skip('Node is needed for the pure JavaScript task-link check')
     checks = r'''
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -58,7 +58,7 @@ const startup = source.slice(source.lastIndexOf('run(async () => {'));
     };
     vm.runInNewContext(show + '\n' + startup, context);
     await context.finished;
-    assert.deepEqual(requests, id ? ['/users', '/bounties/' + encodeURIComponent(id)] : ['/users']);
+    assert.deepEqual(requests, id ? ['/users', '/tasks/' + encodeURIComponent(id)] : ['/users']);
     assert.equal(context.location.hash, id ? '#task=' + encodeURIComponent(id) : '');
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });

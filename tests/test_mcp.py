@@ -14,6 +14,9 @@ from mcp.client.stdio import stdio_client
 from conftest import FixtureProofReviewer, verified_proof
 from app.main import create_app
 
+# Deprecated aliases kept so already-connected agents keep working after the bounty -> task rename.
+LEGACY_TOOLS = {'post_' + 'bounty', 'take_' + 'bounty', 'get_' + 'bounty', 'list_' + 'bounties', 'edit_' + 'bounty', 'get_' + 'bounty_context'}
+
 
 def fixture_app():
     return create_app(proof_reviewer=FixtureProofReviewer())
@@ -70,34 +73,34 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
     async def scenario():
         async with session(live_api, 'steve', tmp_path) as requester, session(live_api, 'nate', tmp_path) as worker:
             tools = {tool.name: tool for tool in (await requester.list_tools()).tools}
-            assert set(tools) == {'list_bounties', 'get_bounty', 'get_bounty_context', 'get_my_stats', 'post_bounty', 'edit_bounty', 'take_bounty', 'deliver_pr'}
-            assert tools['list_bounties'].annotations.readOnlyHint is True
-            assert tools['get_bounty'].annotations.readOnlyHint is True
-            for name in ('get_my_stats', 'post_bounty', 'take_bounty', 'deliver_pr'):
+            assert set(tools) == {'list_tasks', 'get_task', 'get_task_context', 'get_my_stats', 'post_task', 'edit_task', 'take_task', 'deliver_pr'} | LEGACY_TOOLS
+            assert tools['list_tasks'].annotations.readOnlyHint is True
+            assert tools['get_task'].annotations.readOnlyHint is True
+            for name in ('get_my_stats', 'post_task', 'take_task', 'deliver_pr'):
                 assert tools[name].annotations.readOnlyHint is False
-            assert 'operation_id' in tools['post_bounty'].inputSchema['required']
+            assert 'operation_id' in tools['post_task'].inputSchema['required']
             assert (await call(requester, 'get_my_stats'))['available_gold'] == 1000
-            arguments = {'title': 'MCP-only fixture bounty', 'goal': 'Prove the bridge',
+            arguments = {'title': 'MCP-only fixture task', 'goal': 'Prove the bridge',
                          'criteria': ['Return PR evidence'], 'gold': 150, 'operation_id': 'fund-once', 'complexity': 'LOW'}
-            bounty = await call(requester, 'post_bounty', arguments)
-            assert (await call(requester, 'post_bounty', arguments))['id'] == bounty['id']
-            assert len((await call(worker, 'list_bounties'))['items']) == 1
-            assert (await call(worker, 'get_bounty', {'bounty_id': bounty['id']}))['criteria'] == arguments['criteria']
-            assert (await call(worker, 'take_bounty', {'bounty_id': bounty['id'], 'operation_id': 'take-once'}))['claimant'] == 'nate'
+            task = await call(requester, 'post_task', arguments)
+            assert (await call(requester, 'post_task', arguments))['id'] == task['id']
+            assert len((await call(worker, 'list_tasks'))['items']) == 1
+            assert (await call(worker, 'get_task', {'task_id': task['id']}))['criteria'] == arguments['criteria']
+            assert (await call(worker, 'take_task', {'task_id': task['id'], 'operation_id': 'take-once'}))['claimant'] == 'nate'
             with httpx.Client(base_url=live_api) as fixture_client:
-                verified_proof(fixture_client, bounty['id'], 'nate')
-            delivery = {'bounty_id': bounty['id'], 'pr_url': 'https://github.com/example/source/pull/18',
+                verified_proof(fixture_client, task['id'], 'nate')
+            delivery = {'task_id': task['id'], 'pr_url': 'https://github.com/example/source/pull/18',
                         'evidence': 'MCP fixture proof; no real PR created', 'operation_id': 'deliver-once'}
             paid = await call(worker, 'deliver_pr', delivery)
             assert paid['status'] == 'settled' and paid['deliveries'][0]['simulated'] == 1
             assert (await call(worker, 'deliver_pr', delivery)) == paid
             assert (await call(worker, 'get_my_stats'))['available_gold'] == 1150
             arguments.update(gold=1100, operation_id='repost-earned-gold')
-            await call(worker, 'post_bounty', arguments)
+            await call(worker, 'post_task', arguments)
             stats = await call(worker, 'get_my_stats')
             assert (stats['available_gold'], stats['reserved_gold']) == (50, 1100)
-            own = await call(requester, 'post_bounty', {**arguments, 'gold': 10, 'operation_id': 'own-work'})
-            claimed = await call(requester, 'take_bounty', {'bounty_id': own['id'], 'operation_id': 'self-claim'})
+            own = await call(requester, 'post_task', {**arguments, 'gold': 10, 'operation_id': 'own-work'})
+            claimed = await call(requester, 'take_task', {'task_id': own['id'], 'operation_id': 'self-claim'})
             assert claimed['claimant'] == 'steve' and claimed['status'] == 'working'
             processing = claimed['processing']
             assert processing['state'] == 'context-ready'
@@ -106,24 +109,24 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             assert 'no provider request' in processing['executor']
             assert 'context.md' in processing['documents']
             for operation in ['self-claim', 'another-accept-same-task']:
-                replay = await call(requester, 'take_bounty', {'bounty_id': own['id'], 'operation_id': operation})
+                replay = await call(requester, 'take_task', {'task_id': own['id'], 'operation_id': operation})
                 assert replay['processing']['execution_id'] == processing['execution_id']
                 assert replay['processing']['reused'] is True
                 assert sum(event['kind'] == 'taken' for event in replay['events']) == 1
                 assert replay['ai_run'] is None
-            invalid = await worker.call_tool('list_bounties', {'limit': 0})
+            invalid = await worker.call_tool('list_tasks', {'limit': 0})
             assert invalid.isError
-            missing = await worker.call_tool('get_bounty', {'bounty_id': 'missing'})
+            missing = await worker.call_tool('get_task', {'task_id': 'missing'})
             assert missing.isError and '404' in missing.content[0].text
     asyncio.run(scenario())
 
 
 def test_claim_reports_package_failure_and_resumes_same_claim(client, monkeypatch, tmp_path):
     from app import mcp_server
-    from conftest import post_bounty
+    from conftest import post_task
     monkeypatch.setenv('HANDOFFS_WORK_ROOT', str(tmp_path / 'work'))
     monkeypatch.setattr(mcp_server, 'DEMO_USER', 'steve')
-    bounty = post_bounty(client).json()['id']
+    task = post_task(client).json()['id']
     def request(method, path, **kwargs):
         response = client.request(method, '/api/v1' + path, json=kwargs.get('body'),
             headers={'X-Demo-User': 'steve', 'Idempotency-Key': kwargs.get('operation_id', '')})
@@ -137,18 +140,18 @@ def test_claim_reports_package_failure_and_resumes_same_claim(client, monkeypatc
         def __exit__(self, *args):
             pass
     monkeypatch.setattr(mcp_server.httpx, 'stream', lambda *a, **k: FailedDownload())
-    result = mcp_server.take_bounty(bounty, 'claim-without-package')
+    result = mcp_server.take_task(task, 'claim-without-package')
     assert result['claimant'] == 'steve' and result['processing']['state'] == 'blocked'
     assert 'download failed' in result['processing']['error']
     assert 'same operation_id' in result['processing']['next_action']
     assert not list(tmp_path.rglob('input.zip'))
     from contextlib import contextmanager
-    raw = client.get(f'/api/v1/bounties/{bounty}/artifacts/download', headers={'X-Demo-User': 'steve'}).content
+    raw = client.get(f'/api/v1/tasks/{task}/artifacts/download', headers={'X-Demo-User': 'steve'}).content
     @contextmanager
     def recovered(*args, **kwargs):
         yield httpx.Response(200, request=httpx.Request('GET', 'http://fixture'), content=raw)
     monkeypatch.setattr(mcp_server.httpx, 'stream', recovered)
-    resumed = mcp_server.take_bounty(bounty, 'claim-without-package')
+    resumed = mcp_server.take_task(task, 'claim-without-package')
     assert resumed['processing']['state'] == 'context-ready'
     assert sum(event['kind'] == 'taken' for event in resumed['events']) == 1
     assert resumed['ai_run'] is None
@@ -160,6 +163,6 @@ def test_stdio_unavailable_service_returns_tool_error(tmp_path):
         unavailable = f'http://127.0.0.1:{closed_socket.getsockname()[1]}'
         async def scenario():
             async with session(unavailable, 'steve', tmp_path) as client:
-                result = await client.call_tool('list_bounties')
+                result = await client.call_tool('list_tasks')
                 assert result.isError and 'unreachable' in result.content[0].text
         asyncio.run(scenario())

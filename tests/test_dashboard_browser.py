@@ -163,7 +163,7 @@ def test_dashboard_connected_browser(tmp_path):
             time.sleep(.1)
         else:
             pytest.fail('Isolated dashboard service did not become ready')
-        posted = httpx.post(base + '/api/v1/bounties', headers={'X-Demo-User': 'steve',
+        posted = httpx.post(base + '/api/v1/tasks', headers={'X-Demo-User': 'steve',
             'Idempotency-Key': 'browser-fixture'}, json={'title': 'Browser integration task', 'goal': 'Read-only display',
             'criteria': ['Works'], 'gold': 10, 'complexity': 'LOW'}).raise_for_status().json()
         result = subprocess.run([node, '-e', NODE, base, posted['id']], capture_output=True,

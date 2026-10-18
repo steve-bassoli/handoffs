@@ -109,7 +109,7 @@ def test_missing_files(tmp_path, monkeypatch, fallback):
 
 def test_unsupported_ast_cannot_pass(checkout):
     (checkout / 'app/complexity.py').write_text(
-        'def validate_bounty_split(parent, levels):\n    return levels[0]\n', encoding='utf-8')
+        'def validate_task_split(parent, levels):\n    return levels[0]\n', encoding='utf-8')
     row = first(checkout)
     assert row['status'] == 'partial'
     assert row['reason'] == 'Probe unavailable: ValueError'
