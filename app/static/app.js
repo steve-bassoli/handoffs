@@ -135,7 +135,7 @@ async function agentRoster() {
 }
 const TASK_VIEWS = new Set(['open', 'mine', 'post']), WORKSPACE_BUTTONS = 'nav[aria-label="Workspace"] button[data-view]';
 async function navigate(nextView) {
-  if (typeof treeEpoch !== 'undefined') treeEpoch++;
+  const epoch = typeof treeEpoch !== 'undefined' ? ++treeEpoch : null;
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   view = nextView; selected = null;
@@ -151,6 +151,7 @@ async function navigate(nextView) {
   if ($('tasks-toolbar')) $('tasks-toolbar').hidden = !TASK_VIEWS.has(view);
   for (const button of document.querySelectorAll('[data-task-view]')) button.dataset.taskView === view ? button.setAttribute('aria-current', 'page') : button.removeAttribute('aria-current');
   await stats();
+  if (epoch !== null && epoch !== treeEpoch) return;
   if (view === 'post') $('post').hidden = false;
   else if (view === 'gremlins') $('gremlins').hidden = false;
   else if (view === 'agents') { $('agents').hidden = false; await agentRoster(); }
@@ -262,10 +263,12 @@ function checkpointSection(data) {
 }
 
 async function show(id) {
-  if (typeof treeEpoch !== 'undefined') treeEpoch++;
+  // Late work from a page the user already left must not change history, sections or focus.
+  const epoch = typeof treeEpoch !== 'undefined' ? ++treeEpoch : null, stale = () => epoch !== null && epoch !== treeEpoch;
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   const data = await api('/tasks/' + encodeURIComponent(id));
+  if (stale()) return;
   selected = id;
   for (const button of $('tasks-toolbar')?.querySelectorAll?.('[data-task-view]') || []) button.removeAttribute('aria-current');
   if (typeof window !== 'undefined' && window.commonsNavigation) window.commonsNavigation.update(view, user, id);
@@ -277,7 +280,8 @@ async function show(id) {
   const current = $('detail');
   const refreshing = !current.hidden && current.querySelector('.detail-head code')?.textContent === id;
   const detail = element('div');
-  const back = element('button', '← Back to board'); back.onclick = () => run(() => navigate('open'));
+  const listView = typeof view !== 'undefined' && view === 'mine' ? 'mine' : 'open';
+  const back = element('button', listView === 'mine' ? '← Back to my tasks' : '← Back to tasks'); back.onclick = () => run(() => navigate(listView));
   const dashboard = element('a', 'Open dashboard for this task');
   dashboard.href = '/dashboard?user=' + encodeURIComponent(user) + '&task=' + encodeURIComponent(id);
   const header = element('div', undefined, 'detail-head'); header.append(element('span', data.phase, 'pill'), element('span', data.complexity, 'pill'), element('span', `Target: ${data.profile?.validation_scope || 'Unclassified'}`, 'pill'));
@@ -291,8 +295,10 @@ async function show(id) {
   if (data.repository) detail.append(element('p', 'Repository: ' + data.repository, 'content'));
   data.context_links.forEach(text => detail.append(element('p', text, 'content')));
   await workflowSection(data, detail);
+  if (stale()) return;
   proofSection(data, detail);
   await artifactsSection(data, detail);
+  if (stale()) return;
   detail.append(element('p', `Requester: ${data.creator} · ${data.claimant ? 'Worker: ' + data.claimant : data.target ? 'Offered to ' + data.target + ' · not claimed' : 'Available to claim'} · ${data.funded ? 'Reserved demo Gold is released only on verified completion.' : 'Unfunded record. No new funding was created.'}`));
   const actions = element('div', undefined, 'actions');
   const treeLink = element('a', 'Tree');

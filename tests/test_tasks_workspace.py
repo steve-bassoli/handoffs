@@ -52,3 +52,35 @@ vm.runInNewContext(mutate + '\nthis.mutate = mutate;', context);
 '''
     result = subprocess.run([node, '-e', checks], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_late_task_detail_cannot_pull_the_user_back():
+    import shutil
+    import subprocess
+    import pytest
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('Node is needed for the pure JavaScript race check')
+    checks = r'''
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync('app/static/app.js', 'utf8');
+const show = source.slice(source.indexOf('async function show(id) {'), source.indexOf("  for (const section of ['board'")) + '}';
+let release;
+const writes = [];
+const context = {treeEpoch: 0, aiPoll: null, proofPoll: null, selected: null, view: 'mine', user: 'steve', encodeURIComponent,
+  clearTimeout() {}, api: () => new Promise(resolve => { release = resolve; }),
+  history: {replaceState: (...args) => writes.push(args)}, $: () => null};
+vm.runInNewContext(show + '\nthis.show = show;', context);
+(async () => {
+  const late = context.show('slow-task');
+  context.treeEpoch++;  // The user navigated elsewhere while the task was loading.
+  release({id: 'slow-task'});
+  await late;
+  assert.equal(context.selected, null, 'a stale detail must not select itself');
+  assert.deepEqual(writes, [], 'a stale detail must not rewrite history');
+})().catch(error => { console.error(error); process.exitCode = 1; });
+'''
+    result = subprocess.run([node, '-e', checks], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
