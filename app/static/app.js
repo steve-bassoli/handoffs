@@ -209,14 +209,23 @@ async function board() {
   $('page-label').textContent = `Page ${offset / pageSize + 1}`;
 }
 async function transactions() {
-  const rows = await api(`/me/transactions?limit=${pageSize}&offset=${txOffset}`);
+  // Say what is shown; a failed load must not leave old rows posing as current (same rule as the task lists).
+  $('transactions').replaceChildren(element('p', 'Loading transactions…'));
+  let rows;
+  try { rows = await api(`/me/transactions?limit=${pageSize}&offset=${txOffset}`); }
+  catch (error) {
+    const retry = element('button', 'Retry'); retry.onclick = () => run(transactions);
+    $('transactions').replaceChildren(element('p', 'Could not load transactions: ' + error.message, 'error'), retry);
+    return;
+  }
   $('transactions').replaceChildren();
   for (const item of rows) {
     const row = element('div', undefined, 'tx'); const label = element('div', item.kind.replaceAll('_', ' '));
     label.append(element('small', `${item.account_kind} · ${new Date(item.created_at).toLocaleString()}`));
     row.append(label, element('strong', `${item.amount > 0 ? '+' : ''}${item.amount} Gold`)); $('transactions').append(row);
   }
-  if (!rows.length) $('transactions').append(element('p', 'No transactions on this page.'));
+  if (!rows.length) $('transactions').append(element('p', txOffset ? 'No transactions on this page. Use Previous to go back.' : 'No transactions yet.'));
+  else $('transactions').prepend(element('p', `Page ${txOffset / pageSize + 1} · ${rows.length} transaction${rows.length === 1 ? '' : 's'} shown, newest first`, 'meta'));
   $('tx-previous').disabled = txOffset === 0; $('tx-next').disabled = rows.length < pageSize;
   $('tx-page').textContent = `Page ${txOffset / pageSize + 1}`;
 }
@@ -225,7 +234,9 @@ async function agentRoster() {
   $('agents-summary').textContent = 'Loading registered agents…';
   $('agent-rows').replaceChildren();
   try {
-    const data = await api('/agents');
+    let data;
+    try { data = await api('/agents'); }
+    catch (error) { if (view === 'agents') $('agents-summary').textContent = 'Could not load agents: ' + error.message + '. Refresh to retry.'; return; }
     if (view !== 'agents') return;
     const mode = await api('/automation-mode');
     $('agents-mode').textContent = mode.mode ? `Mode: ${mode.mode} · ${mode.summary}` : '';

@@ -71,3 +71,11 @@ async function finish(promise, items = []) { pending.at(-1).resolve({items, crea
 '''
     result = subprocess.run([node, '-e', checks], cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_wallet_and_agents_say_what_they_show_and_fail_visibly():
+    from pathlib import Path
+    script = (Path(__file__).resolve().parents[1] / 'app' / 'static' / 'app.js').read_text(encoding='utf-8')
+    assert "'Could not load transactions: '" in script and "retry.onclick = () => run(transactions)" in script
+    assert "transaction${rows.length === 1 ? '' : 's'} shown, newest first" in script
+    assert "'Could not load agents: '" in script
