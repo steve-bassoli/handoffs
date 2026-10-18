@@ -70,6 +70,18 @@ the write failed. The helper does not retry. On a conflict, inspect current
 state before choosing another operation.
 
 The service owns all task state, Gold calculations, and payment rules.
+When the user explicitly asks to checkpoint/save progress and continue later,
+use `checkpoint_task(task_id, notes, operation_id)` or POST the same notes to
+`/api/v1/tasks/<id>/checkpoint`. First attach any local draft evidence that must
+survive the session. Notes state completed work, remaining work, evidence/commit
+references, blockers and the next action. The transaction closes the original
+as superseded and opens a linked task with the same title, goal, criteria and
+complexity; parent/child positions and dependencies follow the continuation.
+This is not decomposition, completion, proof acceptance or a payout. Reserved
+Gold moves once; prior evidence/reviews stay on the original and are linked,
+not accepted again. Preserve RO3; a LOW continuation remains a leaf. Keep the
+new task open until the user resumes work. Do not infer a checkpoint from a
+status question. Identical retries reuse the retained operation_id.
 For each authorized implementation commit, verify the intended repository,
 remote push URL and branch, then push and verify that exact SHA on the remote in
 the same turn. Use `scripts/publish-task.py` in the target checkout when available,

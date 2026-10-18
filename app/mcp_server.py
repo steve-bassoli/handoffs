@@ -142,6 +142,13 @@ def edit_task(
 
 
 @server.tool(annotations=WRITE)
+def checkpoint_task(task_id: str, notes: str, operation_id: OperationId) -> dict[str, Any]:
+    """On explicit request, save progress: supersede this task and open one linked continuation with the same scope/complexity and notes. Preserves RO3, dependencies and reserved Gold; never accepts proof, pays, claims the continuation or starts work. Retain operation_id for identical retries."""
+    return request('POST', '/tasks/' + quote(task_id, safe='') + '/checkpoint',
+                   body={'notes': notes}, operation_id=operation_id)
+
+
+@server.tool(annotations=WRITE)
 def take_task(task_id: str, operation_id: OperationId) -> dict[str, Any]:
     """Claim and download verified task context, then continue processing in this session. Never spawns another agent."""
     path = '/tasks/' + quote(task_id, safe='')

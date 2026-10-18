@@ -69,6 +69,11 @@ class ReopenTask(BaseModel):
     note: str = Field(min_length=1, max_length=2000)
 
 
+class CheckpointTask(BaseModel):
+    model_config = {'extra': 'forbid'}
+    notes: str = Field(min_length=1, max_length=30000)
+
+
 class Delivery(BaseModel):
     pr_url: HttpUrl
     evidence: str = Field(min_length=1)
@@ -325,6 +330,11 @@ this page does not query the live Codex quota meter.</p>
     def reopen(task_id: str, payload: ReopenTask, request: Request, user=Depends(actor),
                idempotency_key: str = Header(min_length=1, max_length=200)):
         return request.app.state.service.execute(user, idempotency_key, 'ai_reopen', {'id': task_id, **payload.model_dump()})
+
+    @app.post('/api/v1/tasks/{task_id}/checkpoint')
+    def checkpoint(task_id: str, payload: CheckpointTask, request: Request, user=Depends(actor),
+                   idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'checkpoint', {'id': task_id, **payload.model_dump()})
 
     @app.post('/api/v1/tasks/{task_id}/take')
     def take(task_id: str, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
