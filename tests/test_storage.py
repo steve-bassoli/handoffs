@@ -12,5 +12,5 @@ def test_migration_is_repeatable_and_data_survives(tmp_path):
     restarted.migrate()
     with restarted.engine.connect() as connection:
         assert one(connection, 'SELECT * FROM users')['id'] == 'a'
-        assert one(connection, 'SELECT version_num FROM alembic_version')['version_num'] == '005'
+        assert one(connection, 'SELECT version_num FROM alembic_version')['version_num'] == '006'
     restarted.engine.dispose()
