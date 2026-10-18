@@ -1,0 +1,116 @@
+{
+  "cases": [
+    {
+      "name": "valid_two_medium_children",
+      "input": {
+        "lineage": [{"id":"C","parent_id":"A"},{"id":"A","parent_id":null},{"id":"B","parent_id":"A"}],
+        "detailsById": {"A":{"complexity":"HIGH","classification_explicit":true,"title":"<img src=x onerror=alert(1)>"},"B":{"complexity":"MEDIUM","classification_explicit":true},"C":{"complexity":"MEDIUM","classification_explicit":true}},
+        "coverage": {"complete_parent_ids":["A","B","C"]}
+      },
+      "expected": {"schema_version":1,"tickets":[
+        {"id":"A","parent_id":null,"child_ids":["B","C"],"title":"<img src=x onerror=alert(1)>","status":"valid","reasons":["split_valid"]},
+        {"id":"B","parent_id":"A","child_ids":[],"title":"B","status":"not_yet_split","reasons":["no_children"]},
+        {"id":"C","parent_id":"A","child_ids":[],"title":"C","status":"not_yet_split","reasons":["no_children"]}
+      ]}
+    },
+    {
+      "name": "valid_four_low_children",
+      "input": {
+        "lineage": [{"id":"M","parent_id":null},{"id":"L4","parent_id":"M"},{"id":"L2","parent_id":"M"},{"id":"L1","parent_id":"M"},{"id":"L3","parent_id":"M"}],
+        "detailsById": {"M":{"complexity":"MEDIUM","classification_explicit":true},"L1":{"complexity":"LOW","classification_explicit":true},"L2":{"complexity":"LOW","classification_explicit":true},"L3":{"complexity":"LOW","classification_explicit":true},"L4":{"complexity":"LOW","classification_explicit":true}},
+        "coverage": {"complete_parent_ids":["M","L1","L2","L3","L4"]}
+      },
+      "expected": {"schema_version":1,"tickets":[
+        {"id":"L1","parent_id":"M","child_ids":[],"title":"L1","status":"not_yet_split","reasons":["no_children"]},
+        {"id":"L2","parent_id":"M","child_ids":[],"title":"L2","status":"not_yet_split","reasons":["no_children"]},
+        {"id":"L3","parent_id":"M","child_ids":[],"title":"L3","status":"not_yet_split","reasons":["no_children"]},
+        {"id":"L4","parent_id":"M","child_ids":[],"title":"L4","status":"not_yet_split","reasons":["no_children"]},
+        {"id":"M","parent_id":null,"child_ids":["L1","L2","L3","L4"],"title":"M","status":"valid","reasons":["split_valid"]}
+      ]}
+    },
+    {
+      "name": "invalid_mixed_high_children",
+      "input": {
+        "lineage": [{"id":"A","parent_id":null},{"id":"B","parent_id":"A"},{"id":"C","parent_id":"A"}],
+        "detailsById": {"A":{"complexity":"HIGH","classification_explicit":true},"B":{"complexity":"HIGH","classification_explicit":true},"C":{"complexity":"MEDIUM","classification_explicit":true}},
+        "coverage": {"complete_parent_ids":["A","B","C"]}
+      },
+      "expected": {"schema_version":1,"tickets":[
+        {"id":"A","parent_id":null,"child_ids":["B","C"],"title":"A","status":"violation","reasons":["split_invalid"]},
+        {"id":"B","parent_id":"A","child_ids":[],"title":"B","status":"not_yet_split","reasons":["no_children"]},
+        {"id":"C","parent_id":"A","child_ids":[],"title":"C","status":"not_yet_split","reasons":["no_children"]}
+      ]}
+    },
+    {
+      "name": "invalid_singleton_and_low_parent",
+      "input": {
+        "lineage": [{"id":"A","parent_id":null},{"id":"B","parent_id":"A"},{"id":"X","parent_id":null},{"id":"Y","parent_id":"X"},{"id":"Z","parent_id":"X"}],
+        "detailsById": {"A":{"complexity":"HIGH","classification_explicit":true},"B":{"complexity":"MEDIUM","classification_explicit":true},"X":{"complexity":"LOW","classification_explicit":true},"Y":{"complexity":"LOW","classification_explicit":true},"Z":{"complexity":"LOW","classification_explicit":true}},
+        "coverage": {"complete_parent_ids":["A","B","X","Y","Z"]}
+      },
+      "expected": {"schema_version":1,"tickets":[
+        {"id":"A","parent_id":null,"child_ids":["B"],"title":"A","status":"violation","reasons":["split_invalid"]},
+        {"id":"B","parent_id":"A","child_ids":[],"title":"B","status":"not_yet_split","reasons":["no_children"]},
+        {"id":"X","parent_id":null,"child_ids":["Y","Z"],"title":"X","status":"violation","reasons":["split_invalid"]},
+        {"id":"Y","parent_id":"X","child_ids":[],"title":"Y","status":"not_yet_split","reasons":["no_children"]},
+        {"id":"Z","parent_id":"X","child_ids":[],"title":"Z","status":"not_yet_split","reasons":["no_children"]}
+      ]}
+    },
+    {
+      "name": "untouched_explicit_root",
+      "input": {
+        "lineage": [{"id":"A","parent_id":null}],
+        "detailsById": {"A":{"complexity":"HIGH","classification_explicit":true}},
+        "coverage": {"complete_parent_ids":["A"]}
+      },
+      "expected": {"schema_version":1,"tickets":[
+        {"id":"A","parent_id":null,"child_ids":[],"title":"A","status":"not_yet_split","reasons":["no_children"]}
+      ]}
+    },
+    {
+      "name": "partial_coverage_is_not_empty_proof",
+      "input": {
+        "lineage": [{"id":"A","parent_id":null}],
+        "detailsById": {"A":{"complexity":"HIGH","classification_explicit":true}},
+        "coverage": {}
+      },
+      "expected": {"schema_version":1,"tickets":[
+        {"id":"A","parent_id":null,"child_ids":[],"title":"A","status":"unknown","reasons":["coverage_incomplete"]}
+      ]}
+    },
+    {
+      "name": "default_classification_is_not_explicit",
+      "input": {
+        "lineage": [{"id":"A","parent_id":null}],
+        "detailsById": {"A":{"complexity":"LOW","classification_explicit":false}},
+        "coverage": {"complete_parent_ids":["A"]}
+      },
+      "expected": {"schema_version":1,"tickets":[
+        {"id":"A","parent_id":null,"child_ids":[],"title":"A","status":"unknown","reasons":["classification_missing"]}
+      ]}
+    },
+    {
+      "name": "missing_parent_is_not_a_root",
+      "input": {
+        "lineage": [{"id":"A"}],
+        "detailsById": {"A":{"complexity":"HIGH","classification_explicit":true}},
+        "coverage": {"complete_parent_ids":["A"]}
+      },
+      "expected": {"schema_version":1,"tickets":[
+        {"id":"A","parent_id":null,"child_ids":[],"title":"A","status":"unknown","reasons":["topology_incomplete"]}
+      ]}
+    },
+    {
+      "name": "orphan_taints_snapshot",
+      "input": {
+        "lineage": [{"id":"A","parent_id":"MISSING"},{"id":"B","parent_id":null}],
+        "detailsById": {"A":{"complexity":"LOW","classification_explicit":true},"B":{"complexity":"HIGH","classification_explicit":true}},
+        "coverage": {"complete_parent_ids":["A","B"]}
+      },
+      "expected": {"schema_version":1,"tickets":[
+        {"id":"A","parent_id":"MISSING","child_ids":[],"title":"A","status":"unknown","reasons":["topology_invalid"]},
+        {"id":"B","parent_id":null,"child_ids":[],"title":"B","status":"unknown","reasons":["topology_invalid"]}
+      ]}
+    }
+  ]
+}
