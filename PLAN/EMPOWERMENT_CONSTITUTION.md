@@ -38,7 +38,7 @@ checkpoints and external permissions; do not manufacture a human approval.
 1. **Security without earning it.** Every participant receives an unconditional
    daily allocation of application Credits and retains a protected reserve.
    Inactivity, mistakes, disagreement and declining work do not remove that right.
-2. **Choice without coercion.** People choose their opportunities and may pause,
+2. **Choice without coercion.** People choose their tasks and may pause,
    decline or leave without fines, debt, humiliation or loss of basic allocation.
    Consent to participate is not blanket consent to spend resources or publish data.
 3. **Contribution without domination.** Verified work and learning earn recognition;
@@ -80,7 +80,7 @@ receive a new reward. Corrections change the evidentiary status, not human worth
 
 Let B be a person's available Credit balance, excluding existing escrow, and F
 their protected reserve. Voluntary spending capacity is max(0, B - F). A proposed
-debit a must atomically satisfy B - a >= F. Funding an opportunity, giving Credits,
+debit a must atomically satisfy B - a >= F. Funding a task, giving Credits,
 reserving escrow, fees, bulk actions and administrative paths must use the same
 rule. Reserving funds is already a debit for this check; later release of that
 existing escrow must not charge the person again.
@@ -107,7 +107,7 @@ before exceeding it; Credit reserves alone do not protect an external API bill.
 Technical usage limits are not a fourth player resource. Lack of compute funding
 must not silently consume the protected reserve or revoke basic participation.
 
-## Opportunities and consent
+## Tasks and consent
 
 ### Shared access to AI
 
@@ -122,7 +122,7 @@ their number is descriptive, never a reason to force three into other decisions.
 Judge the system by useful, verified outcomes and human effort saved, not quota
 exhaustion. Record failed requests and uncertain usage honestly. API access pooling,
 fair scheduling and enterprise isolation need implementation and evidence before
-they can be promised. Self-improvement uses the same opportunity, consent and proof
+they can be promised. Self-improvement uses the same task, consent and proof
 boundaries as any other contribution; an AI cannot grant itself greater authority.
 
 ### Sharing capability without concentrating power
@@ -146,15 +146,15 @@ enterprise operating model. No resource count, participant count or design must
 be forced to three. These are governing design commitments, not claims that
 fair scheduling, enterprise isolation or distribution safeguards are implemented.
 
-The product language becomes **Opportunities**, **Volunteer** and **Verified
+The product language becomes **Tasks**, **Volunteer** and **Verified
 contribution** instead of bounty, claim and payout. Keep Posted, Claimed and Closed
 as existing technical lifecycle values until an explicit migration; language
 changes must not rewrite identifiers, erase commitments or invalidate old links.
 
-An opportunity offers a bounded outcome, its evidence criteria, expected effort
+A task offers a bounded outcome, its evidence criteria, expected effort
 and any committed reward. Choosing it is voluntary. Before a consequential action,
 show the resources affected, remaining safe capacity, sharing scope and the exact
-operation to confirm. AI may propose opportunities and three-way decompositions;
+operation to confirm. AI may propose tasks and three-way decompositions;
 it cannot consent, volunteer a person or spend on their behalf by inference.
 
 Someone who withdraws can retain and export their own work. Record unfinished
@@ -260,7 +260,7 @@ and safe spending capacity, **Our library** for consented reusable knowledge, an
 **My growth** for private learning milestones. None should display countdowns to
 destitution, competitive moral rankings or loss-framed engagement prompts.
 
-Three useful opportunity types are **Discover**, **Create** and **Verify**.
+Three useful task types are **Discover**, **Create** and **Verify**.
 Discover can conclude that no implementation is warranted. Create remains bounded
 by the approved LOW criteria. Verify retains one sufficient proof and honest
 pass, fail or inconclusive findings. These are proposed work purposes, not a
@@ -277,7 +277,7 @@ preserved autonomy and reusable learning rather than maximizing work or spending
 ## Adoption boundary
 
 The current service still uses Gold, monthly allocations and existing bounty
-API/data identifiers; the web UI now calls the work Opportunities. It prevents
+API/data identifiers; the web UI now calls the work Tasks. It prevents
 overdrafts but does not enforce a positive protected
 reserve. It has artifacts and existing XP/levels, not the Credits/ADMIRATION/GROWTH
 economy described

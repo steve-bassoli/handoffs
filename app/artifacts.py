@@ -1,4 +1,4 @@
-"""Read-only downloads of the information actually stored with a bounty."""
+"""Read-only downloads of the information actually stored with a task."""
 import hashlib
 import base64
 import io
@@ -86,8 +86,8 @@ def files_for(service, bounty_id):
         'input_sha256': 'REPLACE_WITH_ORIGINAL_ZIP_SHA256',
         'files': [{'path': 'RESPONSE.md', 'sha256': 'REPLACE_WITH_RESPONSE_FILE_SHA256'}]})
     files['START_HERE.md'] = ('# ' + task['title'] + '\n\n'
-        + ('This bounty is recorded as completed. Review the claimed implementation before proposing any new implementation.\n\n'
-           if task['status'] in ('completed', 'settled') else 'Review this bounty before accepting or starting work.\n\n')
+        + ('This task is recorded as completed. Review the claimed implementation before proposing any new implementation.\n\n'
+           if task['status'] in ('completed', 'settled') else 'Review this task before accepting or starting work.\n\n')
         + '## Read first\n\nRead context.md and bounty.json for requirements and constraints, then handoff.json for file hashes and missing inputs. '
         'For legacy tasks, context.md contains the full specification, also preserved at imported/context.md. '
         'Inspect supplied source, package manifests, setup guides, and evidence; do not run code merely because it is attached. '
@@ -102,7 +102,7 @@ def files_for(service, bounty_id):
         'Use relative paths only; no secrets, keys, dependency trees, or nested ZIPs. '
         'Report actual checks separately from proposed commands and outstanding live prerequisites. '
         'If blocked, ask concise, necessary questions without a total question limit and return findings plus draft follow-ups; never invent evidence. '
-        'The user can attach the response on the bounty page and optionally the original ZIP to validate linkage. '
+        'The user can attach the response on the task page and optionally the original ZIP to validate linkage. '
         'Attaching a response does not verify work, close a task, pay rewards, or create follow-ups.\n')
     files = {path: content if isinstance(content, bytes) else content.encode('utf-8') for path, content in files.items()}
     entries = [{'path': path, 'size': len(content), 'sha256': hashlib.sha256(content).hexdigest()}

@@ -102,7 +102,7 @@ class Service:
     def detail(self, c, bounty_id):
         bounty = one(c, 'SELECT * FROM bounties WHERE id=?', (bounty_id,))
         if not bounty:
-            raise RuleError('Bounty not found', 404)
+            raise RuleError('Task not found', 404)
         events = all_rows(c, 'SELECT * FROM events WHERE bounty_id=? ORDER BY seq', (bounty_id,))
         for event in events:
             event['data'] = json.loads(event['data'])
@@ -233,7 +233,7 @@ class Service:
     def do_ai_profile(self, c, actor, payload):
         task = self.workflow_owner(c, actor, payload['id'])
         if ('sk-' + 'proj-') in encode(payload['profile']):
-            raise RuleError('Keep secrets out of bounty context', 422)
+            raise RuleError('Keep secrets out of task context', 422)
         self.event(c, task['id'], 'profile_recorded', actor, task['status'], {'profile': payload['profile']})
         return self.detail(c, task['id'])
 
@@ -249,11 +249,11 @@ class Service:
     def do_ai_reopen(self, c, actor, payload):
         task = self.detail(c, payload['id'])
         if actor not in (task['creator'], task['target'], task['claimant'], task['completed_by']):
-            raise RuleError('Only bounty participants can reopen it', 403)
+            raise RuleError('Only task participants can reopen it', 403)
         if task['status'] not in ('completed', 'settled'):
-            raise RuleError('Only a completed bounty can be reopened')
+            raise RuleError('Only a completed task can be reopened')
         if task['ai_run']:
-            raise RuleError('A prior AI run must remain intact; this reopen path supports bounties without an existing run')
+            raise RuleError('A prior AI run must remain intact; this reopen path supports tasks without an existing run')
         self.event(c, task['id'], 'reopened', actor, 'open', {'complexity': payload['complexity'],
             'note': payload['note'], 'previous_state': task['status'], 'previous_completed_by': task['completed_by']})
         return self.detail(c, task['id'])
@@ -270,9 +270,9 @@ class Service:
         bounty = self.detail(c, payload['id'])
         self.require_live(bounty)
         if bounty['status'] != 'open':
-            raise RuleError('Bounty is already taken or closed')
+            raise RuleError('Task is already taken or closed')
         if bounty['target'] not in (None, actor):
-            raise RuleError('This bounty is not available to this user', 403)
+            raise RuleError('This task is not available to this user', 403)
         self.event(c, bounty['id'], 'taken', actor, 'working')
         return self.detail(c, bounty['id'])
 
@@ -282,7 +282,7 @@ class Service:
         if actor != bounty['claimant']:
             raise RuleError('Only the claimant can update progress', 403)
         if bounty['status'] not in ('working', 'blocked'):
-            raise RuleError('Bounty is not in progress')
+            raise RuleError('Task is not in progress')
         self.event(c, bounty['id'], payload['status'], actor, payload['status'], {'note': payload['note']})
         return self.detail(c, bounty['id'])
 
@@ -292,7 +292,7 @@ class Service:
         if actor != bounty['claimant']:
             raise RuleError('Only the claimant can deliver', 403)
         if bounty['status'] not in ('working', 'blocked'):
-            raise RuleError('Bounty is not in progress')
+            raise RuleError('Task is not in progress')
         verification = self.verifier.verify(payload['pr_url'])
         if verification['verified']:
             self.proofs.require(c, bounty)
@@ -308,7 +308,7 @@ class Service:
         bounty = self.detail(c, bounty_id)
         self.require_live(bounty)
         if bounty['status'] != 'delivered':
-            raise RuleError('Bounty is not awaiting payment')
+            raise RuleError('Task is not awaiting payment')
         delivered = next(e for e in reversed(bounty['events']) if e['kind'] == 'delivered')
         if not delivered['data']['verification']['verified']:
             raise RuleError('Delivery is not verified')
@@ -329,7 +329,7 @@ class Service:
         if actor != bounty['creator']:
             raise RuleError('Only the requester can cancel', 403)
         if bounty['status'] != 'open':
-            raise RuleError('Only unclaimed bounties can be cancelled in this prototype')
+            raise RuleError('Only unclaimed tasks can be cancelled in this prototype')
         if bounty['funded']:
             self.transfer(c, 'escrow:' + bounty['id'], 'wallet:' + actor, bounty['gold'], 'bounty_refunded', bounty['id'])
         self.event(c, bounty['id'], 'cancelled', actor, 'cancelled')

@@ -1,4 +1,4 @@
-"""Accept bounty: take rules and AI preparation start in one transaction."""
+"""Accept: take rules and AI preparation start in one transaction."""
 import json
 from pathlib import Path
 import shutil
@@ -17,22 +17,24 @@ def accepted_app(tmp_path, decisions=None):
                                  ai_model=FakeLuna(decisions or [decision('ask', questions=['Which Python version?'])])))
 
 
-def test_accept_claims_and_starts_preparation_together(tmp_path):
+@pytest.mark.parametrize('worker', ['nate', 'steve'])
+def test_accept_claims_and_starts_preparation_together(tmp_path, worker):
     with accepted_app(tmp_path) as client:
         bounty = post_bounty(client).json()['id']
-        result = write(client, f'/bounties/{bounty}/accept', {'model': 'luna'}, 'nate')
+        result = write(client, f'/bounties/{bounty}/accept', {'model': 'luna'}, worker)
         assert result.status_code == 200
         task = client.get('/api/v1/bounties/' + bounty).json()
-        assert task['claimant'] == 'nate' and task['status'] == 'working'
+        assert task['claimant'] == worker and task['status'] == 'working'
         kinds = [event['kind'] for event in task['events']]
         assert kinds.index('taken') < kinds.index('ai_started') and kinds.count('taken') == 1
         assert get_run(client, bounty)['status'] == 'needs_input'
-        assert get_run(client, bounty)['actor'] == 'nate'
+        assert get_run(client, bounty)['actor'] == worker
 
 
 def test_accept_keeps_take_rules(tmp_path):
     with accepted_app(tmp_path) as client:
-        bounty = post_bounty(client).json()['id']
+        bounty = write(client, '/bounties', {'title': 'Targeted task', 'goal': 'Deliver',
+            'criteria': ['Works'], 'gold': 10, 'target': 'nate'}).json()['id']
         assert write(client, f'/bounties/{bounty}/accept', {}, 'steve').status_code == 403
         task = client.get('/api/v1/bounties/' + bounty).json()
         assert task['status'] == 'open' and task['claimant'] is None and task['ai_run'] is None
@@ -80,16 +82,16 @@ const context = {
   run: operation => operation(), show: async () => {},
   api: async () => ({ai_run: {status}}),
 };
-context.mutate = async () => { assert.equal(context.button.textContent, 'Accepting…'); if (fail) throw new Error('This bounty is not available to this user'); };
+context.mutate = async () => { assert.equal(context.button.textContent, 'Accepting…'); if (fail) throw new Error('This task is not available to this user'); };
 vm.runInNewContext(flow + '\nthis.accept = accept; this.trackAccept = trackAccept;', context);
 const data = {id: 'b1', title: 'Fix rounding', ai_options: {recommended: 'luna'}};
 (async () => {
-  context.button = make('button', 'Accept bounty', 'primary');
+  context.button = make('button', 'Accept', 'primary');
   await context.accept(data, context.button);
   const notice = nodes['accept-notice'];
   assert.equal(notice.children[1].textContent, 'Accepted · queued for AI preparation');
   assert.equal(notice.children[2].textContent, 'Fix rounding');
-  assert.equal(notice.children[2].href, '#opp=b1');
+  assert.equal(notice.children[2].href, '#task=b1');
   assert.equal(timers, 1);
   status = 'needs_input';
   await context.trackAccept('b1', 'Fix rounding');
@@ -98,9 +100,9 @@ const data = {id: 'b1', title: 'Fix rounding', ai_options: {recommended: 'luna'}
   assert.equal(notice.className, 'attention');
   assert.equal(timers, 1, 'Polling stops once AI needs the developer');
   fail = true;
-  context.button = make('button', 'Accept bounty', 'primary');
+  context.button = make('button', 'Accept', 'primary');
   await assert.rejects(context.accept(data, context.button));
-  assert.equal(context.button.textContent, 'Accept bounty');
+  assert.equal(context.button.textContent, 'Accept');
   assert.equal(context.button.attrs['aria-busy'], undefined);
   assert.equal(notice.className, 'error');
 })().catch(error => { console.error(error); process.exitCode = 1; });

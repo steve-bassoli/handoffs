@@ -9,7 +9,7 @@ from app.gremlins import compare, sabotage, witness
 server = FastMCP('gremlins', instructions=(
     'Mimic compares supplied legacy/REST/MCP observations with an independent expected contract. '
     'Saboteur changes only a private synthetic copy to prove defect detection. Witness returns a hashed report '
-    'and named quirk record. SIM only: no Watson, Oracle, filesystem, HTTP or AI calls, and no bounty creation. '
+    'and named quirk record. SIM only: no Watson, Oracle, filesystem, HTTP or AI calls, and no task creation. '
     'Never provide secrets or production records. Supplied observations are claims, not proof of backend execution.'))
 READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 

@@ -11,11 +11,11 @@
     };
     const root = make('section', undefined, 'dashboard-flow');
     root.setAttribute('aria-live', 'off');
-    const heading = make('h2', 'Ticket flow');
+    const heading = make('h2', 'Task flow');
     const evidence = make('p');
     const notice = make('p');
     const nav = make('nav');
-    nav.setAttribute('aria-label', 'Ticket flow');
+    nav.setAttribute('aria-label', 'Task flow');
     const list = make('ul');
     nav.appendChild(list);
     const graph = make('div');
@@ -77,10 +77,10 @@
       if (focusedId !== null && rows.has(focusedId) && doc.activeElement !== active &&
           typeof options.onNavigate === 'function') rows.get(focusedId).control.focus();
       evidence.textContent = 'Supplied evidence only; upstream completeness unknown. ' +
-        'Observed: ' + string(next.observed_at) + ' (not event time). Tickets: ' +
+        'Observed: ' + string(next.observed_at) + ' (not event time). Tasks: ' +
         c.tickets_shown + '/' + c.tickets_supplied + ' supplied; missing details: ' +
-        c.details_missing + '.' + (c.tickets_truncated ? ' Ticket cap applied.' : '');
-      notice.textContent = seen.size ? 'Accessible ticket list available.' : 'No supplied tickets shown.';
+        c.details_missing + '.' + (c.tickets_truncated ? ' Task cap applied.' : '');
+      notice.textContent = seen.size ? 'Accessible task list available.' : 'No supplied tasks shown.';
       if (!seen.has(next.current_id)) notice.textContent += ' Current location unknown.';
       if (typeof options.onNavigate !== 'function') notice.textContent += ' Navigation unavailable.';
       graph.replaceChildren();
@@ -92,9 +92,9 @@
           graph.appendChild(node);
         } catch (error) {
           graph.replaceChildren();
-          notice.textContent += ' Graph unavailable; use the ticket list.';
+          notice.textContent += ' Graph unavailable; use the task list.';
         }
-      } else notice.textContent += ' Graph not connected; use the ticket list.';
+      } else notice.textContent += ' Graph not connected; use the task list.';
       const labels = next.activity.map(item => item.ticket_id + ' — ' + item.kind +
         ' — Event time: ' + string(item.event_time) + ' — Source index: ' + item.source_index);
       const key = JSON.stringify(labels);
@@ -104,7 +104,7 @@
         activityKey = key;
       }
       activityNote.textContent = 'Showing ' + c.activity_shown + ' of ' + c.activity_eligible +
-        ' supplied eligible events for shown tickets, in source order; not complete history.' +
+        ' supplied eligible events for shown tasks, in source order; not complete history.' +
         (c.activity_truncated ? ' Activity cap applied.' : '') +
         (!labels.length ? ' No supplied work events shown.' : '');
       issues.textContent = next.issues.length ?

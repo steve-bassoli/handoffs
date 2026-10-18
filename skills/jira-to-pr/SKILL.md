@@ -1,12 +1,12 @@
 ---
 name: jira-to-pr
-description: Implement an explicitly selected JIRA ticket through one source-pinned review PR, with no JIRA key in its GitHub title. Use for an explicit JIRA-key launch, not a bounty preview or ordinary board listing.
+description: Implement an explicitly selected JIRA ticket through one source-pinned review PR, with no JIRA key in its GitHub title. Use for an explicit JIRA-key launch, not a task preview or ordinary board listing.
 ---
 
 # JIRA ticket to review PR
 
 An explicit `JIRA <key>` or a message containing only a JIRA key launches this
-workflow. A bounty listing, claim or preview alone does not. Follow the target
+workflow. A task listing, claim or preview alone does not. Follow the target
 repository's permissions; this skill does not override a GitHub write ban.
 
 1. Retrieve the issue using an available authenticated JIRA source. Preserve
@@ -41,10 +41,10 @@ repository's permissions; this skill does not override a GitHub write ban.
    Retain the issue key in branch/body, not the title. Attach the created PR to
    the current chat. If creation fails or its outcome is uncertain, inspect remote
    PRs before retrying; never blindly create a second PR.
-7. For a claimed HANDOFFS bounty, explicitly authorized delivery records the PR
+7. For a claimed HANDOFFS task, explicitly authorized delivery records the PR
    and criterion evidence through the service client/MCP with a retained operation
    ID. Demo verification pays automatically; payment is not human acceptance.
-   A review bounty requires explicit user authorization and requester-funded Gold;
+   A review task requires explicit user authorization and requester-funded Gold;
    do not mint legacy review/merge/intro rewards, write Git packets, or send email.
 
 Never merge, approve, comment, mutate JIRA, or impersonate human acceptance.

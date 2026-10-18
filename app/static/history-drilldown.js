@@ -7,8 +7,8 @@
     const list = helpers.element('ul', undefined, 'history-dependencies');
     values(ids).forEach(id => {
       const item = helpers.element('li');
-      const link = helpers.element('a', `#opp=${id}`);
-      link.href = `#opp=${encodeURIComponent(id)}`;
+      const link = helpers.element('a', `#task=${id}`);
+      link.href = `#task=${encodeURIComponent(id)}`;
       item.append(link);
       list.append(item);
     });

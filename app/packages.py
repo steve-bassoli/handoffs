@@ -49,7 +49,7 @@ def validate_package(bounty_id, payload):
                     raise ValueError()
             input_verified = True
         except (ValueError, KeyError, TypeError, zipfile.BadZipFile, RuntimeError, NotImplementedError):
-            raise RuleError('Original input ZIP must match the response input_sha256 and bounty ID', 422) from None
+            raise RuleError('Original input ZIP must match the response input_sha256 and task ID', 422) from None
     return {'kind': payload['kind'], 'sha256': digest(base64.b64decode(payload['package_zip'])),
             'files': files, 'input_sha256': input_sha, 'input_verified': input_verified,
             'note': payload.get('note', '')}
@@ -58,7 +58,7 @@ def validate_package(bounty_id, payload):
 def attach(service, connection, actor, payload):
     task = service.detail(connection, payload['id'])
     if actor not in (task['creator'], task['target'], task['claimant'], task['completed_by']):
-        raise RuleError('Only bounty participants can attach a package', 403)
+        raise RuleError('Only task participants can attach a package', 403)
     package = validate_package(task['id'], payload)
     if not any(event['kind'] == 'package_attached' and
                all(event['data'].get(key) == package[key] for key in ('kind', 'sha256', 'input_verified'))

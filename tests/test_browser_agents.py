@@ -37,7 +37,7 @@ const stats = async () => {};
   await agentRoster();
   const work = $('agent-rows').children[0].children[2];
   assert.equal($('agent-rows').children[0].children[0].textContent, 'Astra fe_study');
-  assert.equal(work.children[0].href, '#opp=opp-123456789');
+  assert.equal(work.children[0].href, '#task=opp-123456789');
   assert.deepEqual(work.children.slice(1).map(cell => cell.textContent), ['LOW · crawler', 'Crawl forms']);
   assert.equal($('agents-refresh').disabled, false);
   result = {available: false, items: []}; await agentRoster();

@@ -1,12 +1,12 @@
 (() => {
   const labels = {
-    dependencies_set: 'Dependencies changed', posted: 'Ticket posted',
+    dependencies_set: 'Dependencies changed', posted: 'Task posted',
     package_attached: 'Package attached', ai_followups: 'AI follow-up',
     ai_usage: 'AI usage recorded', ai_source: 'AI source recorded',
     ai_started: 'AI run started', taken: 'Work taken', ai_failed: 'AI run failed',
     ai_model_changed: 'AI model changed', ai_retried: 'AI run retried',
     ai_answers: 'AI answers recorded', ai_ask: 'AI asked a question',
-    opportunity_updated: 'Ticket updated', reopened: 'Ticket reopened',
+    opportunity_updated: 'Task updated', reopened: 'Task reopened',
     'legacy:assigned': 'Legacy work assigned',
     'legacy:completed': 'Legacy work completed'
   };
@@ -31,7 +31,7 @@
       case 'ai_retried': return 'AI run retried';
       case 'ai_answers': return `${(data.answers || []).length} answer(s) recorded`;
       case 'ai_ask': return `${(data.questions || []).length} question(s) asked`;
-      case 'opportunity_updated': return data.updated?.title || data.note || 'Ticket details updated';
+      case 'opportunity_updated': return data.updated?.title || data.note || 'Task details updated';
       case 'reopened': return data.note || `Reopened from ${data.previous_state || 'a previous state'}`;
       case 'legacy:assigned': return `Revision ${data.revision || 'unknown'}`;
       case 'legacy:completed': return `Revision ${data.revision || 'unknown'}`;

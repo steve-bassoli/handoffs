@@ -55,11 +55,11 @@ criterion mapping and implementation/validation notes on the same items. Run
 before execution. Exported fix ZIPs include `tools/complexity.py`; there use
 `python tools/complexity.py` for the same validation and commit actions instead.
 Do not assume another target repository contains the Commons module.
-This replaces the previous easy/medium-only and automatic HIGH-bounty rule.
+This replaces the previous easy/medium-only and automatic HIGH-task rule.
 
-A bounty proposal is not a task. Do not create or publish a quest, mutate Git,
-or assign the bounty unless the human explicitly approves that specific bounty.
-Completing a later bounty does not by itself complete its parent criterion.
+A proposed task is not authorized work. Do not create or publish a quest, mutate Git,
+or assign the task unless the human explicitly approves that specific task.
+Completing a later task does not by itself complete its parent criterion.
 
 ## Artifacts
 
@@ -123,17 +123,17 @@ expanding scope.
 
 ## Completion
 
-For a Watson/HANDOFFS LOW bounty, retain one sufficient primary proof artifact
+For a Watson/HANDOFFS LOW task, retain one sufficient primary proof artifact
 (video, image or text) linked to its criteria and relevant source/run provenance.
 It must be directly accessible from the closed LOW and inspectable by AI. AI
 reviews the proof; the human explicitly verifies the outcome before completion.
 Do not require multiple proof forms or silently reinstate the retired two-video
-gate. Missing or inconclusive proof leaves the bounty unresolved. Prepared
+gate. Missing or inconclusive proof leaves the task unresolved. Prepared
 reports and unexecuted checks are not passing evidence. If the runtime cannot
 enforce this gate yet, report that gap rather than claim verified closure.
 
 Return the verbatim plan and final status artifacts, the commit SHA, exact
 validation results, criterion-by-criterion evidence, and unresolved gaps.
 Explicitly state whether every changed path and behavior was planned and
-required by the acceptance criteria. Return every bounty proposal verbatim and
+required by the acceptance criteria. Return every task proposal verbatim and
 identify the blocked parent criterion.

@@ -36,7 +36,7 @@
     var root = document.createElement('section');
 
     root.className = 'ticket-flow';
-    root.setAttribute('aria-label', 'Ticket flow');
+    root.setAttribute('aria-label', 'Task flow');
 
     items.forEach(function (item) {
       var id;
@@ -68,8 +68,8 @@
       card = document.createElement('button');
       card.type = 'button';
       card.className = 'flow-card';
-      card.textContent = id + ' — ' + value(item.title, 'Untitled ticket');
-      card.setAttribute('aria-label', 'Open ticket ' + id + ': ' + value(item.title, 'Untitled ticket'));
+      card.textContent = id + ' — ' + value(item.title, 'Untitled task');
+      card.setAttribute('aria-label', 'Open task ' + id + ': ' + value(item.title, 'Untitled task'));
       card.addEventListener('click', function () {
         if (typeof options.onNavigate === 'function') options.onNavigate(item.id);
       });

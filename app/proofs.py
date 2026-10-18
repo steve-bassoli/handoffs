@@ -139,7 +139,7 @@ class Proofs:
         if actor not in (task['creator'], task['claimant']):
             raise RuleError('Only requester or current worker can submit proof or request review', 403)
         if task['phase'] != 'Claimed' or not task['claimant']:
-            raise RuleError('Proof actions require a claimed, unresolved bounty')
+            raise RuleError('Proof actions require a claimed, unresolved task')
         return task
 
     @staticmethod

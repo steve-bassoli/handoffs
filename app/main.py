@@ -245,7 +245,7 @@ this page does not query the live Codex quota meter.</p>
     @app.get('/api/v1/bounties/{bounty_id}/artifacts/download')
     def artifact_bundle(bounty_id: str, request: Request, user=Depends(actor)):
         return Response(download(request.app.state.service, bounty_id), media_type='application/zip',
-                        headers={'Content-Disposition': 'attachment; filename="bounty-artifacts.zip"'})
+                        headers={'Content-Disposition': 'attachment; filename="task-artifacts.zip"'})
 
     @app.get('/api/v1/bounties/{bounty_id}/artifacts/file')
     def artifact_file(bounty_id: str, request: Request, path: str, user=Depends(actor)):
@@ -329,7 +329,7 @@ this page does not query the live Codex quota meter.</p>
     @app.get('/api/v1/bounties/{bounty_id}/ai/artifact')
     def ai_artifact(bounty_id: str, request: Request, user=Depends(actor)):
         return Response(request.app.state.service.ai.artifact(bounty_id), media_type='application/zip',
-                        headers={'Content-Disposition': f'attachment; filename="bounty-{bounty_id}.zip"'})
+                        headers={'Content-Disposition': f'attachment; filename="task-{bounty_id}.zip"'})
 
     @app.post('/api/v1/bounties/{bounty_id}/ai/complete')
     def ai_complete(bounty_id: str, payload: AIVerification, request: Request, background: BackgroundTasks,
