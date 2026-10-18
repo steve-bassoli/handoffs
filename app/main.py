@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, HttpUrl
 from typing import Literal
 
 from app.adapters import DemoDeliveryVerifier, DemoIdentity
-from app.services import RuleError, Service, event_via
+from app.services import RuleError, Service, event_via, event_intent
 from app.storage import Database
 from app.ai import AIRuns, Luna
 from app.artifacts import download, inventory
@@ -21,7 +21,7 @@ from app.proofs import Proofs, ProofUpload
 from app.proof_reviewer import ProofReviewer
 from app.gremlins import Comparison, compare, sabotage, witness
 from app.agent_roster import roster
-from app.automation_mode import AUTOMATION_HEADER, current as current_mode
+from app.automation_mode import AUTOMATION_HEADER, ACTION_INTENT_HEADER, current as current_mode
 
 
 RESEARCH_PATH = Path(__file__).resolve().parents[1] / 'PLAN' / 'AI_RESEARCH.md'
@@ -97,6 +97,7 @@ class EvidencePackage(BaseModel):
 class HumanProof(BaseModel):
     accepted: bool
     note: str = Field(min_length=1, max_length=4000)
+    review_basis: Literal['ai-reviewed', 'human-only'] = 'ai-reviewed'
 
 
 class CompleteProof(BaseModel):
@@ -126,16 +127,21 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
 
     @app.middleware('http')
     async def automation_guard(request: Request, call_next):
-        # Automation tools label their writes; manual mode refuses them so only humans change tickets.
+        # Attribution is independent of intent. Explicit human requests may use tools in Manual.
         via = request.headers.get(AUTOMATION_HEADER)
-        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and via:
-            if not current_mode(getattr(request.app.state, 'mode_path', None))['automated_writes']:
-                return JSONResponse(status_code=403, content={'detail': 'Manual mode: only humans create or update tickets'})
+        intent = request.headers.get(ACTION_INTENT_HEADER)
+        if intent not in (None, 'user-directed', 'autonomous'):
+            return JSONResponse(status_code=422, content={'detail': 'Invalid action intent'})
+        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and (via is not None or intent == 'autonomous'):
+            if intent != 'user-directed' and not current_mode(getattr(request.app.state, 'mode_path', None))['automated_writes']:
+                return JSONResponse(status_code=403, content={'detail': 'Manual mode: autonomous task updates are paused; explicit user-directed actions remain available'})
         token = event_via.set(via)
+        intent_token = event_intent.set(intent)
         try:
             return await call_next(request)
         finally:
             event_via.reset(token)
+            event_intent.reset(intent_token)
 
     @app.exception_handler(RuleError)
     async def rule_error(request: Request, error: RuleError):

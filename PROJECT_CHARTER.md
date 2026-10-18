@@ -356,17 +356,25 @@ Label proposed or unexecuted checks separately. Do not expose credentials or
 unnecessary private data. A filename, PR link, AI assertion or empty approval note
 alone is not proof.
 
-The proof must be viewable by the human and inspectable by AI. AI reviews whether
+The proof must be viewable by the human and inspectable by AI. When requested, AI reviews whether
 it supports the criteria, recording pass, fail or inconclusive with reasons; the
 human explicitly verifies the LOW outcome before completion. These are review
 steps on one proof, not demands for additional proof forms. Missing, unreadable,
-contradictory or insufficient proof leaves the task unresolved. Being AI
+contradictory or insufficient proof leaves the task unresolved. A LOW may instead
+use explicit human-only verification when AI review is absent or inconclusive,
+recording that no passing AI review occurred. Failed or running AI review is not
+overridden by this path. Being AI
 inspectable does not guarantee the AI judgment is correct.
 
 Creators may claim and complete their own tasks. The same proof and verification
 requirements apply, and an offer targeted to another person remains reserved for
 that person. Completing one's own funded task returns its reserved Gold without
 creating additional Gold.
+
+Manual mode responds to explicit user actions, including actions carried out by
+tools on a person's behalf. Light and Heavy permit autonomous campaigns. Tool
+attribution and action intent are recorded separately; autonomous work must never
+be labeled user-directed. Campaign mode does not block authorized task resolution.
 
 Gremlins supplies compatibility evidence as its relevant capabilities become
 available. The closure rule must not label Gremlins checks as executed before
@@ -387,8 +395,9 @@ Breaker describe responsibilities, not three agents claimed to have run. Shared
 prerequisites are linked once in a connected constellation.
 
 One immutable primary proof is bound to criteria, revisions, environment, source
-and prerequisite receipts. Current passing AI review and explicit human LOW
-verification gate completion and payment. Replacement proof preserves history;
+and prerequisite receipts. Current accepted proof and explicit human LOW
+verification gate completion and payment, with the review basis recorded.
+Human-only LOW acceptance does not claim a passing AI review. Replacement proof preserves history;
 changed context invalidates acceptance. Historical closures are not retroactively
 verified. Composite acceptance needs all approved children verified and its own reviewed
 integration proof. Funded verified completion releases existing escrow once;

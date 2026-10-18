@@ -5,6 +5,15 @@ description: List or post HANDOFFS tasks, show wallet and work stats, and record
 
 # HANDOFFS service client
 
+Manual mode accepts explicit user-directed task actions, including actions carried
+out by this client. Set `X-Action-Intent: user-directed` only for a concrete human
+request; retain `X-Automation` attribution. Light and Heavy permit autonomous
+campaign actions. Never label autonomous work user-directed to bypass Manual.
+These demo request headers express intent, not authenticated authorization.
+LOW tasks may close with current evidence and an explicit `human-only` decision
+when AI review is absent or inconclusive; never record an unperformed AI pass or
+override a failed or running review. Composite acceptance still requires AI review.
+
 For an explicit JIRA-key implementation launch, use the HANDOFFS-owned
 `skills/jira-to-pr/SKILL.md` in the service checkout. PR titles must not contain
 JIRA keys; keep issue linkage in branch/body. This client does not implement

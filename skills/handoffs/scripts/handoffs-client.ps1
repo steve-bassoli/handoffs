@@ -39,6 +39,8 @@ if ($method -eq 'Post') {
     if ([string]::IsNullOrWhiteSpace($OperationId)) { throw 'Supply and retain OperationId for a write; reuse it after an uncertain response.' }
     $null = $BodyJson | ConvertFrom-Json
     $headers['Idempotency-Key'] = $OperationId
+    $headers['X-Automation'] = 'handoffs-client'
+    $headers['X-Action-Intent'] = 'user-directed'
     $arguments['Body'] = [System.Text.Encoding]::UTF8.GetBytes($BodyJson)
     $arguments['ContentType'] = 'application/json; charset=utf-8'
 }

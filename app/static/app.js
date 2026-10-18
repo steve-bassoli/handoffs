@@ -31,6 +31,7 @@ async function api(path, body) {
     let key = sessionStorage.getItem(operation);
     if (!key) { key = Array.from(crypto.getRandomValues(new Uint32Array(4)), n => n.toString(16)).join('-'); sessionStorage.setItem(operation, key); }
     headers['Idempotency-Key'] = key;
+    headers['X-Action-Intent'] = 'user-directed';
     headers['Content-Type'] = 'application/json';
     options.method = 'POST'; options.body = JSON.stringify(body);
   }
@@ -402,7 +403,7 @@ function proofSection(data, detail) {
   box.append(element('p', 'One sufficient text, image or video artifact. AI reviews the criteria; a human verifies each LOW. A parent requires separate integration proof. No automatic approval.'));
   const proof = data.proof, editable = [data.creator, data.claimant].includes(user) && data.phase === 'Claimed' && data.claimant;
   if (proof) {
-    box.append(element('strong', `${proof.accepted ? 'Accepted' : proof.fresh ? 'Current · awaiting verification' : 'Stale · context changed'} · ${proof.filename}`), element('p', proof.description), element('code', `SHA-256 ${proof.sha256}`));
+    box.append(element('strong', `${proof.accepted ? (proof.verification_method === 'human-only' ? 'Human verified · no passing AI review' : 'Accepted') : proof.fresh ? 'Current · awaiting verification' : 'Stale · context changed'} · ${proof.filename}`), element('p', proof.description), element('code', `SHA-256 ${proof.sha256}`));
     const controls = element('div', undefined, 'actions'); const preview = element('div');
     const view = element('button', 'View proof'); view.onclick = () => run(async () => {
       const response = await fetch(proof.download_url, {headers: {'X-Demo-User': user}}); if (!response.ok) throw new Error('Could not open proof.');
@@ -427,10 +428,12 @@ function proofSection(data, detail) {
     for (const criterion of review?.criteria || []) box.append(element('p', `${criterion.index + 1}. ${criterion.verdict} · ${criterion.reason}`));
     if (proof.human) box.append(element('p', `Human LOW verification: ${proof.human.accepted ? 'accepted' : 'rejected'} · ${proof.human.note}`));
     if (editable && proof.fresh && !['queued', 'running'].includes(review?.verdict)) { const request = element('button', 'Request AI proof review'); request.onclick = () => run(() => mutate(`/bounties/${data.id}/proof-review`)); box.append(request, element('small', 'Explicit request uses the configured provider. Missing access or unsupported video review stays inconclusive.')); }
-    if (editable && data.complexity === 'LOW' && proof.fresh && review?.verdict === 'pass') {
+    const humanOnly = !review || (review.verdict === 'inconclusive' && !review.criteria?.some(item => item.verdict === 'fail'));
+    if (editable && data.complexity === 'LOW' && proof.fresh && (review?.verdict === 'pass' || humanOnly)) {
       const human = element('form'); const decision = labeled(human, 'Human verification decision', 'Choose…', 'select', ['Choose…', 'Accept', 'Reject']);
+      if (humanOnly) human.append(element('p', 'Human-only verification: review the evidence and record your decision. This does not record an AI pass.'));
       const note = labeled(human, 'What did you personally verify?', '', 'textarea'); note.required = true;
-      human.append(element('button', 'Record human decision')); human.onsubmit = event => { event.preventDefault(); run(async () => { if (decision.value === 'Choose…') throw new Error('Explicitly accept or reject the proof.'); await mutate(`/bounties/${data.id}/proof-human`, {accepted: decision.value === 'Accept', note: note.value}); }); }; box.append(human);
+      human.append(element('button', 'Record human decision')); human.onsubmit = event => { event.preventDefault(); run(async () => { if (decision.value === 'Choose…') throw new Error('Explicitly accept or reject the proof.'); await mutate(`/bounties/${data.id}/proof-human`, {accepted: decision.value === 'Accept', note: note.value, review_basis: humanOnly ? 'human-only' : 'ai-reviewed'}); }); }; box.append(human);
     }
     if (editable && proof.accepted) { const form = element('form'); const note = labeled(form, 'Completion note', '', 'textarea'); note.required = true; form.append(element('button', data.funded ? 'Complete & release reserved demo Gold' : 'Complete verified task', 'primary')); form.onsubmit = event => { event.preventDefault(); run(() => mutate(`/bounties/${data.id}/complete`, {note: note.value})); }; box.append(form); }
     if (['queued', 'running'].includes(review?.verdict)) proofPoll = setTimeout(() => { if (selected === data.id) run(() => show(data.id)); }, 2000);

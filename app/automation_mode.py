@@ -1,6 +1,6 @@
-"""System-wide automation mode for the shared API key: how many agents may run and who may write tickets.
+"""Owner-selected campaign autonomy and agent layout; user-directed task actions remain available.
 
-manual: 1 Terra agent; only humans create or update tickets (automated writes are refused).
+manual: 1 Terra agent; people and explicitly user-directed tools may update tasks; autonomous writes are refused.
 light:  4 agents; 1 Sol root over 3 Terra workers; automation may write.
 heavy:  4 agents; 1 Astra root over 3 Sol workers; automation may write.
 max:    13 agents; 1 Astra root over 3 Sol leads, each over 3 Sol workers; automation may write (parked: too big a leap for now).
@@ -16,11 +16,11 @@ from pathlib import Path
 
 MODES = {
     'manual': {'agents': 1, 'levels': ('terra',), 'automated_writes': False,
-               'summary': '1 Terra agent; only humans create or update tickets'},
+               'summary': 'User-directed task actions; autonomous writes paused; 1 Terra agent'},
     'light': {'agents': 4, 'levels': ('sol', 'terra'), 'automated_writes': True,
-              'summary': '4 agents: 1 Sol over 3 Terra; automation may write'},
+              'summary': 'Autonomous campaign: 1 Sol over 3 Terra; user-directed tasks remain available'},
     'heavy': {'agents': 4, 'levels': ('astra', 'sol'), 'automated_writes': True,
-              'summary': '4 agents: 1 Astra over 3 Sol; automation may write'},
+              'summary': 'Autonomous campaign: 1 Astra over 3 Sol; user-directed tasks remain available'},
     'max': {'agents': 13, 'levels': ('astra', 'sol', 'sol'), 'automated_writes': True,
             'summary': '13 agents: 1 Astra over 3 Sol, each over 3 Sol; automation may write (parked)'},
 }
@@ -32,6 +32,7 @@ MODEL_SETTINGS = {
     'luna': ('gpt-6-luna', 'low', 12000),
 }
 AUTOMATION_HEADER = 'X-Automation'
+ACTION_INTENT_HEADER = 'X-Action-Intent'
 
 
 def mode_path():

@@ -12,6 +12,7 @@ from app.storage import all_rows, one
 
 
 event_via = ContextVar('event_via', default=None)
+event_intent = ContextVar('event_intent', default=None)
 
 
 def now():
@@ -96,6 +97,8 @@ class Service:
         via = event_via.get()
         if via is not None:
             record['via'] = via
+        if event_intent.get() is not None:
+            record['action_intent'] = event_intent.get()
         c.exec_driver_sql('INSERT INTO events(bounty_id,kind,actor,state,data,created_at) VALUES (?,?,?,?,?,?)',
                           (bounty_id, kind, actor, state, encode(record), now()))
 

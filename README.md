@@ -213,6 +213,16 @@ The separate LOW human decision is not another artifact. HIGH/MEDIUM acceptance
 needs all approved children verified, shared prerequisites and separate integration proof.
 Historical closures without proof remain historical.
 
+Manual mode permits explicit user-directed task actions, including tool-mediated
+actions. Tools retain `X-Automation` attribution and send
+`X-Action-Intent: user-directed` only for a concrete human request. Untagged tool
+intent defaults to autonomous; Light and Heavy permit autonomous campaign writes.
+These headers are demo intent metadata, not production authentication.
+An authorized person may explicitly choose `review_basis: human-only` for current
+LOW proof when AI review is absent or inconclusive. This records human verification
+without an AI pass; failed or running review cannot be overridden. Provider access
+and campaign activity are not prerequisites for this task-resolution path.
+
 Routes under `/api/v1/bounties/{id}`: `POST profile`, `POST dependencies`,
 `GET constellation`, `POST proofs`, `GET proofs/{proof_id}`, `POST proof-review`,
 `POST proof-human`, `POST complete`. Writes require operation IDs. `ai/complete`,

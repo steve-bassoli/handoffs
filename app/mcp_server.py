@@ -34,6 +34,8 @@ def request(method, path, *, body=None, operation_id=None):
     headers = {'X-Demo-User': DEMO_USER}
     if operation_id:
         headers['Idempotency-Key'] = operation_id
+        # These tools require an explicit user request; campaign callers must not infer it.
+        headers.update({'X-Automation': 'codex-mcp', 'X-Action-Intent': 'user-directed'})
     try:
         response = httpx.request(method, SERVICE_URL + '/api/v1' + path,
                                  headers=headers, json=body, timeout=10)

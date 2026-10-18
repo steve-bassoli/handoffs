@@ -123,10 +123,13 @@ class Proofs:
                           and event['data']['proof_id'] == proof['proof_id']), None)
             fresh = proof['binding'] == binding(task, requirements)
             ready = fresh and review and review.get('verdict') == 'pass' and review['binding'] == proof['binding']
-            accepted = bool(ready and (task['complexity'] != 'LOW' or (human and human['accepted']
-                and human['review_id'] == review['review_id'] and human['binding'] == proof['binding'])))
+            human_current = bool(fresh and human and human['accepted'] and human['binding'] == proof['binding']
+                and human['review_id'] == (review['review_id'] if review else None))
+            human_only = bool(task['complexity'] == 'LOW' and human_current and human.get('review_basis') == 'human-only')
+            accepted = bool(human_only or (ready and (task['complexity'] != 'LOW' or human_current)))
             public = {key: value for key, value in proof.items() if key != 'content_base64'} | {
                 'fresh': fresh, 'review': review, 'human': human, 'accepted': accepted,
+                'verification_method': ('human-only' if human_only else 'ai-reviewed') if accepted else None,
                 'download_url': f"/api/v1/bounties/{task['id']}/proofs/{proof['proof_id']}"}
         task['proof'] = public
         task['proof_history'] = [{key: record[key] for key in ('proof_id', 'filename', 'sha256', 'binding')} for record in records]
@@ -238,22 +241,33 @@ class Proofs:
                         self.service.event(c, task['id'], 'proof_reviewed', event['actor'], task['status'], {**event['data'], **result})
 
     def human(self, c, actor, payload):
-        from app.services import RuleError
+        from app.services import RuleError, event_via, event_intent
         task = self.owner(c, actor, payload['id'])
         proof = task['proof']
-        if task['complexity'] != 'LOW' or not proof or not proof['fresh'] or not proof['review'] or proof['review']['verdict'] != 'pass':
-            raise RuleError('A LOW needs current passing AI proof review before human verification')
+        if task['complexity'] != 'LOW' or not proof or not proof['fresh']:
+            raise RuleError('Human verification requires a LOW with current proof')
+        if event_intent.get() == 'autonomous' or (event_via.get() is not None and event_intent.get() != 'user-directed'):
+            raise RuleError('Human verification requires an explicit user-directed action', 403)
+        review = proof['review']
+        basis = payload.get('review_basis', 'ai-reviewed')
+        if basis == 'human-only':
+            if review and (review['verdict'] != 'inconclusive' or
+                    any(item['verdict'] == 'fail' for item in review.get('criteria', []))):
+                raise RuleError('Human-only verification cannot replace a running, passing or failed AI review')
+        elif not review or review['verdict'] != 'pass':
+            raise RuleError('AI-reviewed verification requires a current passing AI proof review')
         self.service.event(c, task['id'], 'proof_human_reviewed', actor, task['status'], {
-            'proof_id': proof['proof_id'], 'binding': proof['binding'], 'review_id': proof['review']['review_id'],
-            'accepted': payload['accepted'], 'note': payload['note']})
+            'proof_id': proof['proof_id'], 'binding': proof['binding'], 'review_id': review['review_id'] if review else None,
+            'review_basis': basis, 'accepted': payload['accepted'], 'note': payload['note']})
         return self.service.detail(c, task['id'])
 
     def require(self, c, task):
         from app.services import RuleError
         self.require_dependencies(task)
         if not task['proof'] or not task['proof']['accepted']:
-            raise RuleError('Completion requires current sufficient proof, passing AI review and explicit human LOW verification')
-        return {'proof_id': task['proof']['proof_id'], 'proof_binding': task['proof']['binding']}
+            raise RuleError('Completion requires current accepted proof and explicit human LOW verification')
+        return {'proof_id': task['proof']['proof_id'], 'proof_binding': task['proof']['binding'],
+                'verification_method': task['proof']['verification_method']}
 
     def complete(self, c, actor, payload):
         from app.services import now
