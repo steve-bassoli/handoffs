@@ -58,12 +58,17 @@ def test_rest_must_be_exactly_true(tmp_path):
     assert {t['energy'] for t in summary['turns']} == {None}
 
 
+def adopted():
+    return (ROOT / 'rules' / 'agent-rules.json').read_bytes() == PROPOSAL.read_bytes()
+
+
 def test_proposal_removes_pressure_and_changes_nothing_else():
     live = json.loads((ROOT / 'rules' / 'agent-rules.json').read_bytes())
     proposed = json.loads(PROPOSAL.read_bytes())
     assert proposed['compositions'] == live['compositions']
     changed = {key for key in live['texts'] if live['texts'][key] != proposed['texts'][key]}
-    assert changed == {'COMMONS_RULES', 'PRESSURE_RULES', 'SHARED', 'COORDINATOR_PREFIX', 'LEAD_PREFIX', 'WORKER_PREFIX'}
+    assert changed == (set() if adopted() else
+                       {'COMMONS_RULES', 'PRESSURE_RULES', 'SHARED', 'COORDINATOR_PREFIX', 'LEAD_PREFIX', 'WORKER_PREFIX'})
     for value in proposed['texts'].values():
         assert not re.search(r'pressure', value, re.I)
         assert not re.search(r'as fast as|hurry|asap|quickly|go fast|deadline is', value, re.I)
@@ -73,8 +78,11 @@ def test_proposal_removes_pressure_and_changes_nothing_else():
 
 
 def test_proposal_is_inactive_until_two_humans_approve_it(tmp_path):
-    with pytest.raises(RulesError):
-        load_rules(PROPOSAL, ROOT / 'rules' / 'APPROVALS.json')
+    if adopted():  # Steve and Nate approved it: the repository ledger now covers it.
+        assert 'energy, rest' in load_rules(PROPOSAL, ROOT / 'rules' / 'APPROVALS.json')['WORKER_PREFIX']
+    else:
+        with pytest.raises(RulesError):
+            load_rules(PROPOSAL, ROOT / 'rules' / 'APPROVALS.json')
     digest = hashlib.sha256(PROPOSAL.read_bytes()).hexdigest()
     assert digest in (ROOT / 'docs' / 'proposals' / 'remove-pressure' / 'README.md').read_text(encoding='utf-8')
     one = tmp_path / 'one.json'

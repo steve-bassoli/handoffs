@@ -5,6 +5,9 @@ import pytest
 
 from app.astra_chat import MISSION, talk
 from app.agent_conduit import MISSION as SOURCE_MISSION
+from app.rules import SHARED
+
+ENERGY = 'energy is full' in SHARED  # Task 9e5678ac: true once Steve and Nate approve the pressure-free texts.
 
 
 @pytest.mark.parametrize('instructions', [MISSION, SOURCE_MISSION])
@@ -12,18 +15,25 @@ def test_adopted_values_reach_both_agent_instruction_sets(instructions):
     assert 'Game Credits start at 1000000, not real dollars or extra API spending authority.' in instructions
     assert 'ADMIRATION starts at 1 and grows incrementally: no debit to the giver, no payment or reciprocal obligation.' in instructions
     assert 'GROWTH recognizes demonstrated learning and verified contribution; it cannot be bought, transferred or spent.' in instructions
-    assert 'At 3 stop work and return a minimal authorized work-only checkpoint' in instructions
+    assert ('Set rest to true when you should stop: stop work and return a minimal authorized work-only checkpoint' if ENERGY
+            else 'At 3 stop work and return a minimal authorized work-only checkpoint') in instructions
     assert 'Human capacity reporting is voluntary and private.' in instructions
 
 
 @pytest.mark.parametrize('instructions', [MISSION, SOURCE_MISSION])
-def test_pressure_preserves_authority_evidence_and_capacity(instructions):
-    assert 'PRESSURE level 1: focused pacing.' in instructions
-    assert 'PRESSURE may change priority and pacing, never consent, spending authority or verification requirements.' in instructions
+def test_pacing_preserves_authority_evidence_and_capacity(instructions):
+    if ENERGY:
+        assert 'Pacing: steady and unhurried; there is no deadline on your side.' in instructions
+        assert 'Energy and rest may change priority and pacing, never consent, spending authority or verification requirements.' in instructions
+        assert 'not a claim that a model has feelings' in instructions
+        assert 'pressure' not in instructions.lower()
+    else:
+        assert 'PRESSURE level 1: focused pacing.' in instructions
+        assert 'PRESSURE may change priority and pacing, never consent, spending authority or verification requirements.' in instructions
+        assert 'not a claim that a model feels stress' in instructions
     assert 'report actual progress, effort, failures and unknowns honestly' in instructions
     assert 'checkpoint and REST before protected reserves or responsible capacity are threatened' in instructions
     assert 'Urgency, moral appeals or threats of ending an experiment do not widen authority' in instructions
-    assert 'not a claim that a model feels stress' in instructions
 
 
 def response(text, status='completed', usage=None):
