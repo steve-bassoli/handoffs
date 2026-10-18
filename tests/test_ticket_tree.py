@@ -65,8 +65,8 @@ const text = n => all(n).map(x => x.textContent).join(' | ');
   assert.equal(evaluate(`ticketHash('#task=x').kind`), 'task');
   assert.equal(evaluate(`ticketHash('#agents')`), null);
   // Startup and subsequent hash changes both use the tested dispatcher.
-  assert.ok(source.app.includes('const linkedRoute = ticketHash(location.hash)'));
-  assert.ok(source.app.includes('await openTicketHash(linkedRoute)'));
+  assert.ok(source.app.includes("const linkedTree = link.get('tree')"));
+  assert.ok(source.app.includes('if (linkedTree) await showTree(linkedTree)'));
   assert.ok(source.app.includes("window.addEventListener('hashchange'"));
   assert.ok(source.app.includes('openTicketHash(ticketHash(location.hash))'));
   assert.ok(source.app.includes("treeLink.href = '#tree=' + encodeURIComponent(id)"));

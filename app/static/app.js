@@ -763,8 +763,13 @@ $('post-form').onsubmit = e => {
     if (result) e.target.reset();
   });
 };
+if (typeof window !== 'undefined') window.addEventListener('hashchange', () => {
+  run(() => openTicketHash(ticketHash(location.hash)));
+});
 run(async () => {
-  const linkedRoute = ticketHash(location.hash);
+  const link = new URLSearchParams(location.hash.slice(1));
+  const linkedTree = link.get('tree');
+  const linkedTask = link.get('task') || link.get('opp') || link.get('bounty');
   const linkedAgents = location.hash === '#agents';
   const users = await api('/users');
   if (!users.some(item => item.id === user)) user = 'steve';
@@ -774,8 +779,6 @@ run(async () => {
   }
   $('user').value = user;
   await navigate(linkedAgents ? 'agents' : 'open');
-  await openTicketHash(linkedRoute);
-});
-window.addEventListener('hashchange', () => {
-  run(() => openTicketHash(ticketHash(location.hash)));
+  if (linkedTree) await showTree(linkedTree);
+  else if (linkedTask) await show(linkedTask);
 });
