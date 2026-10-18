@@ -168,7 +168,7 @@ async function accept(data, button) {
   try {
     await mutate(`/bounties/${data.id}/accept`, {model: data.ai_options.recommended});
   } catch (error) {
-    button.textContent = 'Accept bounty'; button.classList.remove('loading'); button.removeAttribute('aria-busy');
+    button.textContent = 'Accept'; button.classList.remove('loading'); button.removeAttribute('aria-busy');
     acceptNotice(data.id, data.title, 'Not accepted · ' + error.message, 'error');
     throw error;
   }
@@ -201,11 +201,11 @@ async function show(id) {
   detail.append(element('p', `Requester: ${data.creator} · ${data.claimant ? 'Worker: ' + data.claimant : data.target ? 'Offered to ' + data.target + ' · not claimed' : 'Available to claim'} · ${data.funded ? 'Reserved demo Gold is released only on verified completion.' : 'Unfunded record. No new funding was created.'}`));
   const actions = element('div', undefined, 'actions');
   const action = (label, suffix) => { const b = element('button', label); b.onclick = () => run(() => mutate(`/bounties/${id}/${suffix}`)); actions.append(b); };
-  if (data.funded && data.status === 'open') {
-    if (user === data.creator) action('Cancel & refund', 'cancel');
-    else if (!data.target || data.target === user) {
+  if ((data.funded || data.parent_id) && data.status === 'open') {
+    if (user === data.creator) action(data.funded ? 'Cancel & refund' : 'Cancel', 'cancel');
+    if (!data.target || data.target === user) {
       if (!data.ai_run && (!data.legacy || data.events.some(event => event.kind === 'reopened'))) {
-        const button = element('button', 'Accept bounty', 'primary');
+        const button = element('button', 'Accept', 'primary');
         button.onclick = () => run(() => accept(data, button));
         actions.append(button);
       }

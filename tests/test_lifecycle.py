@@ -14,6 +14,14 @@ def test_competing_claims_and_wrong_actor(client):
     assert write(client, f'/bounties/{bounty}/status', {'status': 'working'}, winner).json()['status'] == 'working'
 
 
-def test_self_claim_and_target(client):
+def test_creator_can_claim_and_target_is_respected(client):
     bounty = post_bounty(client).json()['id']
-    assert write(client, f'/bounties/{bounty}/take').status_code == 403
+    claimed = write(client, f'/bounties/{bounty}/take')
+    assert claimed.status_code == 200
+    assert claimed.json()['claimant'] == 'steve'
+    assert write(client, f'/bounties/{bounty}/take', user='nate').status_code == 409
+    targeted = write(client, '/bounties', {'title': 'Targeted work', 'goal': 'Deliver',
+        'criteria': ['Works'], 'gold': 10, 'target': 'nate'}).json()['id']
+    assert write(client, f'/bounties/{targeted}/take').status_code == 403
+    assert write(client, f'/bounties/{targeted}/take', user='will').status_code == 403
+    assert write(client, f'/bounties/{targeted}/take', user='nate').status_code == 200

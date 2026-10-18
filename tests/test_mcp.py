@@ -26,7 +26,8 @@ def live_api(tmp_path):
         port = socket_.getsockname()[1]
     url = f'http://127.0.0.1:{port}'
     environment = {**os.environ, 'HANDOFFS_DB': str(tmp_path / 'isolated.sqlite'),
-                   'PYTHONPATH': str(Path(__file__).parent.resolve()) + os.pathsep + os.environ.get('PYTHONPATH', '')}
+                   'PYTHONPATH': os.pathsep.join((str(Path(__file__).resolve().parents[1]),
+                       str(Path(__file__).parent.resolve()), os.environ.get('PYTHONPATH', '')))}
     process = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'test_mcp:fixture_app', '--factory', '--host', '127.0.0.1', '--port', str(port)],
                                cwd=tmp_path, env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -50,7 +51,8 @@ def live_api(tmp_path):
 @asynccontextmanager
 async def session(url, user, cwd):
     parameters = StdioServerParameters(command=sys.executable, args=['-m', 'app.mcp_server'], cwd=str(cwd),
-                                       env={**os.environ, 'HANDOFFS_URL': url, 'HANDOFFS_DEMO_USER': user})
+                                       env={**os.environ, 'HANDOFFS_URL': url, 'HANDOFFS_DEMO_USER': user,
+                                            'PYTHONPATH': str(Path(__file__).resolve().parents[1]) + os.pathsep + os.environ.get('PYTHONPATH', '')})
     async with stdio_client(parameters) as (read, write):
         async with ClientSession(read, write) as client:
             await client.initialize()
@@ -81,8 +83,6 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             assert (await call(requester, 'post_bounty', arguments))['id'] == bounty['id']
             assert len((await call(worker, 'list_bounties'))['items']) == 1
             assert (await call(worker, 'get_bounty', {'bounty_id': bounty['id']}))['criteria'] == arguments['criteria']
-            wrong_actor = await requester.call_tool('take_bounty', {'bounty_id': bounty['id'], 'operation_id': 'self-claim'})
-            assert wrong_actor.isError and '403' in wrong_actor.content[0].text
             assert (await call(worker, 'take_bounty', {'bounty_id': bounty['id'], 'operation_id': 'take-once'}))['claimant'] == 'nate'
             with httpx.Client(base_url=live_api) as fixture_client:
                 verified_proof(fixture_client, bounty['id'], 'nate')
@@ -96,6 +96,9 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             await call(worker, 'post_bounty', arguments)
             stats = await call(worker, 'get_my_stats')
             assert (stats['available_gold'], stats['reserved_gold']) == (50, 1100)
+            own = await call(requester, 'post_bounty', {**arguments, 'gold': 10, 'operation_id': 'own-work'})
+            claimed = await call(requester, 'take_bounty', {'bounty_id': own['id'], 'operation_id': 'self-claim'})
+            assert claimed['claimant'] == 'steve' and claimed['status'] == 'working'
             invalid = await worker.call_tool('list_bounties', {'limit': 0})
             assert invalid.isError
             missing = await worker.call_tool('get_bounty', {'bounty_id': 'missing'})

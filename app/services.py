@@ -271,7 +271,7 @@ class Service:
         self.require_live(bounty)
         if bounty['status'] != 'open':
             raise RuleError('Bounty is already taken or closed')
-        if actor == bounty['creator'] or bounty['target'] not in (None, actor):
+        if bounty['target'] not in (None, actor):
             raise RuleError('This bounty is not available to this user', 403)
         self.event(c, bounty['id'], 'taken', actor, 'working')
         return self.detail(c, bounty['id'])

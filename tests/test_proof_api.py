@@ -27,6 +27,24 @@ def test_all_completion_routes_reject_unreviewed_proof_without_payment(client):
     assert not client.get('/api/v1/bounties/' + bounty).json()['deliveries']
 
 
+def test_creator_can_complete_own_work_once_after_verified_proof(client):
+    before = client.get('/api/v1/me/stats').json()['available_gold']
+    bounty = post_bounty(client, gold=10).json()['id']
+    assert write(client, f'/bounties/{bounty}/take').status_code == 200
+    assert write(client, f'/bounties/{bounty}/complete', {'note': 'No proof yet'}).status_code == 409
+    assert client.get('/api/v1/me/stats').json()['reserved_gold'] == 10
+    verified_proof(client, bounty)
+    completed = write(client, f'/bounties/{bounty}/complete', {'note': 'Verified my work'})
+    assert completed.status_code == 200
+    assert completed.json()['phase'] == 'Closed'
+    assert completed.json()['completed_by'] == 'steve'
+    stats = client.get('/api/v1/me/stats').json()
+    assert stats['available_gold'] == before
+    assert stats['reserved_gold'] == 0
+    assert write(client, f'/bounties/{bounty}/complete', {'note': 'Repeated'}).status_code == 409
+    assert client.get('/api/v1/me/stats').json()['available_gold'] == before
+
+
 def test_one_proof_requires_ai_and_human_and_survives_as_a_direct_artifact(client):
     bounty = claimed(client)
     verified_proof(client, bounty, 'nate')
@@ -86,10 +104,11 @@ def test_verified_children_do_not_close_a_parent_without_integrated_proof(tmp_pa
         write(client, f'/bounties/{parent}/ai/confirm-followups', {'indices': list(range(count))})
         assert write(client, f'/bounties/{parent}/complete', {'note': 'Children exist'}).status_code == 409
         children = client.get('/api/v1/bounties/' + parent).json()['required_children']
-        for child in children:
-            write(client, f'/bounties/{child}/take', user='nate')
-            verified_proof(client, child, 'nate')
-            assert write(client, f'/bounties/{child}/complete', {'note': 'Fixture verified'}, 'nate').status_code == 200
+        for index, child in enumerate(children):
+            worker = 'steve' if index == 0 else 'nate'
+            assert write(client, f'/bounties/{child}/take', user=worker).status_code == 200
+            verified_proof(client, child, worker)
+            assert write(client, f'/bounties/{child}/complete', {'note': 'Fixture verified'}, worker).status_code == 200
         assert write(client, f'/bounties/{parent}/complete', {'note': 'Children closed'}).status_code == 409
         verified_proof(client, parent)
         assert write(client, f'/bounties/{parent}/proof-human', {'accepted': True, 'note': 'No extra parent human gate'}).status_code == 409

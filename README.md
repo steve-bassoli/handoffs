@@ -40,7 +40,7 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 
 Open <http://127.0.0.1:8000> for the web app or <http://127.0.0.1:8000/docs> for the API. Health returns `{"status":"ok","mode":"demo"}`.
 
-The app provides Opportunities, My Work, Post Opportunity, Gremlins, and Wallet/Stats. Choose Steve, Nate, or Will as a demo user. Volunteer for an opportunity, pin context, submit one sufficient proof and request AI review. Explicit human LOW verification is required before completion releases reserved demo Gold. A PR link cannot bypass this gate. Requester PR review remains separate.
+The app provides Opportunities, My Work, Post Opportunity, Gremlins, and Wallet/Stats. Choose Steve, Nate, or Will as a demo user. Creators may volunteer for and complete their own open opportunities, including unfunded child work. An offer targeted to another person remains reserved for that person. Pin context, submit one sufficient proof and request AI review. Explicit human LOW verification is required before completion releases reserved demo Gold. Self-completion returns the reserved Gold to its owner; it does not create additional Gold. A PR link cannot bypass this gate. Requester PR review remains separate.
 
 Defaults: 1,000 Gold per month, Eastern calendar, rollover, and current-month-only grants on wallet access/action. Cancellation refunds only an unclaimed bounty. `HANDOFFS_MONTHLY_GOLD` overrides the grant; `HANDOFFS_DB` overrides the database path (default `.data/handoffs.sqlite` relative to the working directory). Identity and PR checks are explicitly simulated. The server binds to loopback by default; a team host is a later deployment choice.
 
