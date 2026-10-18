@@ -1085,7 +1085,7 @@ run(async () => {
   const linkedTask = link.get('task') || link.get('opp') || link.get('bounty');
   const linkedAgents = location.hash === '#agents';
   // Construction mode: say plainly when the door is off (task eabd11e7).
-  if ($('door-banner')) fetch('/health').then(r => r.json()).then(h => {
+  if (typeof fetch === 'function' && $('door-banner')) fetch('/health').then(r => r.json()).then(h => {
     if (h.door !== 'off') return;
     $('door-banner').textContent = `Construction mode: the door is off until ${new Date(h.prototype_auto_signoff_cutoff).toLocaleDateString()}. Sign-in and sign-offs are not required; every bypass is labelled door-off.`;
     $('door-banner').hidden = false;
