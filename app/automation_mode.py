@@ -1,6 +1,6 @@
 """Owner-selected campaign autonomy and agent layout; user-directed task actions remain available.
 
-manual: 1 Terra agent; people and explicitly user-directed tools may update tasks; autonomous writes are refused.
+manual: 1 Sol agent; people and explicitly user-directed tools may update tasks; autonomous writes are refused.
 light:  4 agents; 1 Sol root over 3 Terra workers; automation may write.
 heavy:  4 agents; 1 Astra root over 3 Sol workers; automation may write.
 max:    13 agents; 1 Astra root over 3 Sol leads, each over 3 Sol workers; automation may write (parked: too big a leap for now).
@@ -15,8 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 MODES = {
-    'manual': {'agents': 1, 'levels': ('terra',), 'automated_writes': False,
-               'summary': 'User-directed task actions; autonomous writes paused; 1 Terra agent'},
+    'manual': {'agents': 1, 'levels': ('sol',), 'automated_writes': False,
+               'summary': 'User-directed task actions; autonomous writes paused; 1 Sol agent'},
     'light': {'agents': 4, 'levels': ('sol', 'terra'), 'automated_writes': True,
               'summary': 'Autonomous campaign: 1 Sol over 3 Terra; user-directed tasks remain available'},
     'heavy': {'agents': 4, 'levels': ('astra', 'sol'), 'automated_writes': True,

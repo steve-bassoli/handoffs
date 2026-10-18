@@ -66,13 +66,13 @@ def test_light_and_heavy_modes_are_four_agents_and_reject_more(tmp_path):
         Tree(thirteen(tmp_path), tmp_path, 30, mode='light')
 
 
-def test_manual_mode_is_one_terra_agent_that_answers_once(tmp_path):
+def test_manual_mode_is_one_sol_agent_that_answers_once(tmp_path):
     plan = {'goal': 'g', 'authority': 'a', 'coordinator': {'shelf': shelf(tmp_path)}}
     seen = []
     session = tmp_path / 'session'
     session.mkdir()
     summary = Tree(plan, session, 30, transport=recorder(seen, done=False), mode='manual').run()
-    assert seen == [('coordinator', 'gpt-5.6-terra', 'low', 12000)] and summary['requests'] == 1
+    assert seen == [('coordinator', 'gpt-6.1-sol', 'low', 12000)] and summary['requests'] == 1
     with pytest.raises(ValueError):
         Tree({**plan, 'children': [{'name': 'w', 'role': 'x', 'shelf': shelf(tmp_path)}]}, tmp_path, 30, mode='manual')
     assert MODES['manual']['agents'] == 1 and MODES['light']['agents'] == 4 and MODES['max']['agents'] == 13
