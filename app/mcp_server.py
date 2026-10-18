@@ -193,6 +193,26 @@ def deliver_pr(task_id: str, pr_url: str, evidence: str, operation_id: Operation
                    body={'pr_url': pr_url, 'evidence': evidence}, operation_id=operation_id)
 
 
+@server.tool(annotations=WRITE)
+def close_task_human(
+    task_id: str,
+    baseline: str,
+    candidate: str,
+    environment: str,
+    evidence: str,
+    operation_id: OperationId,
+    filename: str = 'evidence.txt',
+    unknown: list[str] | None = None,
+) -> dict[str, Any]:
+    """Only on explicit human acceptance of the evidence, atomically record profile, text proof, human-only acceptance and completion. Requires your existing claim; never takes work. Supports LOW or undecomposed MEDIUM under existing proof rules. May release reserved Gold. Retain operation_id for identical retries; never infer human acceptance."""
+    return request('POST', '/tasks/' + quote(task_id, safe='') + '/close-human',
+                   operation_id=operation_id, body={
+                       'baseline': baseline, 'candidate': candidate,
+                       'environment': environment, 'evidence': evidence,
+                       'filename': filename, 'unknown': unknown or [],
+                   })
+
+
 def _legacy_tool(old_name, new_name, annotations):
     """Register a deprecated tool name that forwards to the renamed tool."""
     import functools

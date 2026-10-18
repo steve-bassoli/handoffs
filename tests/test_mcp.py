@@ -73,7 +73,7 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
     async def scenario():
         async with session(live_api, 'steve', tmp_path) as requester, session(live_api, 'nate', tmp_path) as worker:
             tools = {tool.name: tool for tool in (await requester.list_tools()).tools}
-            assert set(tools) == {'list_tasks', 'task_summary', 'get_task', 'get_task_context', 'get_my_stats', 'post_task', 'edit_task', 'checkpoint_task', 'take_task', 'deliver_pr'} | LEGACY_TOOLS
+            assert set(tools) == {'list_tasks', 'task_summary', 'get_task', 'get_task_context', 'get_my_stats', 'post_task', 'edit_task', 'checkpoint_task', 'take_task', 'deliver_pr', 'close_task_human'} | LEGACY_TOOLS
             assert tools['list_tasks'].annotations.readOnlyHint is True
             assert tools['task_summary'].annotations.readOnlyHint is True
             assert (await call(requester, 'task_summary'))['total'] == 0

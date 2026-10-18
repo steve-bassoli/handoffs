@@ -453,6 +453,32 @@ class Service:
     def do_ai_complete(self, c, actor, payload):
         return self.ai.complete(c, actor, payload)
 
+    def do_close_human(self, c, actor, payload):
+        import base64
+        task = self.detail(c, payload['id'])
+        if actor != task['claimant']:
+            raise RuleError('Only the claimant can update progress', 403)
+        # execute owns the transaction; any refusal rolls back every step.
+        value = dict(task.get('profile') or {})
+        value.setdefault('validation_scope', 'SIM')
+        value.setdefault('migration_stage', 'WRAP')
+        value.update(baseline_revision=payload['baseline'],
+                     candidate_revision=payload['candidate'],
+                     environment=payload['environment'],
+                     knowledge={'known': [], 'assumed': [],
+                                'unknown': payload.get('unknown', [])})
+        self.do_ai_profile(c, actor, {'id': task['id'], 'profile': value})
+        self.do_ai_proof_attach(c, actor, {
+            'id': task['id'], 'filename': payload.get('filename', 'evidence.txt'),
+            'media_type': 'text/plain',
+            'content_base64': base64.b64encode(payload['evidence'].encode('utf-8')).decode('ascii'),
+            'description': payload['evidence'][:2000]})
+        self.do_ai_proof_human(c, actor, {
+            'id': task['id'], 'accepted': True, 'note': payload['evidence'][:2000],
+            'review_basis': 'human-only'})
+        return self.do_ai_proof_complete(c, actor, {
+            'id': task['id'], 'note': payload['evidence'][:2000]})
+
     def do_ai_proof_attach(self, c, actor, payload):
         return self.proofs.attach(c, actor, payload)
 

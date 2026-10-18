@@ -119,6 +119,16 @@ class HumanProof(BaseModel):
     review_basis: Literal['ai-reviewed', 'human-only'] = 'ai-reviewed'
 
 
+class CloseHuman(BaseModel):
+    model_config = {'extra': 'forbid', 'str_strip_whitespace': True}
+    baseline: str = Field(min_length=1)
+    candidate: str = Field(min_length=1)
+    environment: str = Field(min_length=1)
+    evidence: str = Field(min_length=1, max_length=200000)
+    filename: str = Field(default='evidence.txt', min_length=1)
+    unknown: list[str] = Field(default_factory=list)
+
+
 class CompleteProof(BaseModel):
     note: str = Field(min_length=1, max_length=4000)
 
@@ -440,6 +450,12 @@ this page does not query the live Codex quota meter.</p>
     def verify_proof(task_id: str, payload: HumanProof, request: Request, user=Depends(actor),
                      idempotency_key: str = Header(min_length=1, max_length=200)):
         return request.app.state.service.execute(user, idempotency_key, 'ai_proof_human', {'id': task_id, **payload.model_dump()})
+
+    @app.post('/api/v1/tasks/{task_id}/close-human')
+    def close_human(task_id: str, payload: CloseHuman, request: Request, user=Depends(actor),
+                    idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'close_human',
+                                                {'id': task_id, **payload.model_dump()})
 
     @app.post('/api/v1/tasks/{task_id}/complete')
     def complete_proof(task_id: str, payload: CompleteProof, request: Request, user=Depends(actor),
