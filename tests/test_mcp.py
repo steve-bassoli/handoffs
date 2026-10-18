@@ -73,8 +73,10 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
     async def scenario():
         async with session(live_api, 'steve', tmp_path) as requester, session(live_api, 'nate', tmp_path) as worker:
             tools = {tool.name: tool for tool in (await requester.list_tools()).tools}
-            assert set(tools) == {'list_tasks', 'get_task', 'get_task_context', 'get_my_stats', 'post_task', 'edit_task', 'take_task', 'deliver_pr'} | LEGACY_TOOLS
+            assert set(tools) == {'list_tasks', 'task_summary', 'get_task', 'get_task_context', 'get_my_stats', 'post_task', 'edit_task', 'take_task', 'deliver_pr'} | LEGACY_TOOLS
             assert tools['list_tasks'].annotations.readOnlyHint is True
+            assert tools['task_summary'].annotations.readOnlyHint is True
+            assert (await call(requester, 'task_summary'))['total'] == 0
             assert tools['get_task'].annotations.readOnlyHint is True
             for name in ('get_my_stats', 'post_task', 'take_task', 'deliver_pr'):
                 assert tools[name].annotations.readOnlyHint is False
@@ -86,6 +88,10 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             assert (await call(requester, 'post_task', arguments))['id'] == task['id']
             assert len((await call(worker, 'list_tasks'))['items']) == 1
             assert (await call(worker, 'get_task', {'task_id': task['id']}))['criteria'] == arguments['criteria']
+            assert (await call(worker, 'get_task', {'task_id': task['id'][:8]}))['id'] == task['id']
+            summary = await call(worker, 'task_summary')
+            assert summary['counts'] == {'open': 1}
+            assert summary['active'][0]['id'] == task['id']
             assert (await call(worker, 'take_task', {'task_id': task['id'], 'operation_id': 'take-once'}))['claimant'] == 'nate'
             with httpx.Client(base_url=live_api) as fixture_client:
                 verified_proof(fixture_client, task['id'], 'nate')

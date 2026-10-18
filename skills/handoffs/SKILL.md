@@ -5,6 +5,8 @@ description: List or post HANDOFFS tasks, show wallet and work stats, and record
 
 # HANDOFFS service client
 
+Ask “tickets left?” in one read: MCP `task_summary()` or `GET /api/v1/tasks/summary` returns board-wide counts and every non-terminal task, without pagination.
+
 Manual mode accepts explicit user-directed task actions, including actions carried
 out by this client. Set `X-Action-Intent: user-directed` only for a concrete human
 request; retain `X-Automation` attribution. Light and Heavy permit autonomous

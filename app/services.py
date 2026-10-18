@@ -151,17 +151,54 @@ class Service:
 
     def get(self, task_id):
         with self.db.engine.connect() as c:
+            exact = one(c, 'SELECT id FROM tasks WHERE id=?', (task_id,))
+            if not exact:
+                # Literal prefixes, not SQL LIKE patterns. Writes retain exact IDs.
+                if len(task_id) < 8:
+                    raise RuleError('Task not found', 404)
+                matches = all_rows(c, 'SELECT id FROM tasks WHERE substr(id,1,?)=? ORDER BY id',
+                                   (len(task_id), task_id))
+                if not matches:
+                    raise RuleError('Task not found', 404)
+                if len(matches) > 1:
+                    raise RuleError({'message': 'Ambiguous task prefix',
+                                     'matches': [row['id'] for row in matches]}, 409)
+                task_id = matches[0]['id']
             return self.detail(c, task_id)
 
-    def listing(self, user, view, limit, offset, query=''):
+    def summary(self):
+        # A single statement projects all latest states and metadata; no detail() loop.
+        with self.db.engine.connect() as c:
+            rows = all_rows(c, '''SELECT b.id,b.title,e.state AS status,
+                (SELECT actor FROM events WHERE task_id=b.id AND kind='taken'
+                 ORDER BY seq DESC LIMIT 1) AS claimant,
+                COALESCE((SELECT json_extract(data,'$.complexity') FROM events
+                 WHERE task_id=b.id AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW')
+                 ORDER BY seq DESC LIMIT 1),'HIGH') AS complexity
+                FROM tasks b JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE task_id=b.id)
+                ORDER BY b.created_at DESC,b.id''')
+        counts, active = {}, []
+        for row in rows:
+            state = row['status']
+            counts[state] = counts.get(state, 0) + 1
+            # Reuse workflow phase for closure; decomposition delegates work to children.
+            if phase(state) != 'Closed' and state != 'decomposed':
+                active.append({**row, 'short_id': row['id'][:8]})
+        return {'counts': counts, 'total': len(rows), 'active': active, 'checked_at': now()}
+
+    def listing(self, user, view, limit, offset, query='', statuses=None):
         with self.db.engine.connect() as c:
             records = all_rows(c, '''SELECT b.*, e.state AS status,
                 (SELECT actor FROM events WHERE task_id=b.id AND kind='taken' ORDER BY seq DESC LIMIT 1) AS claimant
                 FROM tasks b JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE task_id=b.id)
                 WHERE (?='all' OR (?='open' AND (e.state='open' OR (e.state='pending' AND b.funded=0 AND b.target IS NULL))) OR
                 (?='mine' AND (b.creator=? OR b.target=? OR EXISTS(SELECT 1 FROM events x WHERE x.task_id=b.id AND x.actor=? AND x.kind='taken'))))
-                AND (b.title LIKE ? OR b.id LIKE ?) ORDER BY b.created_at DESC,b.id LIMIT ? OFFSET ?''',
-                (view, view, view, user, user, user, '%' + query + '%', '%' + query + '%', limit, offset))
+                AND (b.title LIKE ? OR b.id LIKE ?)
+                AND (? IS NULL OR e.state IN (SELECT value FROM json_each(?)))
+                ORDER BY b.created_at DESC,b.id LIMIT ? OFFSET ?''',
+                (view, view, view, user, user, user, '%' + query + '%', '%' + query + '%',
+                 encode(statuses) if statuses is not None else None,
+                 encode(statuses or []), limit, offset))
             for record in records:
                 classification = one(c, "SELECT json_extract(data,'$.complexity') AS complexity FROM events WHERE task_id=? AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW') ORDER BY seq DESC LIMIT 1", (record['id'],))
                 record['complexity'] = classification['complexity'] if classification else 'HIGH'

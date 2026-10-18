@@ -269,9 +269,23 @@ this page does not query the live Codex quota meter.</p>
         return request.app.state.service.transactions(user, limit, offset)
 
     @app.get('/api/v1/tasks')
-    def tasks(request: Request, user=Depends(actor), view: Literal['open', 'mine', 'all'] = 'open',
-                 limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0), q: str = ''):
-        return request.app.state.service.listing(user, view, limit, offset, q)
+    def tasks(request: Request, user=Depends(actor), view: Literal['open', 'mine', 'all'] | None = None,
+                 limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0), q: str = '',
+                 status: list[str] | None = Query(default=None)):
+        statuses = None
+        if status is not None:
+            statuses = list(dict.fromkeys(part.strip() for value in status for part in value.split(',')))
+            known = {'open', 'pending', 'working', 'blocked', 'delivered',
+                     'awaiting_approval', 'settled', 'completed', 'cancelled', 'superseded', 'decomposed'}
+            unknown = sorted(set(statuses) - known)
+            if unknown:
+                raise RuleError({'message': 'Unknown task status', 'statuses': unknown}, 422)
+        effective_view = view if view is not None else ('all' if statuses is not None else 'open')
+        return request.app.state.service.listing(user, effective_view, limit, offset, q, statuses)
+
+    @app.get('/api/v1/tasks/summary')
+    def task_summary(request: Request, user=Depends(actor)):
+        return JSONResponse(request.app.state.service.summary(), headers={'Cache-Control': 'no-store'})
 
     @app.get('/api/v1/tasks/{task_id}')
     def task(task_id: str, request: Request, user=Depends(actor)):

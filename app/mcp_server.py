@@ -71,8 +71,14 @@ def list_tasks(
 
 
 @server.tool(annotations=READ)
+def task_summary() -> dict[str, Any]:
+    """Count every task by latest event state and list all non-terminal work in one read. Never claims work."""
+    return request('GET', '/tasks/summary')
+
+
+@server.tool(annotations=READ)
 def get_task(task_id: str) -> dict[str, Any]:
-    """Preview one task's requirements, funding, claimant, deliveries and history. Does not take or execute it."""
+    """Preview requirements, funding, claimant, deliveries and history by full ID or unique prefix of 8+ characters. Ambiguous prefixes fail with matches. Does not take or execute work."""
     return request('GET', '/tasks/' + quote(task_id, safe=''))
 
 
