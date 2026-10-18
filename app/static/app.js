@@ -127,6 +127,7 @@ async function agentRoster() {
     }
   } finally { $('agents-refresh').disabled = false; }
 }
+const TASK_VIEWS = new Set(['open', 'mine', 'post']), WORKSPACE_BUTTONS = 'nav[aria-label="Workspace"] button[data-view]';
 async function navigate(nextView) {
   if (typeof treeEpoch !== 'undefined') treeEpoch++;
   clearTimeout(aiPoll);
@@ -138,7 +139,10 @@ async function navigate(nextView) {
     history.replaceState(null, '', location.pathname + location.search + (view === 'agents' ? '#agents' : ''));
   }
   for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents']) $(id).hidden = true;
-  for (const button of document.querySelectorAll('nav button')) button.classList.toggle('selected', button.dataset.view === view);
+  // One Tasks entry covers browse, my work and posting; the local row says which one is current.
+  for (const button of document.querySelectorAll(WORKSPACE_BUTTONS)) button.classList.toggle('selected', button.dataset.view === (TASK_VIEWS.has(view) ? 'open' : view));
+  if ($('tasks-toolbar')) $('tasks-toolbar').hidden = !TASK_VIEWS.has(view);
+  for (const button of document.querySelectorAll('[data-task-view]')) button.dataset.taskView === view ? button.setAttribute('aria-current', 'page') : button.removeAttribute('aria-current');
   await stats();
   if (view === 'post') $('post').hidden = false;
   else if (view === 'gremlins') $('gremlins').hidden = false;
@@ -250,6 +254,7 @@ async function show(id) {
   clearTimeout(proofPoll);
   const data = await api('/tasks/' + encodeURIComponent(id));
   selected = id;
+  for (const button of $('tasks-toolbar')?.querySelectorAll?.('[data-task-view]') || []) button.removeAttribute('aria-current');
   if (typeof window !== 'undefined' && window.commonsNavigation) window.commonsNavigation.update(view, user, id);
   else {
     if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user) + '&task=' + encodeURIComponent(id);
@@ -821,7 +826,7 @@ $('gremlins-form').onsubmit = event => { event.preventDefault(); run(async () =>
   $('gremlins-download').hidden = false; $('gremlins-download').onclick = () => { const url = URL.createObjectURL(new Blob([text], {type: 'application/json'})); const link = element('a'); link.href = url; link.download = 'gremlins-sim-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
 }); };
 $('agents-refresh').onclick = () => run(agentRoster);
-for (const button of document.querySelectorAll('nav button')) button.onclick = () => run(async () => { offset = 0; message(''); await navigate(button.dataset.view); });
+for (const button of document.querySelectorAll(WORKSPACE_BUTTONS + ', [data-task-view]')) button.onclick = () => run(async () => { offset = 0; message(''); await navigate(button.dataset.view || button.dataset.taskView); });
 $('user').onchange = () => run(async () => { user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });
 $('search').oninput = () => run(async () => { offset = 0; await board(); });
 for (const id of ['show-closed', 'assigned-by']) if ($(id)) $(id).onchange = () => run(async () => { offset = 0; await board(); });
