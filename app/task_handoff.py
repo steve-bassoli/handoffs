@@ -97,4 +97,8 @@ def prepare(task, actor, service_url, fetch_package, work_root=None):
                            'another start prompt. On retry resume this execution_id; do not launch another worker. '
                            'If inputs are missing, inspect available referenced context and report any material blocker. '
                            'Human proof acceptance, publication, unrelated tasks and paid provider calls require their '
-                           'own applicable user authorization.'}
+                           'own applicable user authorization. Every authorized implementation commit must be pushed '
+                           'to its verified intended remote branch and its exact SHA verified there in the same turn; '
+                           'use scripts/publish-task.py in the target checkout when available. Preserve explicit '
+                           'separate push approval requirements. Report rejected/unverified pushes as unpublished '
+                           'with the commit SHA and a resumable next action; never force-push or silently merge/rebase.'}
