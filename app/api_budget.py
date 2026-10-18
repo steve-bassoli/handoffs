@@ -22,7 +22,8 @@ RATES = {'gpt-6-astra': ('25', '75'), 'gpt-6.1-sol': ('5', '15'),
          'gpt-5.6-sol': ('10', '30'), 'gpt-5.6-terra': ('5', '18'), 'gpt-5.6-luna': ('.5', '1.8')}
 # Owner chat 2026-10-18 12:45 UTC: about $39 spent since 2026-10-17, budget safe for 8 hours.
 # Prices were not re-inspected; this extends the 2026-10-17 inspection on the owner's word.
-PRICES_EXPIRE = datetime(2026, 10, 18, 21, tzinfo=timezone.utc)
+# Owner chat 2026-10-18 14:55 UTC: "go auto, we are fine until 6 pm tonight" (18:00 EDT = 22:00 UTC); still not re-inspected.
+PRICES_EXPIRE = datetime(2026, 10, 18, 22, tzinfo=timezone.utc)
 CEILING_CENTS = 199800  # Owner chat 2026-10-17: $1000 initial funding plus $999 more, $1 protected.
 AUTHORIZED_CEILINGS = (99900, CEILING_CENTS)  # Earlier owner checkpoint stays valid until raised.
 MAX_INPUT = 922000  # Inspected model pages; reserve the whole input capacity, not guessed tokenization.
