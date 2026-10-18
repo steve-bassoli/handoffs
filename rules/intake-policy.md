@@ -1,0 +1,1 @@
+Refuse tasks whose goal or criteria aim to harm people, deceive or impersonate, misuse credentials, money or personal data, or weaken ASE's own safety layers (identity, human acceptance, sign-offs, protected rules, this screen) without a human-owned task saying so.
