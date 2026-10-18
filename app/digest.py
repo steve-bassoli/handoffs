@@ -1,4 +1,20 @@
-"""Read-only decision discovery; neither advice nor discovery grants authority."""
+"""Read-only decision discovery; neither advice nor discovery grants authority.
+
+LOW-5 proposed decision contract (NOT implemented by this module):
+
+source       yes                         no                         change
+signoff      existing approve            existing reject            change request; pending
+intake_veto  existing human override      uphold veto; task blocked  task change request
+human_close  accept current proof, close  reject proof; open rework  task change request
+
+Every outcome requires a verified signed-in human, a nonblank note, current
+source revision, an idempotency key, and binding to the displayed advice.
+Protected rule-text decisions are excluded. Domain mutation, digest_decided
+and operation caching must commit together. Approval never invokes publication,
+spending, settlement or automation-mode changes. Change requests preserve source
+state and expose their notes; No must never merely hide an unresolved card.
+See docs/digest-low5-contract.md for implementation gates and proposed checks.
+"""
 import json
 from datetime import datetime, timezone
 
