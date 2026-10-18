@@ -271,7 +271,7 @@ this page does not query the live Codex quota meter.</p>
     @app.get('/api/v1/tasks')
     def tasks(request: Request, user=Depends(actor), view: Literal['open', 'mine', 'all'] | None = None,
                  limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0), q: str = '',
-                 status: list[str] | None = Query(default=None)):
+                 status: list[str] | None = Query(default=None), creator: str | None = None):
         statuses = None
         if status is not None:
             statuses = list(dict.fromkeys(part.strip() for value in status for part in value.split(',')))
@@ -281,7 +281,7 @@ this page does not query the live Codex quota meter.</p>
             if unknown:
                 raise RuleError({'message': 'Unknown task status', 'statuses': unknown}, 422)
         effective_view = view if view is not None else ('all' if statuses is not None else 'open')
-        return request.app.state.service.listing(user, effective_view, limit, offset, q, statuses)
+        return request.app.state.service.listing(user, effective_view, limit, offset, q, statuses, creator or None)
 
     @app.get('/api/v1/tasks/summary')
     def task_summary(request: Request, user=Depends(actor)):
