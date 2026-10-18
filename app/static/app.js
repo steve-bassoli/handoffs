@@ -54,7 +54,17 @@ async function stats() {
   }
 }
 async function board() {
-  const result = await api(`/tasks?view=${view}&limit=${pageSize}&offset=${offset}&q=${encodeURIComponent($('search').value)}`);
+  const mine = view === 'mine', picker = $('assigned-by');
+  if ($('mine-filters')) $('mine-filters').hidden = !mine;
+  // My Tasks hides closed work unless asked; the picker narrows to one poster.
+  const filters = !mine || !picker ? '' : (($('show-closed').checked ? '' : '&status=open,pending,working,blocked,delivered,awaiting_approval') +
+    (picker.value ? '&creator=' + encodeURIComponent(picker.value) : ''));
+  const result = await api(`/tasks?view=${view}&limit=${pageSize}&offset=${offset}&q=${encodeURIComponent($('search').value)}${filters}`);
+  if (mine && picker) {
+    const chosen = picker.value; picker.replaceChildren(new Option('Anyone', ''));
+    for (const name of new Set([...(result.creators || []), ...(chosen ? [chosen] : [])])) picker.append(new Option(name, name));
+    picker.value = chosen;
+  }
   $('cards').replaceChildren();
   if (!result.items.length) $('cards').append(element('div', view === 'mine' ? 'Tasks you post or volunteer for will appear here.' : 'Nothing open right now. Post a task when you have useful work to share.', 'empty'));
   for (const item of result.items) {
@@ -806,6 +816,7 @@ $('agents-refresh').onclick = () => run(agentRoster);
 for (const button of document.querySelectorAll('nav button')) button.onclick = () => run(async () => { offset = 0; message(''); await navigate(button.dataset.view); });
 $('user').onchange = () => run(async () => { user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });
 $('search').oninput = () => run(async () => { offset = 0; await board(); });
+for (const id of ['show-closed', 'assigned-by']) if ($(id)) $(id).onchange = () => run(async () => { offset = 0; await board(); });
 $('previous').onclick = () => run(async () => { offset = Math.max(0, offset - pageSize); await board(); });
 $('next').onclick = () => run(async () => { offset += pageSize; await board(); });
 $('tx-previous').onclick = () => run(async () => { txOffset = Math.max(0, txOffset - pageSize); await transactions(); });

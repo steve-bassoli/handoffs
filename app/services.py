@@ -188,19 +188,21 @@ class Service:
                 active.append({**row, 'short_id': row['id'][:8]})
         return {'counts': counts, 'total': len(rows), 'active': active, 'checked_at': now()}
 
-    def listing(self, user, view, limit, offset, query='', statuses=None):
+    def listing(self, user, view, limit, offset, query='', statuses=None, creator=None):
         with self.db.engine.connect() as c:
-            records = all_rows(c, '''SELECT b.*, e.state AS status,
-                (SELECT actor FROM events WHERE task_id=b.id AND kind='taken' ORDER BY seq DESC LIMIT 1) AS claimant
-                FROM tasks b JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE task_id=b.id)
+            scope = '''FROM tasks b JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE task_id=b.id)
                 WHERE (?='all' OR (?='open' AND (e.state='open' OR (e.state='pending' AND b.funded=0 AND b.target IS NULL))) OR
                 (?='mine' AND (b.creator=? OR b.target=? OR EXISTS(SELECT 1 FROM events x WHERE x.task_id=b.id AND x.actor=? AND x.kind='taken'))))
                 AND (b.title LIKE ? OR b.id LIKE ?)
-                AND (? IS NULL OR e.state IN (SELECT value FROM json_each(?)))
-                ORDER BY b.created_at DESC,b.id LIMIT ? OFFSET ?''',
-                (view, view, view, user, user, user, '%' + query + '%', '%' + query + '%',
-                 encode(statuses) if statuses is not None else None,
-                 encode(statuses or []), limit, offset))
+                AND (? IS NULL OR e.state IN (SELECT value FROM json_each(?)))'''
+            params = (view, view, view, user, user, user, '%' + query + '%', '%' + query + '%',
+                      encode(statuses) if statuses is not None else None, encode(statuses or []))
+            # Facet ignores the creator filter so the picker keeps every choice.
+            creators = [r['creator'] for r in all_rows(c, 'SELECT DISTINCT b.creator ' + scope + ' ORDER BY b.creator', params)]
+            records = all_rows(c, '''SELECT b.*, e.state AS status,
+                (SELECT actor FROM events WHERE task_id=b.id AND kind='taken' ORDER BY seq DESC LIMIT 1) AS claimant
+                ''' + scope + ''' AND (? IS NULL OR b.creator=?)
+                ORDER BY b.created_at DESC,b.id LIMIT ? OFFSET ?''', params + (creator, creator, limit, offset))
             for record in records:
                 classification = one(c, "SELECT json_extract(data,'$.complexity') AS complexity FROM events WHERE task_id=? AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW') ORDER BY seq DESC LIMIT 1", (record['id'],))
                 record['complexity'] = classification['complexity'] if classification else 'HIGH'
@@ -208,7 +210,7 @@ class Service:
                 record['disposition'] = disposition(record['status'])
             fields = ('id', 'title', 'gold', 'status', 'creator', 'target', 'claimant', 'created_at', 'funded', 'parent_id', 'complexity', 'phase', 'disposition')
             return {'items': [{key: r[key] for key in fields} for r in records], 'limit': limit,
-                    'offset': offset, 'checked_at': now()}
+                    'offset': offset, 'creators': creators, 'checked_at': now()}
 
     def execute(self, actor, key, action, payload):
         fingerprint = hashlib.sha256(encode([action, payload]).encode()).hexdigest()
