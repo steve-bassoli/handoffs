@@ -31,3 +31,10 @@ def test_my_tasks_page_defaults_to_open_and_has_assigned_by_picker():
     html, script = (static / 'index.html').read_text(encoding='utf-8'), (static / 'app.js').read_text(encoding='utf-8')
     assert 'id="show-closed" type="checkbox"' in html and 'id="assigned-by"' in html
     assert "&status=" + OPEN in script and "'&creator='" in script
+    # The toggle always reports what it did, even when no closed task matches.
+    assert 'id="mine-note"' in html and 'No closed tasks${who} on this page' in script
+
+
+def test_static_scripts_revalidate_so_deploys_are_not_stale(client):
+    response = client.get('/static/app.js')
+    assert response.status_code == 200 and response.headers['cache-control'] == 'no-cache'

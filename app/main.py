@@ -157,6 +157,14 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     app = FastAPI(title='The Commons', lifespan=lifespan)
 
     @app.middleware('http')
+    async def revalidate_static(request: Request, call_next):
+        # Deploys replace scripts in place; make browsers recheck (ETag keeps it cheap) so pages never run stale JS.
+        response = await call_next(request)
+        if request.url.path.startswith('/static/'):
+            response.headers['Cache-Control'] = 'no-cache'
+        return response
+
+    @app.middleware('http')
     async def automation_guard(request: Request, call_next):
         # Attribution is independent of intent. Explicit human requests may use tools in Manual.
         via = request.headers.get(AUTOMATION_HEADER)

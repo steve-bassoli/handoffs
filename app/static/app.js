@@ -66,14 +66,22 @@ async function board() {
     picker.value = chosen;
   }
   $('cards').replaceChildren();
-  if (!result.items.length) $('cards').append(element('div', view === 'mine' ? 'Tasks you post or volunteer for will appear here.' : 'Nothing open right now. Post a task when you have useful work to share.', 'empty'));
+  if (!result.items.length) $('cards').append(element('div', mine && (picker?.value || !$('show-closed').checked) ? 'No tasks match these filters. Try Show closed or Assigned by Anyone.' : view === 'mine' ? 'Tasks you post or volunteer for will appear here.' : 'Nothing open right now. Post a task when you have useful work to share.', 'empty'));
   for (const item of result.items) {
     const card = element('article', undefined, 'card');
+    if (item.phase === 'Closed') card.style.opacity = '0.65';
     const top = element('div'); top.append(element('span', item.phase || item.status, 'pill'), element('span', item.complexity, 'pill'));
     if (item.funded) top.append(element('span', `${item.gold} GOLD`, 'pill task-gold'));
     const button = element('button', 'View task'); button.onclick = () => run(() => show(item.id));
     card.append(top, element('h3', item.title), element('div', `${item.creator} · ${item.claimant ? 'Claimed by ' + item.claimant : item.target ? 'Offered to ' + item.target + ' · not claimed' : 'Available to claim'} · ${item.disposition || item.status.replaceAll('_', ' ')}${item.funded ? '' : ' · Unfunded'}`, 'meta'), button);
     $('cards').append(card);
+  }
+  if (mine && $('mine-note')) {
+    // Say what the toggle did, so an empty change still reads as working.
+    const closed = result.items.filter(item => item.phase === 'Closed').length;
+    const who = picker.value ? ` from ${picker.value}` : '';
+    $('mine-note').textContent = !$('show-closed').checked ? `${result.items.length} open shown${who} · closed hidden` :
+      closed ? `${result.items.length} shown${who} · ${closed} closed` : `No closed tasks${who} on this page · ${result.items.length} open shown`;
   }
   $('previous').disabled = offset === 0; $('next').disabled = result.items.length < pageSize;
   $('page-label').textContent = `Page ${offset / pageSize + 1}`;
