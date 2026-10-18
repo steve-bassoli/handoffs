@@ -76,7 +76,8 @@ def _decode(data, kind):
         raise ValueError('invalid event')
     stamp = text(rows[-1].get('at_utc')) if rows else None
     return metadata(kind, {'event_count': len(rows), 'last_event_at': stamp,
-                          'pressure_stop_count': sum(row['event'] == 'pressure_stop' for row in rows)}), stamp
+                          # Older sessions logged pressure_stop; task 9e5678ac logs rest_stop.
+                          'pressure_stop_count': sum(row['event'] in ('pressure_stop', 'rest_stop') for row in rows)}), stamp
 
 
 @contextmanager

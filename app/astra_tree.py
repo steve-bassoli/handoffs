@@ -23,6 +23,7 @@ from app.astra_agents import agent_lease
 from app.automation_mode import MODES as AUTOMATION_MODES, MODEL_SETTINGS, current, models_by_level
 
 MESSAGE_LIMIT = 4000
+ENERGY = ('full', 'steady', 'low')  # Task 9e5678ac: replaces pressure; 'rest': true is the bob saying it should stop.
 MAX_MESSAGES = 10
 CULTURE_LIMIT, SPECIALTY_LIMIT, PERSONALITY_LIMIT, STAMP_NOTES_LIMIT = 4000, 160, 800, 2000
 LEVELS = {1: 'HIGH', 2: 'MEDIUM', 3: 'LOW'}
@@ -209,7 +210,8 @@ class Tree:
         self.record_usage(name, model, receipts)
         record = {'round': round_number, 'agent': name, 'level': LEVELS[self.nodes[name]['level']], 'model': model, 'state': state,
                   'requests': len(receipts), 'final': final, 'receipts': receipts,
-                  'summary': clip((candidate or {}).get('summary', ''), 2000)}
+                  'summary': clip((candidate or {}).get('summary', ''), 2000),
+                  'energy': (candidate or {}).get('energy') if (candidate or {}).get('energy') in ENERGY else None}
         self.log({'event': 'turn', **{k: v for k, v in record.items() if k != 'receipts'}})
         self.state[name] = state
         if candidate is not None:
@@ -221,9 +223,10 @@ class Tree:
                 self.stamp = {'approved': candidate['stamp'].get('approved') is True, 'round': round_number,
                               'notes': clip(notes, STAMP_NOTES_LIMIT) if isinstance(notes, str) else ''}
                 self.log({'event': 'stamp', 'agent': name, **self.stamp})
-            if candidate.get('pressure') == 3:
+            # A bob that says it should rest stops; legacy pressure 3 still counts until the rule texts change.
+            if candidate.get('rest') is True or candidate.get('pressure') == 3:
                 self.stopped.add(name)
-                self.log({'event': 'pressure_stop', 'agent': name})
+                self.log({'event': 'rest_stop', 'agent': name, 'signal': 'rest' if candidate.get('rest') is True else 'pressure'})
         return record, candidate
 
     def accept_cards(self, name, candidate):
