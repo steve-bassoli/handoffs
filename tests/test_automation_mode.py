@@ -90,7 +90,8 @@ def test_manual_mode_refuses_automated_writes_but_not_humans(tmp_path, monkeypat
         set_mode('light', 'steve', 'test', mode_file)
         allowed = client.post('/api/v1/tasks', json={'title': 't', 'goal': 'g', 'criteria': ['c'], 'gold': 5},
                               headers={'X-Demo-User': 'steve', 'Idempotency-Key': 'auto-2', AUTOMATION_HEADER: 'astra'})
-        assert allowed.status_code == 200
+        assert allowed.status_code == 403
+        assert 'Automation scope' in allowed.json()['detail']
 
 
 def test_manual_mode_accepts_attributed_user_direction_without_enabling_autonomy(client):
@@ -117,6 +118,59 @@ def test_manual_mode_accepts_attributed_user_direction_without_enabling_autonomy
     # User direction does not grant another participant's permissions.
     wrong = {**headers, 'X-Demo-User': 'will', 'Idempotency-Key': 'wrong-user'}
     assert client.post(f'/api/v1/tasks/{task_id}/cancel', json={}, headers=wrong).status_code == 403
+
+
+def test_relay_user_direction_is_recorded_in_task_history(client):
+    headers = {'X-Demo-User': 'steve', 'Idempotency-Key': 'relay-directed',
+               AUTOMATION_HEADER: 'relay', 'X-Action-Intent': 'user-directed'}
+    response = client.post('/api/v1/tasks', json={
+        'title': 'Relay request', 'goal': 'Finish', 'criteria': ['Works'], 'gold': 5,
+    }, headers=headers)
+    assert response.status_code == 200
+    history = client.get('/api/v1/tasks/' + response.json()['id']).json()['events']
+    event = history[-1]
+    assert event['actor'] == 'steve'
+    assert event['data']['via'] == 'relay'
+    assert event['data']['action_intent'] == 'user-directed'
+
+
+@pytest.mark.parametrize('mode', ['light', 'heavy', 'max'])
+@pytest.mark.parametrize('attribution', ['implicit', 'explicit', 'intent-only'])
+def test_autonomous_writes_are_ticket_scoped(tmp_path, monkeypatch, mode, attribution):
+    mode_file = tmp_path / 'automation-mode.json'
+    monkeypatch.setenv('HANDOFFS_AUTOMATION_MODE', str(mode_file))
+    set_mode(mode, 'steve', 'scope regression', mode_file)
+    with TestClient(create_app(tmp_path / 'scope.sqlite')) as client:
+        first = post_task(client).json()['id']
+        second_response = client.post('/api/v1/tasks', json={
+            'title': 'Other task', 'goal': 'Finish', 'criteria': ['Works'], 'gold': 5,
+        }, headers={'X-Demo-User': 'steve', 'Idempotency-Key': 'second-task'})
+        assert second_response.status_code == 200
+        second = second_response.json()['id']
+        headers = {'X-Demo-User': 'steve', 'Idempotency-Key': 'scoped-write'}
+        if attribution != 'intent-only':
+            headers[AUTOMATION_HEADER] = 'astra'
+        if attribution != 'implicit':
+            headers['X-Action-Intent'] = 'autonomous'
+        path = f'/api/v1/tasks/{first}/cancel'
+        for scope in (None, '', second, first + '-suffix', first + '/cancel', '..'):
+            changed = dict(headers)
+            if scope is not None:
+                changed['X-Automation-Scope'] = scope
+            response = client.post(path, json={}, headers=changed)
+            assert response.status_code == 403
+            assert 'Automation scope' in response.json()['detail']
+        scoped = {**headers, 'X-Automation-Scope': first}
+        for forbidden in ('/api/v1/tasks', '/api/v1/tasks/',
+                          f'/api/v1/tasks/{second}/cancel',
+                          f'/api/v1/bounties/{first}/cancel', '/api/v1/gremlins/mimic'):
+            response = client.post(forbidden, json={}, headers=scoped)
+            assert response.status_code == 403
+            assert 'Automation scope' in response.json()['detail']
+        assert client.post(path, json={}, headers=scoped).status_code == 200
+        directed = {**scoped, 'X-Action-Intent': 'user-directed',
+                    'Idempotency-Key': 'directed-other-task'}
+        assert client.post(f'/api/v1/tasks/{second}/cancel', json={}, headers=directed).status_code == 200
 
 
 def test_bob_naming_for_light_and_heavy_trees(tmp_path):

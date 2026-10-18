@@ -172,8 +172,15 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         if intent not in (None, 'user-directed', 'autonomous'):
             return JSONResponse(status_code=422, content={'detail': 'Invalid action intent'})
         if request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and (via is not None or intent == 'autonomous'):
-            if intent != 'user-directed' and not current_mode(getattr(request.app.state, 'mode_path', None))['automated_writes']:
-                return JSONResponse(status_code=403, content={'detail': 'Manual mode: autonomous task updates are paused; explicit user-directed actions remain available'})
+            if intent != 'user-directed':
+                if not current_mode(getattr(request.app.state, 'mode_path', None))['automated_writes']:
+                    return JSONResponse(status_code=403, content={'detail': 'Manual mode: autonomous task updates are paused; explicit user-directed actions remain available'})
+                scope = request.headers.get('X-Automation-Scope', '')
+                parts = request.url.path.split('/')
+                if (not scope or scope in ('.', '..') or '/' in scope or '\\' in scope
+                        or len(parts) < 5 or parts[:4] != ['', 'api', 'v1', 'tasks']
+                        or parts[4] != scope):
+                    return JSONResponse(status_code=403, content={'detail': 'Automation scope: autonomous task updates require X-Automation-Scope matching the task path; explicit user-directed actions remain available'})
         token = event_via.set(via)
         intent_token = event_intent.set(intent)
         try:

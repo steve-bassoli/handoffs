@@ -29,11 +29,14 @@ def test_event_preserves_data_without_mutating_input_when_attributed():
 
 
 def automated_write(client, path, data, user, key, via):
-    return client.post('/api/v1' + path, json=data, headers={
-        'X-Demo-User': user,
-        'Idempotency-Key': key,
-        AUTOMATION_HEADER: via,
-    })
+    headers = {'X-Demo-User': user, 'Idempotency-Key': key, AUTOMATION_HEADER: via}
+    parts = path.split('/')
+    # Autonomous writes are scoped to one task (41115ca8); posting a new task stays an explicit action.
+    if len(parts) > 2:
+        headers['X-Automation-Scope'] = parts[2]
+    else:
+        headers['X-Action-Intent'] = 'user-directed'
+    return client.post('/api/v1' + path, json=data, headers=headers)
 
 
 def test_automation_header_attributes_only_new_events_and_resets(tmp_path, monkeypatch):
