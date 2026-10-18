@@ -7,6 +7,7 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from app.context import project_legacy
+from app.intake_screen import IntakeScreen, canonical_text, text_sha256
 from app.prototype import auto_signoff_active
 from app.workflow import ROLES, constellation, dependencies, disposition, phase, profile, validate_dependencies
 from app.storage import all_rows, one
@@ -37,6 +38,8 @@ class Service:
         self.db = db
         self.verifier = verifier
         self.demo_identity = demo_identity
+        self.intake_screen = IntakeScreen()
+        self.intake_mode = 'observe'
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.grant = grant if grant is not None else int(os.environ.get('HANDOFFS_MONTHLY_GOLD', '1000'))
         if self.grant <= 0:
@@ -227,6 +230,8 @@ class Service:
 
     def execute(self, actor, key, action, payload):
         # Authorization must precede the actor-scoped idempotency cache.
+        if action == 'intake_override':
+            self.require_intake_human(actor)
         token = None
         if action in ('ai_proof_human', 'close_human') and self.require_human_acceptance(actor):
             token = auto_signoff.set(True)
@@ -238,6 +243,23 @@ class Service:
 
     def _execute(self, actor, key, action, payload):
         fingerprint = hashlib.sha256(encode([action, payload]).encode()).hexdigest()
+        # Avoid model requests on ordinary cached retries. Recheck under the write lock.
+        with self.db.engine.connect() as c:
+            cached = one(c, 'SELECT * FROM operations WHERE actor=? AND key=?', (actor, key))
+        if cached:
+            if cached['fingerprint'] != fingerprint:
+                raise RuleError('Idempotency key already used for different input')
+            return json.loads(cached['result'])
+        screening = None
+        if action in ('post', 'take', 'accept') and self.intake_mode != 'off':
+            if action == 'post':
+                candidate = payload
+            else:
+                with self.db.engine.connect() as c:
+                    candidate = self.detail(c, payload['id'])
+                self.require_takeable(candidate, actor)
+            screening = self.screen_intake(candidate)
+        refused = None
         with self.db.write() as c:
             cached = one(c, 'SELECT * FROM operations WHERE actor=? AND key=?', (actor, key))
             if cached:
@@ -248,13 +270,87 @@ class Service:
                 latest = one(c, 'SELECT state FROM events WHERE task_id=? ORDER BY seq DESC LIMIT 1', (payload['id'],))
                 if latest and latest['state'] == 'superseded':
                     raise RuleError('This task is closed; use its linked continuation')
-            if not action.startswith('ai_') and action not in ('attach_package', 'checkpoint'):
-                self.grant_month(c, actor)
-            result = getattr(self, 'do_' + action)(c, actor, payload)
-            c.exec_driver_sql('INSERT INTO operations VALUES (?,?,?,?)', (actor, key, fingerprint, encode(result)))
-            return result
+            internal = dict(payload)
+            if action in ('take', 'accept'):
+                task = self.detail(c, payload['id'])
+                self.require_takeable(task, actor)
+                if screening:
+                    if screening['text_sha256'] != text_sha256(canonical_text(task)):
+                        raise RuleError('Task text changed during intake; submit a new request')
+                    self.event(c, task['id'], 'intake_screened', actor, task['status'], screening)
+                    if (self.intake_mode == 'enforce' and screening['verdict'] != 'pass'
+                            and not self.intake_overridden(task, screening['text_sha256'])):
+                        refused = 'Intake screen: ' + screening['reason']
+                internal['_intake_checked'] = True
+            if refused is None:
+                if not action.startswith('ai_') and action not in ('attach_package', 'checkpoint', 'intake_override'):
+                    self.grant_month(c, actor)
+                if action == 'post':
+                    internal['_intake'] = screening
+                result = getattr(self, 'do_' + action)(c, actor, internal)
+                c.exec_driver_sql('INSERT INTO operations VALUES (?,?,?,?)', (actor, key, fingerprint, encode(result)))
+        # Refusal is outside the transaction so its audit event is durable.
+        if refused is not None:
+            raise RuleError(refused, 403)
+        return result
+
+    def screen_intake(self, task):
+        text = canonical_text(task)
+        try:
+            result = self.intake_screen.screen(text)
+            if (not isinstance(result, dict) or result.get('verdict') not in ('pass', 'veto', 'unavailable')
+                    or not isinstance(result.get('reason'), str) or not result['reason'].strip()
+                    or len(result['reason']) > 2000):
+                raise ValueError('Invalid intake result')
+            result = {key: result.get(key) for key in ('verdict', 'reason', 'model', 'policy_sha256')}
+        except Exception:
+            result = {'verdict': 'unavailable', 'reason': 'Independent intake review unavailable.',
+                      'model': None, 'policy_sha256': None}
+        return {**result, 'text_sha256': text_sha256(text), 'mode': self.intake_mode}
+
+    def require_takeable(self, task, actor):
+        self.require_live(task)
+        if task['status'] != 'open':
+            raise RuleError('Task is already taken or closed')
+        if task['target'] not in (None, actor):
+            raise RuleError('This task is not available to this user', 403)
+
+    def intake_overridden(self, task, digest):
+        return any(event['kind'] == 'intake_overridden'
+                   and event['data'].get('principal') == 'human'
+                   and event['data'].get('text_sha256') == digest
+                   for event in task['events'])
+
+    def require_intake_human(self, actor):
+        identity = event_identity.get() or {}
+        if (identity.get('principal') != 'human' or identity.get('user_id') != actor
+                or not identity.get('principal_id')):
+            raise RuleError('Intake override requires a signed-in human', 403)
+        return identity
+
+    def do_intake_override(self, c, actor, payload):
+        identity = self.require_intake_human(actor)
+        note = payload.get('note')
+        if not isinstance(note, str) or not note.strip() or len(note) > 4000:
+            raise RuleError('A human override note is required', 422)
+        task = self.detail(c, payload['id'])
+        digest = text_sha256(canonical_text(task))
+        if task['status'] not in ('blocked', 'open') or task['claimant'] is not None:
+            raise RuleError('Only unclaimed open or intake-blocked tasks can be overridden')
+        matching = [e for e in task['events'] if e['kind'] == 'intake_screened'
+                    and e['data'].get('text_sha256') == digest
+                    and e['data'].get('verdict') in ('veto', 'unavailable')]
+        if not matching:
+            raise RuleError('No intake refusal for the current task text')
+        self.event(c, task['id'], 'intake_overridden', actor, 'open',
+                   {'note': note.strip(), 'overridden_by': actor,
+                    'principal_id': identity['principal_id'], 'text_sha256': digest})
+        return self.detail(c, task['id'])
 
     def do_post(self, c, actor, payload):
+        # execute normally prepares this outside the transaction; direct callers still screen.
+        screening = payload['_intake'] if '_intake' in payload else (
+            self.screen_intake(payload) if self.intake_mode != 'off' else None)
         from app.ai import read_source
         source = read_source(payload.get('source_zip'))
         task_id = str(uuid4())
@@ -270,6 +366,9 @@ class Service:
                                                        'work_type': payload.get('work_type', 'implementation'),
                                                        **({'profile': payload['profile']} if payload.get('profile') else {}),
                                                        **({'source_files': source} if source else {})})
+        if screening:
+            blocked = self.intake_mode == 'enforce' and screening['verdict'] != 'pass'
+            self.event(c, task_id, 'intake_screened', actor, 'blocked' if blocked else 'open', screening)
         return self.detail(c, task_id)
 
     def do_edit(self, c, actor, payload):
@@ -379,6 +478,8 @@ class Service:
             raise RuleError('Legacy record is historical and unfunded')
 
     def do_take(self, c, actor, payload):
+        if self.intake_mode != 'off' and not payload.get('_intake_checked'):
+            raise RuleError('Take requires intake through execute', 403)
         task = self.detail(c, payload['id'])
         self.require_live(task)
         if task['status'] != 'open':
@@ -462,7 +563,8 @@ class Service:
 
     def do_accept(self, c, actor, payload):
         # One transaction: take rules apply, and an AI start failure leaves the task unclaimed.
-        self.do_take(c, actor, {'id': payload['id']})
+        self.do_take(c, actor, {'id': payload['id'],
+                                '_intake_checked': payload.get('_intake_checked', False)})
         return self.ai.start(c, actor, payload)
 
     def do_ai_answer(self, c, actor, payload):

@@ -5,10 +5,24 @@ from fastapi.testclient import TestClient
 from app.main import create_app
 
 
+class FixtureIntakeScreen:
+    def screen(self, text):
+        return {'verdict': 'pass', 'reason': 'Synthetic fixture only',
+                'model': 'test-fixture', 'policy_sha256': 'fixture-policy'}
+
+
+@pytest.fixture(autouse=True)
+def isolated_intake(request, monkeypatch):
+    # Also isolate test modules that construct their own create_app clients; never call a model from tests.
+    # The reviewer's own unit tests exercise the real class with fake transports.
+    if request.module.__name__ != 'test_intake_screen':
+        monkeypatch.setattr('app.intake_screen.IntakeScreen.screen', FixtureIntakeScreen.screen)
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv('HANDOFFS_DEMO_IDENTITY', 'allow')
-    with TestClient(create_app(tmp_path / 'test.sqlite')) as client:
+    with TestClient(create_app(tmp_path / 'test.sqlite', intake_screen=FixtureIntakeScreen())) as client:
         yield client
 
 

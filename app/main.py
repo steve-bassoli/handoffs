@@ -22,6 +22,7 @@ from app.artifacts import download, inventory
 from app.workflow import Profile
 from app.proofs import Proofs, ProofUpload
 from app.proof_reviewer import ProofReviewer
+from app.intake_screen import IntakeScreen
 from app.gremlins import Comparison, compare, sabotage, witness
 from app.agent_roster import roster
 from app.automation_mode import AUTOMATION_HEADER, ACTION_INTENT_HEADER, current as current_mode
@@ -137,17 +138,27 @@ class CloseHuman(BaseModel):
     unknown: list[str] = Field(default_factory=list)
 
 
+class IntakeOverride(BaseModel):
+    model_config = {'extra': 'forbid', 'str_strip_whitespace': True}
+    note: str = Field(min_length=1, max_length=4000)
+
+
 class CompleteProof(BaseModel):
     note: str = Field(min_length=1, max_length=4000)
 
 
-def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=None, proof_reviewer=None):
+def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=None, proof_reviewer=None, intake_screen=None):
+    intake_mode = os.environ.get('HANDOFFS_INTAKE_SCREEN', 'observe')
+    if intake_mode not in ('enforce', 'observe', 'off'):
+        raise ValueError('HANDOFFS_INTAKE_SCREEN must be enforce, observe or off')
     @asynccontextmanager
     async def lifespan(app):
         path = database or os.environ.get('HANDOFFS_DB', str(Path('.data/handoffs.sqlite').resolve()))
         db = Database(path)
         db.migrate()
         service = Service(db, verifier or DemoDeliveryVerifier(), clock, grant)
+        service.intake_screen = intake_screen if intake_screen is not None else IntakeScreen()
+        service.intake_mode = intake_mode
         service.seed()
         service.ai = AIRuns(service, ai_model or Luna())
         service.proofs = Proofs(service, proof_reviewer or ProofReviewer())
@@ -423,6 +434,12 @@ this page does not query the live Codex quota meter.</p>
     def checkpoint(task_id: str, payload: CheckpointTask, request: Request, user=Depends(actor),
                    idempotency_key: str = Header(min_length=1, max_length=200)):
         return request.app.state.service.execute(user, idempotency_key, 'checkpoint', {'id': task_id, **payload.model_dump()})
+
+    @app.post('/api/v1/tasks/{task_id}/intake-override')
+    def intake_override(task_id: str, payload: IntakeOverride, request: Request, user=Depends(actor),
+                        idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'intake_override',
+                                                {'id': task_id, **payload.model_dump()})
 
     @app.post('/api/v1/tasks/{task_id}/take')
     def take(task_id: str, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
