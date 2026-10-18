@@ -52,4 +52,4 @@ const stats = async () => {};
 '''
     subprocess.run([node, '-e', functions + checks], check=True, capture_output=True, text=True)
     assert 'data-view="agents"' in Path('app/static/index.html').read_text(encoding='utf-8')
-    assert "navigate(linkedAgents ? 'agents' : 'open')" in source
+    assert "location.hash === '#agents'" in source

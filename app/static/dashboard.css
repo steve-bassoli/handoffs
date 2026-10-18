@@ -75,7 +75,7 @@
 #dashboard > footer { padding: 20px 0 0; }
 @media (min-width: 960px) {
   #dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  #dashboard > header, #dashboard > footer, #dashboard > section:first-of-type { grid-column: 1 / -1; }
+  #dashboard > header, #dashboard > nav, #dashboard > footer, #dashboard > section:first-of-type { grid-column: 1 / -1; }
 }
 @media (max-width: 640px) {
   #dashboard { gap: 20px; }

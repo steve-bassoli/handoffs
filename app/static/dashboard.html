@@ -12,6 +12,7 @@
   <script src="/static/dashboard-flow.js" defer></script>
   <script src="/static/dashboard-ops.js" defer></script>
   <script src="/static/dashboard-panels.js" defer></script>
+  <script src="/static/workspace-navigation.js" defer></script>
   <script src="/static/dashboard-integration.js" defer></script>
 </head>
 <body class="dashboard-page">
@@ -37,6 +38,7 @@
         <button type="button" data-dashboard-resume>Resume refresh</button>
       </div>
     </header>
+    <nav aria-label="Workspace"><button data-view="open" class="selected">Tasks</button><button data-view="mine">My Tasks</button><button data-view="post">Post Task</button><a id="dashboard-link" href="/dashboard">Dashboard</a><button data-view="gremlins">Gremlins</button><button data-view="agents">Agents</button><button data-view="wallet">Wallet &amp; Stats</button></nav>
     <section aria-labelledby="live-title">
       <h2 id="live-title">Live · agents and freshness</h2>
       <div data-dashboard-slot="live"><p>No observations received.</p></div>

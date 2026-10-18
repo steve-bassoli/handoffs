@@ -42,10 +42,15 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
   });
   await page.goto(process.argv[1]+'/#task='+process.argv[2]);
   await page.waitForFunction(()=>!document.querySelector('#detail').hidden);
+  const workspace=()=>page.locator('nav[aria-label="Workspace"]').innerText();
+  const mainNavigation=await workspace();
   const link=page.getByRole('link',{name:'Open dashboard for this task'});
   assert((await link.getAttribute('href')).includes('user=steve'));
   await link.click();
   await page.waitForFunction(()=>document.querySelector('[data-dashboard-status]').textContent.includes('last-good'));
+  assert.equal(await workspace(),mainNavigation);
+  assert.equal(await page.locator('#dashboard-link').getAttribute('aria-current'),'page');
+  assert(await page.locator('#dashboard-link').evaluate(el=>el.classList.contains('selected')));
   assert.equal(await page.locator('#dashboard-user').inputValue(),'steve');
   assert.equal(await page.locator('#dashboard-task').inputValue(),process.argv[2]);
   assert((await page.locator('[data-dashboard-slot="flow"]').innerText()).includes('Browser integration task'));
@@ -84,6 +89,33 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
   await page.getByRole('link',{name:'← Back to Tasks'}).click();
   await page.waitForFunction(()=>document.querySelector('#user').value==='nate');
   assert.equal(await page.locator('#dashboard-link').innerText(),'Dashboard');
+  // Every tab crosses the document boundary with context and a fresh view.
+  status=200;
+  for(const view of ['open','mine','post','gremlins','agents','wallet']){
+   await page.locator(`nav[aria-label="Workspace"] [data-view="${view}"]`).click();
+   await page.waitForFunction(view=>document.querySelector(`nav [data-view="${view}"]`).classList.contains('selected'),view);
+   await page.locator('#dashboard-link').click();
+   await page.waitForFunction(()=>document.querySelector('[data-dashboard-status]').textContent.includes('last-good'));
+   assert.equal(await page.locator('#dashboard-user').inputValue(),'nate');
+   assert.equal(await page.locator('#dashboard-task').inputValue(),process.argv[2]);
+   assert.equal(await workspace(),mainNavigation);
+   if(view==='agents')assert.equal(await page.locator('#agent-rows').count(),0);
+   if(view!=='wallet'){
+    await page.locator(`nav[aria-label="Workspace"] [data-view="${view}"]`).click();
+    await page.waitForFunction(view=>document.querySelector(`nav [data-view="${view}"]`).classList.contains('selected'),view);
+   }
+  }
+  await page.locator('nav [data-view="post"]').click();
+  await page.waitForFunction(()=>!document.querySelector('#post').hidden);
+  await page.locator('#post input[name="title"]').fill('Draft must not survive reset');
+  await page.locator('#dashboard-link').click();
+  await page.waitForFunction(()=>document.querySelector('[data-dashboard-status]').textContent.includes('last-good'));
+  await page.goBack();
+  await page.waitForFunction(()=>document.querySelector('#post')&&!document.querySelector('#post').hidden&&document.querySelector('#post input[name="title"]').value==='');
+  assert.equal(await page.locator('#user').inputValue(),'nate');
+  await page.goForward();
+  await page.waitForFunction(()=>document.querySelector('[data-dashboard-status]')?.textContent.includes('last-good'));
+  assert.equal(await page.locator('#dashboard-task').inputValue(),process.argv[2]);
   assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);
   // A fresh, invalid selection never guesses another identity.
   const other=await browser.newPage();let unselected=0;
@@ -91,7 +123,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
   await other.goto(process.argv[1]+'/dashboard?user=unknown');
   await other.waitForFunction(()=>document.querySelector('#dashboard-context-status').textContent.includes('Choose a registered user'));
   assert.equal(unselected,0);await other.close();
-  console.log('PASS real browser: main/task navigation, explicit identities, real snapshot and registered session, flow/Ops, focus retention, pause, stale data, 403 stop, return navigation, no mutations or guessed identity.');
+  console.log('PASS real browser: all tabs, matching workspace navigation, Dashboard selection, user/task preservation, clean back/forward reset, explicit identities, snapshots, session, flow/Ops, focus, pause, stale data, 403 stop, no mutations or guessed identity.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
 '''

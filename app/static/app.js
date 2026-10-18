@@ -112,8 +112,11 @@ async function navigate(nextView) {
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   view = nextView; selected = null;
-  if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user);
-  history.replaceState(null, '', location.pathname + location.search + (view === 'agents' ? '#agents' : ''));
+  if (typeof window !== 'undefined' && window.commonsNavigation) window.commonsNavigation.update(view, user);
+  else {
+    if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user);
+    history.replaceState(null, '', location.pathname + location.search + (view === 'agents' ? '#agents' : ''));
+  }
   for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents']) $(id).hidden = true;
   for (const button of document.querySelectorAll('nav button')) button.classList.toggle('selected', button.dataset.view === view);
   await stats();
@@ -181,8 +184,11 @@ async function show(id) {
   clearTimeout(proofPoll);
   const data = await api('/bounties/' + encodeURIComponent(id));
   selected = id;
-  if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user) + '&task=' + encodeURIComponent(id);
-  history.replaceState(null, '', '#task=' + encodeURIComponent(id));
+  if (typeof window !== 'undefined' && window.commonsNavigation) window.commonsNavigation.update(view, user, id);
+  else {
+    if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user) + '&task=' + encodeURIComponent(id);
+    history.replaceState(null, '', '#task=' + encodeURIComponent(id));
+  }
   for (const section of ['board', 'post', 'wallet', 'gremlins', 'agents']) $(section).hidden = true;
   const current = $('detail');
   const refreshing = !current.hidden && current.querySelector('.detail-head code')?.textContent === id;
@@ -637,12 +643,15 @@ run(async () => {
   const linkedTask = link.get('task') || link.get('opp') || link.get('bounty');
   const linkedAgents = location.hash === '#agents';
   const users = await api('/users');
+  const navigation = typeof window !== 'undefined' && window.commonsNavigation;
+  if (navigation && navigation.initialUser) user = navigation.initialUser;
   if (!users.some(item => item.id === user)) user = 'steve';
   for (const item of users) {
     const option = element('option', item.name); option.value = item.id; $('user').append(option);
     const targetOption = option.cloneNode(true); document.querySelector('[name=target]').append(targetOption);
   }
   $('user').value = user;
-  await navigate(linkedAgents ? 'agents' : 'open');
+  await navigate(navigation ? navigation.initialView : linkedAgents ? 'agents' : 'open');
   if (linkedTask) await show(linkedTask);
+  if (navigation) navigation.restoring = false;
 });

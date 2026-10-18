@@ -42,6 +42,7 @@ nav button { background: transparent; color: var(--muted); border: 0; border-rad
 nav button.selected { color: var(--accent); border-bottom-color: var(--accent); background: transparent; }
 nav a { display: inline-block; color: var(--muted); padding: 12px 20px; text-decoration: none; }
 nav a:hover { color: var(--accent); }
+nav a.selected { color: var(--accent); border-bottom: 3px solid var(--accent); margin-bottom: -1px; }
 .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .primary:hover { background: var(--accent-hover); color: #fff; border-color: var(--accent-hover); }
 .section-title { display: flex; justify-content: space-between; align-items: center; gap: 18px; }

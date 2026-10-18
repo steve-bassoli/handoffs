@@ -40,6 +40,7 @@
     history.replaceState(null, '', location.pathname + (pageQuery.size ? '?' + pageQuery : ''));
     contextStatus.textContent = user ? 'Connecting read-only observations…' : 'Choose a registered user to connect.';
     if (user) localStorage.setItem('handoffs-user', user);
+    if (window.commonsNavigation) window.commonsNavigation.dashboardContext(user, task);
     controller = window.createDashboard(root, user ? {
       endpoint: '/api/dashboard/live' + (query.size ? '?' + query : ''),
       headers: {'X-Demo-User': user},
@@ -75,4 +76,5 @@
   } catch (_) {
     contextStatus.textContent = 'User selection unavailable. No dashboard requests started; reload to retry.';
   }
+  window.addEventListener('pagehide', () => { if (controller) controller.destroy(); });
 }());
