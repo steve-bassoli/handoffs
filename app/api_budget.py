@@ -41,12 +41,26 @@ def budget_path():
     return Path(os.environ.get('HANDOFFS_API_BUDGET_DB', database.with_name('api-budget.sqlite')))
 
 
-def initialize(path, observed_cents, uncertainty_cents, provenance):
+LIVE_BUDGET_FILE = Path(__file__).resolve().parents[1] / '.data' / 'api-budget.sqlite'
+
+
+def owner_signoff(action, path, payload, signoff_id, db):
+    """The live ledger's owner checkpoints each consume one sign-off (3babb128); scratch ledgers (tests) need none."""
+    if signoff_id is None and Path(path).resolve() != LIVE_BUDGET_FILE.resolve():
+        return
+    if not signoff_id:
+        raise BudgetError('Changing the live API budget requires --signoff')
+    from app.executor_signoffs import consume_signoff
+    consume_signoff('spend_ceiling', {'operation': action, **payload}, signoff_id=signoff_id, db=db)
+
+
+def initialize(path, observed_cents, uncertainty_cents, provenance, *, signoff_id=None, db=None):
     """Explicit local owner setup only. Never called by a model, HTTP route or reserve."""
     if any(type(n) is not int or n < 0 for n in (observed_cents, uncertainty_cents)) or not provenance:
         raise BudgetError('A sourced, nonnegative owner checkpoint is required')
     if observed_cents + uncertainty_cents > CEILING_CENTS:
         raise BudgetError('Checkpoint exceeds the protected allocation')
+    owner_signoff('initialize', path, {'observed_cents': observed_cents, 'uncertainty_cents': uncertainty_cents, 'provenance': provenance}, signoff_id, db)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open('xb'):
@@ -57,10 +71,11 @@ def initialize(path, observed_cents, uncertainty_cents, provenance):
         db.execute('CREATE TABLE calls (id TEXT PRIMARY KEY, model TEXT NOT NULL, held INTEGER NOT NULL, state TEXT NOT NULL)')
 
 
-def raise_ceiling(path, provenance):
+def raise_ceiling(path, provenance, *, signoff_id=None, db=None):
     """Explicit local owner update only: move an existing ledger up to CEILING_CENTS, keeping its history."""
     if not isinstance(provenance, str) or not provenance.strip():
         raise BudgetError('A sourced owner authorization is required')
+    owner_signoff('raise_ceiling', path, {'ceiling_cents': CEILING_CENTS, 'provenance': provenance}, signoff_id, db)
     with connection(path) as db:
         db.execute('BEGIN IMMEDIATE')
         ceiling, prior = db.execute('SELECT ceiling,provenance FROM budget WHERE id=1').fetchone()
@@ -71,13 +86,14 @@ def raise_ceiling(path, provenance):
 
 
 
-def reconcile_unknown(path, provenance):
+def reconcile_unknown(path, provenance, *, signoff_id=None, db=None):
     """Explicit local owner checkpoint: keep every unknown call's full envelope as spent and let paid work continue.
 
     Never reduces a hold, never retries the call, and never clears an overrun.
     """
     if not isinstance(provenance, str) or not provenance.strip():
         raise BudgetError('A sourced owner authorization is required')
+    owner_signoff('reconcile_unknown', path, {'provenance': provenance}, signoff_id, db)
     with connection(path) as db:
         db.execute('BEGIN IMMEDIATE')
         rows = db.execute("SELECT id, held FROM calls WHERE state='unknown'").fetchall()

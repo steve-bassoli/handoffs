@@ -22,6 +22,7 @@ function renderAuth() {
   }
   $('user').value = user;
   $('user').disabled = !!session;
+  syncSignoffAuth();
 }
 function clearSession() {
   session = null;
@@ -37,7 +38,7 @@ async function authenticatedFetch(url, options = {}) {
     clearSession();
     ++treeEpoch; ++boardRequest;
     clearTimeout(aiPoll); clearTimeout(proofPoll); clearTimeout(acceptPoll);
-    for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents']) $(id).hidden = true;
+    for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents', 'signoffs']) $(id).hidden = true;
     message('Session ended. Sign in again or choose a demo user.', true);
     throw new Error('Session ended. Sign in again or choose a demo user.');
   }
@@ -176,6 +177,64 @@ async function agentRoster() {
     }
   } finally { $('agents-refresh').disabled = false; }
 }
+function syncSignoffAuth() {
+  if ($('signoffs-hint')) $('signoffs-hint').hidden = !!session;
+  for (const button of document.querySelectorAll('#signoffs button[data-decision]')) button.disabled = !session || button.dataset.busy === 'true';
+}
+function renderSignoffs(items) {
+  const list = $('signoff-cards'); list.replaceChildren();
+  if (!items.length) list.append(element('p', 'No pending sign-offs.'));
+  for (const item of items) {
+    const card = element('article', undefined, 'card');
+    const payload = element('pre');
+    payload.textContent = item.payload_json;
+    payload.style.whiteSpace = 'pre-wrap'; payload.style.overflowWrap = 'anywhere';
+    const label = element('label', 'Decision note');
+    const note = element('textarea'); label.append(note);
+    const controls = element('div', undefined, 'actions');
+    let busy = false;
+    const buttons = [];
+    for (const [text, approved] of [['Approve', true], ['Reject', false]]) {
+      const button = element('button', text); button.type = 'button'; button.dataset.decision = String(approved);
+      button.onclick = () => run(async () => {
+        if (!session || busy) return;
+        busy = true;
+        for (const control of buttons) { control.dataset.busy = 'true'; control.disabled = true; }
+        let recorded = false;
+        try {
+          await api('/signoffs/' + encodeURIComponent(item.id) + '/decision', {approved, note: note.value});
+          recorded = true;
+          message('Sign-off decision recorded.');
+          try { await signoffs(); }
+          catch (error) { message('Decision recorded; refresh failed (' + error.message + '). Do not submit it again.', true); }
+        } finally {
+          if (!recorded) {
+            busy = false;
+            for (const control of buttons) delete control.dataset.busy;
+            syncSignoffAuth();
+          }
+        }
+      });
+      buttons.push(button); controls.append(button);
+    }
+    card.append(element('h3', item.action), element('p', item.summary),
+      element('p', `Requested by ${item.requested_by} · ${item.requested_principal}`, 'meta'),
+      element('p', item.created_at, 'meta'), payload, label, controls);
+    list.append(card);
+  }
+  syncSignoffAuth();
+}
+let signoffRequest = 0;
+async function signoffs() {
+  const ticket = ++signoffRequest, epoch = treeEpoch, token = session?.access_token;
+  syncSignoffAuth();
+  // The server refuses demo identities here; say so instead of showing a failed load.
+  if (!token) { $('signoff-cards').replaceChildren(element('p', 'Sign in to see and decide pending sign-offs.')); return; }
+  $('signoff-cards').replaceChildren(element('p', 'Loading sign-offs…'));
+  const items = await api('/signoffs');
+  if (ticket !== signoffRequest || epoch !== treeEpoch || token !== session?.access_token || view !== 'signoffs') return;
+  renderSignoffs(items);
+}
 const TASK_VIEWS = new Set(['open', 'mine', 'post']), WORKSPACE_BUTTONS = 'nav[aria-label="Workspace"] button[data-view]';
 async function navigate(nextView) {
   const epoch = typeof treeEpoch !== 'undefined' ? ++treeEpoch : null;
@@ -188,7 +247,7 @@ async function navigate(nextView) {
     if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user);
     history.replaceState(null, '', location.pathname + location.search + (view === 'agents' ? '#agents' : ''));
   }
-  for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents']) $(id).hidden = true;
+  for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents', 'signoffs']) $(id).hidden = true;
   // One Tasks entry covers browse, my work and posting; the local row says which one is current.
   for (const button of document.querySelectorAll(WORKSPACE_BUTTONS)) button.classList.toggle('selected', button.dataset.view === (TASK_VIEWS.has(view) ? 'open' : view));
   if ($('tasks-toolbar')) $('tasks-toolbar').hidden = !TASK_VIEWS.has(view);
@@ -198,6 +257,7 @@ async function navigate(nextView) {
   if (view === 'post') $('post').hidden = false;
   else if (view === 'gremlins') $('gremlins').hidden = false;
   else if (view === 'agents') { $('agents').hidden = false; await agentRoster(); }
+  else if (view === 'signoffs') { $('signoffs').hidden = false; await signoffs(); }
   else if (view === 'wallet') { $('wallet').hidden = false; await transactions(); }
   else { $('board').hidden = false; $('board-title').textContent = view === 'mine' ? 'My tasks' : 'Open tasks'; await board(); }
 }
@@ -321,6 +381,7 @@ async function show(id) {
   }
   for (const section of ['board', 'post', 'wallet', 'gremlins', 'agents']) $(section).hidden = true;
   const current = $('detail');
+  $('signoffs').hidden = true;
   const refreshing = !current.hidden && current.querySelector('.detail-head code')?.textContent === id;
   const detail = element('div');
   const listView = typeof view !== 'undefined' && view === 'mine' ? 'mine' : 'open';
@@ -490,6 +551,7 @@ async function showTree(id) {
   for (const section of ['board', 'post', 'wallet', 'gremlins', 'agents']) $(section).hidden = true;
   const current = $('detail');
   current.hidden = false;
+  $('signoffs').hidden = true;
   current.replaceChildren(element('h2', 'Task tree'), element('p', 'Loading hierarchy…'));
   try {
     const assembly = assembleTicketTree(await api('/tasks/' + encodeURIComponent(id) + '/lineage'), id);
@@ -888,6 +950,7 @@ $('gremlins-form').onsubmit = event => { event.preventDefault(); run(async () =>
   $('gremlins-download').hidden = false; $('gremlins-download').onclick = () => { const url = URL.createObjectURL(new Blob([text], {type: 'application/json'})); const link = element('a'); link.href = url; link.download = 'gremlins-sim-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
 }); };
 $('agents-refresh').onclick = () => run(agentRoster);
+$('signoffs-refresh').onclick = () => run(signoffs);
 for (const button of document.querySelectorAll(WORKSPACE_BUTTONS + ', [data-task-view]')) button.onclick = () => run(async () => { offset = 0; message(''); await navigate(button.dataset.view || button.dataset.taskView); });
 $('user').onchange = () => run(async () => { if (session) { renderAuth(); return; } user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });
 $('signin-form').onsubmit = event => {

@@ -69,3 +69,19 @@ def test_executor_binding_once_and_failure(tmp_path, approvals, kind, monkeypatc
             execute(failed)
         with pytest.raises(RuleError):
             execute(failed)
+
+
+def test_live_budget_owner_checkpoints_need_a_signoff(tmp_path, approvals, monkeypatch):
+    import app.api_budget as api_budget
+    main, approve = approvals
+    live = tmp_path / 'api-budget.sqlite'
+    monkeypatch.setattr(api_budget, 'LIVE_BUDGET_FILE', live)  # Treat the scratch ledger as the live one.
+    with pytest.raises(BudgetError, match='requires --signoff'):
+        api_budget.initialize(live, 0, 0, 'Owner')
+    payload = {'operation': 'initialize', 'observed_cents': 0, 'uncertainty_cents': 0, 'provenance': 'Owner'}
+    sid = approve('spend_ceiling', payload)
+    api_budget.initialize(live, 0, 0, 'Owner', signoff_id=sid, db=main)
+    with pytest.raises(RuleError):  # Single use.
+        api_budget.reconcile_unknown(live, 'Owner', signoff_id=sid, db=main)
+    scratch = tmp_path / 'scratch.sqlite'
+    api_budget.initialize(scratch, 0, 0, 'Fixture')  # Scratch ledgers stay free for tests.

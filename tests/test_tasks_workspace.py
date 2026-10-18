@@ -8,7 +8,10 @@ STATIC = Path(__file__).resolve().parents[1] / 'app' / 'static'
 def test_one_tasks_entry_and_local_row_replace_three_tabs():
     for page in ('index.html', 'dashboard.html'):
         nav = re.search(r'<nav aria-label="Workspace">(.*?)</nav>', (STATIC / page).read_text(encoding='utf-8')).group(1)
-        assert re.findall(r'data-view="(\w+)"', nav) == ['open', 'gremlins', 'agents', 'wallet'], page
+        expected = ['open', 'gremlins', 'agents', 'wallet']
+        if page == 'index.html':
+            expected.append('signoffs')
+        assert re.findall(r'data-view="(\w+)"', nav) == expected, page
         assert 'My Tasks' not in nav and 'Post Task' not in nav
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
     row = re.search(r'<div id="tasks-toolbar".*?</div>', html).group(0)

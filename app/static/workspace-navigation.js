@@ -1,7 +1,7 @@
 /* Shared cross-page routing; a page transition starts with a clean UI. */
 (() => {
   'use strict';
-  const views = new Set(['open', 'mine', 'post', 'gremlins', 'agents', 'wallet']);
+  const views = new Set(['open', 'mine', 'post', 'gremlins', 'agents', 'wallet', 'signoffs']);
   const params = new URLSearchParams(location.search);
   const hash = new URLSearchParams(location.hash.slice(1));
   let task = hash.get('task') || hash.get('opp') || hash.get('bounty') || params.get('task') || '';
