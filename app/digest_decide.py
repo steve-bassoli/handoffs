@@ -2,6 +2,8 @@
 
 source       yes                              no                               change
 signoff      approve (decision_mode human)    reject                           change request; stays pending
+rule_texts   approve this digest; applies at  decline; blocks applying         change request
+             the second distinct approval
 intake_veto  existing human override          veto upheld; task blocked        change request on the task
 human_close  accept current proof, complete   reject proof; task stays open    change request on the task
 
@@ -25,7 +27,7 @@ router = APIRouter(prefix='/api/v1/digest')
 
 class Decision(BaseModel):
     model_config = {'extra': 'forbid', 'str_strip_whitespace': True}
-    kind: Literal['signoff', 'intake_veto', 'human_close']
+    kind: Literal['signoff', 'intake_veto', 'human_close', 'rule_texts']
     id: str = Field(min_length=1, max_length=200)
     revision: str = Field(min_length=64, max_length=64)
     decision: Literal['yes', 'no', 'change']
@@ -59,6 +61,11 @@ def decide(service, c, actor, payload, identity):
         raise RuleError('This item is no longer waiting on a person', 409)
     if current['revision'] != payload['revision']:
         raise RuleError({'message': 'The item changed; review the current version', 'revision': current['revision']}, 409)
+    if payload['kind'] == 'rule_texts':  # Task 2c56ad7a: per-person record; applies on the second distinct acceptance.
+        from app import rule_proposals
+        if payload.get('recommendation_id'):
+            raise RuleError('Rule texts carry no recommendation', 409)
+        return rule_proposals.decide(c, actor, {**payload, '_principal_id': identity['principal_id']}, current)
     advice = _snapshot(c, payload)
     audit = {'kind': payload['kind'], 'decision': payload['decision'], 'revision': payload['revision'],
              'note': payload['note'], 'recommendation_id': payload.get('recommendation_id'),

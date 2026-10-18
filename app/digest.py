@@ -9,7 +9,8 @@ human_close  accept current proof, close  reject proof; open rework  task change
 
 Every outcome requires a verified signed-in human, a nonblank note, current
 source revision, an idempotency key, and binding to the displayed advice.
-Protected rule-text decisions are excluded. Domain mutation, digest_decided
+Protected rule-text proposals appear as rule_texts items (task 2c56ad7a): each
+person decides once, and two distinct acceptances apply them (app.rule_proposals). Domain mutation, digest_decided
 and operation caching must commit together. Approval never invokes publication,
 spending, settlement or automation-mode changes. Change requests preserve source
 state and expose their notes; No must never merely hide an unresolved card.
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Request
 
 from app.effects import classify
+from app import rule_proposals
 from app.proofs import human_closable
 from app.prototype import door_off
 from app.recommendations import Recommendations
@@ -74,15 +76,18 @@ def build_digest(service, user):
     advice = _AdviceReader(service.db)
     items = {}
 
-    def add(kind, record_id, title, why, action, revision, actor, principal):
+    def add(kind, record_id, title, why, action, revision, actor, principal, details=None):
         item = {
             'kind': kind, 'id': record_id, 'title': title,
             'why_waiting': why, 'action': action, 'effect': classify(action),
             'revision': revision,
-            'recommendation': advice.current(kind, record_id, revision),
+            # Rule texts carry no advisory snapshot: the people deciding read the texts themselves.
+            'recommendation': {'status': 'unavailable'} if kind == 'rule_texts' else advice.current(kind, record_id, revision),
             'provenance': {'construction': construction,
                            'requested_by': actor,
                            'requested_principal': principal}}
+        if details is not None:
+            item['details'] = details
         key = (kind, record_id)
         if key in items and items[key] != item:
             raise RuleError('Conflicting digest source identity; refresh required', 409)
@@ -96,6 +101,14 @@ def build_digest(service, user):
             'SELECT * FROM events ORDER BY seq').mappings()]
         tasks = [dict(r) for r in c.exec_driver_sql(
             'SELECT id,title,creator,parent_id FROM tasks ORDER BY id').mappings()]
+        proposals = rule_proposals.pending(c)
+    for proposal in proposals:
+        # A person who already decided is no longer waited on; the card stays for the others.
+        if any(d['decided_by'] == user['user_id'] for d in proposal['decisions']):
+            continue
+        add('rule_texts', proposal['id'], proposal['title'], rule_proposals.why(proposal), 'rule_texts',
+            proposal['sha256'], proposal['author'], 'proposal',
+            {'changed': proposal['changed'], 'decisions': proposal['decisions'], 'needed': rule_proposals.NEEDED})
     histories = {}
     children = {}
     for task in tasks:
@@ -144,9 +157,9 @@ def build_digest(service, user):
                 'close_human', revision, taken['actor'], taken['data'].get('principal'))
     ordered = [items[key] for key in sorted(items)]
     coverage = {'signoff': 'complete', 'intake_veto': 'complete',
-                'human_close': 'complete', 'policy_decision': 'unsupported'}
+                'human_close': 'complete', 'rule_texts': 'complete', 'policy_decision': 'unsupported'}
     counts = {kind: sum(item['kind'] == kind for item in ordered)
-              for kind in ('signoff', 'intake_veto', 'human_close')}
+              for kind in ('signoff', 'intake_veto', 'human_close', 'rule_texts')}
     # Unknown source cardinality is null, never an asserted zero.
     counts['policy_decision'] = None
     return {'items': ordered, 'coverage': coverage,

@@ -9,7 +9,8 @@ from app.services import RuleError
 
 
 @pytest.fixture
-def source():
+def source(tmp_path, monkeypatch):
+    monkeypatch.setenv('ASE_PROPOSALS_DIR', str(tmp_path / 'no-proposals'))  # Rule-text cards are tested in test_rule_proposals.
     engine = create_engine('sqlite://')
     with engine.begin() as c:
         c.exec_driver_sql('CREATE TABLE signoffs(id TEXT, action TEXT, summary TEXT, payload_sha256 TEXT, requested_by TEXT, requested_principal TEXT, decision TEXT, created_at INTEGER)')
@@ -35,7 +36,7 @@ def test_sources_counts_and_unknown_policy(source):
     result = digest.build_digest(source, WHO)
     assert {item['kind'] for item in result['items']} == {'signoff', 'intake_veto', 'human_close'}
     assert result['counts']['total'] == len(result['items']) == 3
-    assert result['counts']['by_kind'] == {'signoff': 1, 'intake_veto': 1, 'human_close': 1, 'policy_decision': None}
+    assert result['counts']['by_kind'] == {'signoff': 1, 'intake_veto': 1, 'human_close': 1, 'rule_texts': 0, 'policy_decision': None}
     assert result['coverage']['policy_decision'] == 'unsupported'
     assert result['complete'] is False
     assert len({(i['kind'], i['id']) for i in result['items']}) == 3

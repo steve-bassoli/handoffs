@@ -310,7 +310,7 @@ function digestReference(item) {
 }
 function digestEligible(item) {
   // Eligibility here is transport validity, never proof or inferred acceptance.
-  return ['signoff', 'intake_veto', 'human_close'].includes(item.kind) &&
+  return ['signoff', 'intake_veto', 'human_close', 'rule_texts'].includes(item.kind) &&
     typeof item.id === 'string' && !!item.id &&
     typeof item.revision === 'string' && item.revision.length === 64;
 }
@@ -341,7 +341,7 @@ async function submitDigest(path, body, auth, actor) {
           `Not recorded: ${typeof row.detail === 'string' ? row.detail : JSON.stringify(row.detail)}`;
         outcomes.append(element('p', `${row.kind} · ${label}: ${detail}`, row.ok ? 'meta' : 'error'));
       }
-    } else outcomes.append(element('p', 'Decision recorded.'));
+    } else outcomes.append(element('p', typeof result?.message === 'string' ? result.message : 'Decision recorded.'));
     // Refresh reads only; never retry a write or automatically select failed items.
     try { await signoffs(); }
     catch (error) {
@@ -377,7 +377,8 @@ function renderSignoffs(items) {
   const DIGEST_MEANING = {
     signoff: 'Accept approves this request (nothing runs yet). Decline rejects it. Change asks for a revision and keeps it waiting.',
     intake_veto: "Accept lets this task go ahead despite the screen's objection. Decline keeps it blocked. Change asks for a revised task.",
-    human_close: 'Accept accepts the proof and completes the task. Decline rejects the proof; the task stays open. Change asks for more work.'};
+    human_close: 'Accept accepts the proof and completes the task. Decline rejects the proof; the task stays open. Change asks for more work.',
+    rule_texts: 'Accept records your own approval of these exact texts; they apply when a second person accepts too. Decline blocks them. Change asks for a revised proposal.'};
   const list = $('signoff-cards'); list.replaceChildren();
   digestEntries = []; digestBatchButton = null;
   const auth = session, actor = user;
@@ -393,6 +394,17 @@ function renderSignoffs(items) {
       element('span', `${tag} · ${effect.gate || 'Gate unspecified'}`, 'pill'),
       element('p', effect.reason || 'Consequence details unavailable.', 'meta'),
       element('p', item.why_waiting));
+    if (item.kind === 'rule_texts' && Array.isArray(item.details?.changed)) {
+      // Task 2c56ad7a: the people deciding read every changed text, old and new.
+      const texts = element('details');
+      texts.append(element('summary', `${item.details.changed.length} rule texts change · digest ${String(item.revision).slice(0, 12)}…`));
+      for (const change of item.details.changed) {
+        const old = element('p', 'Old: ' + change.old, 'meta'), next = element('p', 'New: ' + change.new);
+        old.style.whiteSpace = next.style.whiteSpace = 'pre-wrap';
+        texts.append(element('h4', change.name), old, next);
+      }
+      card.append(texts);
+    }
     const recommendation = item.recommendation;
     const advised = DIGEST_CHOICES.find(([, decision]) => decision === recommendation?.disposition)?.[0] || recommendation?.disposition;
     card.append(element('p', !recommendation || recommendation.status === 'unavailable' ? 'No recommendation yet' :
@@ -401,11 +413,13 @@ function renderSignoffs(items) {
     card.append(element('small', `Requested by ${provenance.requested_by || 'unknown'} · ${provenance.requested_principal || 'unknown'}${provenance.construction ? ' · Construction: ' + String(provenance.construction) : ''}`));
     const entry = {item, choice: null}; digestEntries.push(entry);
     if (digestEligible(item)) {
-      const selectLabel = element('label', 'Include in Accept selected');
-      const choice = element('input'); choice.type = 'checkbox'; choice.checked = false;
-      choice.dataset.digestControl = 'true'; choice.style.width = 'auto';
-      choice.onchange = syncSignoffAuth;
-      selectLabel.prepend(choice); card.append(selectLabel); entry.choice = choice;
+      if (item.kind !== 'rule_texts') {  // Rule texts are always decided one at a time.
+        const selectLabel = element('label', 'Include in Accept selected');
+        const choice = element('input'); choice.type = 'checkbox'; choice.checked = false;
+        choice.dataset.digestControl = 'true'; choice.style.width = 'auto';
+        choice.onchange = syncSignoffAuth;
+        selectLabel.prepend(choice); card.append(selectLabel); entry.choice = choice;
+      }
       const {label, note} = digestNote('Decision note (required)');
       const controls = element('div', undefined, 'actions');
       controls.style.display = 'flex'; controls.style.flexWrap = 'wrap'; controls.style.gap = '8px';
