@@ -57,6 +57,98 @@ vm.runInNewContext(mutate + '\nthis.mutate = mutate;', context);
     assert result.returncode == 0, result.stderr
 
 
+def test_post_lock_identity_snapshot_and_cancel():
+    import shutil
+    import subprocess
+    import pytest
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('Node is needed for posting race checks')
+    checks = r'''
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync('app/static/app.js', 'utf8');
+const posting = source.slice(source.indexOf("$('post-form').onsubmit = e => {"), source.indexOf("if (typeof window !== 'undefined') window.addEventListener('hashchange'"));
+const mutation = source.slice(source.indexOf('async function mutate('), source.indexOf('const acceptStages'));
+function fixture() {
+  let release;
+  const fields = {title: 'Original', goal: 'Goal', criteria: 'One', repository: '', context_links: '', complexity: 'LOW', work_type: 'implementation', gold: '150', target: ''};
+  const controls = [{disabled: false}, {disabled: true}, {disabled: false, value: 'chosen.zip'}];
+  const form = {elements: controls, resets: 0, reset() { this.resets++; fields.title = ''; controls[2].value = ''; }};
+  const picker = {value: 'steve', disabled: false};
+  const cancel = {};
+  const nodes = {'post-form': form, user: picker, 'post-cancel': cancel};
+  const c = {user: 'steve', session: null, treeEpoch: 0, postPending: false, calls: [], messages: [], encodes: 0, confirmation: false,
+    $: id => nodes[id], document: {querySelectorAll: () => []},
+    FormData: class { constructor() { this.values = {...fields}; } get(key) { return this.values[key]; } },
+    confirm: () => c.confirmation,
+    message: (text, error) => c.messages.push([text, error]),
+    run: async operation => { try { await operation(); } catch (error) { c.message(error.message, true); } },
+    postSourceZip: () => { c.encodes++; assert.ok(picker.disabled); assert.ok(controls.every(x => x.disabled)); return new Promise(resolve => { release = resolve; }); },
+    api: async (path, body) => { c.calls.push({path, body, actor: c.user, token: c.session?.access_token}); return {id: 'task-1'}; },
+    stats: async () => {}, show: async () => {},
+    renderAuth: () => { picker.disabled = !!c.session || c.postPending; }
+  };
+  vm.runInNewContext(mutation + '\n' + posting, c);
+  return {c, form, controls, picker, cancel, fields, submit: () => form.onsubmit({target: form, preventDefault() {}}), release: () => release('ZIP')};
+}
+(async () => {
+  let f = fixture();
+  const pending = f.submit();
+  assert.equal(f.c.encodes, 1);
+  await f.submit();
+  f.cancel.onclick();
+  assert.equal(f.form.resets, 0);
+  assert.equal(f.c.encodes, 1);
+  f.fields.title = 'Changed programmatically';
+  f.release(); await pending;
+  assert.equal(f.c.calls.length, 1);
+  assert.equal(f.c.calls[0].actor, 'steve');
+  assert.equal(f.c.calls[0].body.title, 'Original');
+  assert.equal(f.c.calls[0].body.source_zip, 'ZIP');
+  assert.equal(f.form.resets, 1);
+  assert.deepEqual(f.controls.map(x => x.disabled), [false, true, false]);
+  assert.equal(f.picker.disabled, false);
+  for (const change of [
+    f => { f.c.user = 'other'; },
+    f => { f.picker.value = 'other'; },
+    f => { f.c.session = {access_token: 'new', user_id: 'steve'}; },
+    f => { f.c.session.access_token = 'rotated'; },
+    f => { f.c.session = null; },
+    f => { f.c.treeEpoch++; }
+  ]) {
+    f = fixture();
+    f.c.session = {access_token: 'initial', user_id: 'steve'};
+    const p = f.submit(); change(f); f.release(); await p;
+    assert.equal(f.c.calls.length, 0);
+    assert.equal(f.form.resets, 0);
+    assert.ok(f.c.messages.some(([text, error]) => error && text.includes('Nothing was posted')));
+    assert.equal(f.c.postPending, false);
+  }
+  f = fixture();
+  f.c.postSourceZip = async () => { throw new Error('encoding failed'); };
+  await f.submit();
+  assert.equal(f.c.calls.length, 0);
+  assert.equal(f.c.postPending, false);
+  assert.equal(f.picker.disabled, false);
+  assert.deepEqual(f.controls.map(x => x.disabled), [false, true, false]);
+  f = fixture();
+  f.cancel.onclick();
+  assert.equal(f.form.resets, 0);
+  f.c.confirmation = true; f.cancel.onclick();
+  assert.equal(f.form.resets, 1);
+  assert.equal(f.fields.title, '');
+  assert.equal(f.controls[2].value, '');
+  assert.equal(f.c.calls.length, 0);
+  const html = fs.readFileSync('app/static/index.html', 'utf8');
+  assert.match(html, /<form id="post-form">[\s\S]*?<button id="post-cancel" type="button">Cancel<\/button>[\s\S]*?<\/form>/);
+})().catch(error => { console.error(error); process.exitCode = 1; });
+'''
+    result = subprocess.run([node, '-e', checks], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
 def test_late_task_detail_cannot_pull_the_user_back():
     import shutil
     import subprocess

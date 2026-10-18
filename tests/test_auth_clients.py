@@ -95,7 +95,7 @@ def test_browser_session_authorization_static():
     assert "sessionStorage.removeItem(SESSION_KEY)" in source
     assert 'localStorage.setItem(SESSION_KEY' not in source
     assert "response.status === 401" in source
-    assert "$('user').disabled = !!session;" in source
+    assert "$('user').disabled = !!session ||" in source
 
 
 def test_mcp_download_uses_shared_identity_headers():

@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 const SESSION_KEY = 'handoffs-session';
 let session = null;
+let postPending = false;
 if (typeof sessionStorage !== 'undefined') try {
   const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
   if (saved && typeof saved.access_token === 'string' && saved.access_token &&
@@ -21,7 +22,7 @@ function renderAuth() {
     if (![...$('user').options].some(option => option.value === user)) $('user').append(new Option(user, user));
   }
   $('user').value = user;
-  $('user').disabled = !!session;
+  $('user').disabled = !!session || (typeof postPending !== 'undefined' && postPending);
   syncSignoffAuth();
 }
 function clearSession() {
@@ -1005,14 +1006,41 @@ $('tx-next').onclick = () => run(async () => { txOffset += pageSize; await trans
 const postSourceZip = sourceInput($('post-form'));
 $('post-form').onsubmit = e => {
   e.preventDefault();
-  run(async () => {
-    const form = new FormData(e.target);
-    const lines = name => form.get(name).split('\n').map(s => s.trim()).filter(Boolean);
-    const result = await mutate('/tasks', {title: form.get('title'), goal: form.get('goal'), criteria: lines('criteria'),
-      repository: form.get('repository'), context_links: lines('context_links'), complexity: form.get('complexity'), work_type: form.get('work_type'), gold: Number(form.get('gold')), target: form.get('target') || null,
-      source_zip: await postSourceZip()}, 'Task posted:');
-    if (result) e.target.reset();
+  if (postPending) return;
+  const target = e.target, picker = $('user');
+  const actor = user, auth = session, token = session?.access_token, principal = session?.user_id;
+  const epoch = typeof treeEpoch !== 'undefined' ? treeEpoch : null;
+  const pickerValue = picker.value, pickerDisabled = picker.disabled;
+  postPending = true;
+  return run(async () => {
+    const controls = [...target.elements].map(control => [control, control.disabled]);
+    try {
+      // Capture successful controls before disabling them; FormData omits disabled fields.
+      const form = new FormData(target);
+      for (const [control] of controls) control.disabled = true;
+      picker.disabled = true;
+      const lines = name => form.get(name).split('\n').map(s => s.trim()).filter(Boolean);
+      const body = {title: form.get('title'), goal: form.get('goal'), criteria: lines('criteria'),
+        repository: form.get('repository'), context_links: lines('context_links'), complexity: form.get('complexity'), work_type: form.get('work_type'), gold: Number(form.get('gold')), target: form.get('target') || null,
+        source_zip: await postSourceZip()};
+      if (user !== actor || session !== auth || session?.access_token !== token || session?.user_id !== principal ||
+          picker.value !== pickerValue || (epoch !== null && treeEpoch !== epoch)) {
+        throw new Error('Identity, session or workspace changed. Nothing was posted. Review the draft and submit again.');
+      }
+      // No await between validation and mutate's synchronous entry into api/identityHeaders.
+      const result = await mutate('/tasks', body, 'Task posted:');
+      if (result) target.reset();
+    } finally {
+      postPending = false;
+      for (const [control, disabled] of controls) control.disabled = disabled;
+      if (typeof renderAuth === 'function') renderAuth(); else picker.disabled = pickerDisabled;
+    }
   });
+};
+if ($('post-cancel')) $('post-cancel').onclick = () => {
+  if (postPending || !confirm('Discard this task draft and chosen ZIP?')) return;
+  $('post-form').reset();
+  message('Draft cleared. Drafts are not saved across reloads.');
 };
 if (typeof window !== 'undefined') window.addEventListener('hashchange', () => {
   run(() => openTicketHash(ticketHash(location.hash)));
