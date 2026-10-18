@@ -48,7 +48,7 @@ def test_login_existing_user_and_logout(secure_client):
     assert post(secure_client, headers).status_code == 401
 
 
-@pytest.mark.parametrize('kind', ['human', 'relay', 'codex', 'agent'])
+@pytest.mark.parametrize('kind', ['relay', 'codex', 'agent'])
 def test_distinct_principal_and_hashed_storage(secure_client, kind):
     credentials = secure_client.app.state.credentials
     issued = credentials.issue('steve', kind)

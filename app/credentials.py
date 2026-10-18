@@ -47,6 +47,9 @@ class Credentials:
 
     def issue(self, user, kind, ttl=86400):
         user = user.lower()
+        if kind == 'human':
+            # Human sessions come only from password login, so a locally minted token cannot pose as a person.
+            raise RuleError('Human sessions come only from password login', 422)
         if kind not in KINDS or type(ttl) is not int or not 1 <= ttl <= 2592000:
             raise RuleError('Invalid principal kind or token lifetime (1..2592000 seconds)', 422)
         with self.db.write() as c:

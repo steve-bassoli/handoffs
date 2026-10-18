@@ -23,7 +23,7 @@ def main():
     password.add_argument('user')
     token = commands.add_parser('token')
     token.add_argument('user')
-    token.add_argument('--kind', required=True, choices=['human', 'relay', 'codex', 'agent'])
+    token.add_argument('--kind', required=True, choices=['relay', 'codex', 'agent'])
     token.add_argument('--ttl', type=int, default=86400)
     revoke = commands.add_parser('revoke')
     revoke.add_argument('principal_id')

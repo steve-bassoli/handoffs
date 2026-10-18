@@ -169,6 +169,9 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
 
     app = FastAPI(title='The Commons', lifespan=lifespan)
 
+    from app.signoffs import router as signoffs_router
+    app.include_router(signoffs_router)
+
     @app.middleware('http')
     async def revalidate_static(request: Request, call_next):
         # Deploys replace scripts in place; make browsers recheck (ETag keeps it cheap) so pages never run stale JS.
