@@ -120,7 +120,12 @@ async function api(path, body) {
   }
   const response = await authenticatedFetch('/api/v1' + path, options);
   const data = await response.json();
-  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+  if (!response.ok) {
+    const error = new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+    error.status = response.status;
+    error.detail = data.detail;
+    throw error;
+  }
   if (operation) sessionStorage.removeItem(operation);
   return data;
 }
@@ -260,63 +265,196 @@ async function agentRoster() {
     }
   } finally { $('agents-refresh').disabled = false; }
 }
+let digestCountRequest = 0;
+let signoffRequest = 0;
+let digestBusy = false;
+let digestUncertain = false;
+let digestEntries = [];
+let digestBatchButton = null;
+function digestCount(data) {
+  if (typeof document === 'undefined') return;
+  const entry = $('human-decisions-entry');
+  if (!entry) return;
+  const total = data?.counts?.total;
+  const known = Number.isInteger(total) && total >= 0;
+  entry.textContent = known ? `Decisions · ${total}${data.complete === false ? '+' : ''}` : 'Decisions · ?';
+  entry.setAttribute('aria-label', known ? `Human decisions; ${total}${data.complete === false ? ' or more' : ''} waiting` : 'Human decisions; waiting count unavailable');
+}
+async function refreshDigestCount() {
+  const ticket = ++digestCountRequest, auth = session, actor = user;
+  digestCount(null);
+  try {
+    const data = await api('/digest');
+    if (ticket === digestCountRequest && auth === session && actor === user) digestCount(data);
+  } catch {
+    if (ticket === digestCountRequest) digestCount(null);
+  }
+}
 function syncSignoffAuth() {
+  if (typeof document === 'undefined') return;
   if ($('signoffs-hint')) $('signoffs-hint').hidden = !!session;
-  for (const button of document.querySelectorAll('#signoffs button[data-decision]')) button.disabled = !session || button.dataset.busy === 'true';
+  const locked = !session || digestBusy || digestUncertain;
+  for (const control of document.querySelectorAll('#signoffs [data-digest-control]')) {
+    control.disabled = locked;
+  }
+  if ($('signoffs-refresh')) $('signoffs-refresh').disabled = digestBusy;
+  if (digestBatchButton) {
+    const count = digestEntries.filter(entry => entry.choice?.checked).length;
+    digestBatchButton.textContent = `Yes to selected (${count})`;
+    digestBatchButton.disabled = locked || !count;
+  }
+}
+function digestReference(item) {
+  return {kind: item.kind, id: item.id, revision: item.revision,
+    recommendation_id: item.recommendation?.status === 'unavailable' ? null : item.recommendation?.id || null};
+}
+function digestEligible(item) {
+  // Eligibility here is transport validity, never proof or inferred acceptance.
+  return ['signoff', 'intake_veto', 'human_close'].includes(item.kind) &&
+    typeof item.id === 'string' && !!item.id &&
+    typeof item.revision === 'string' && item.revision.length === 64;
+}
+function digestNote(labelText) {
+  const label = element('label', labelText), note = element('textarea');
+  note.required = true; note.maxLength = 2000;
+  note.dataset.digestControl = 'true';
+  note.style.width = '100%'; note.style.boxSizing = 'border-box';
+  label.append(note);
+  return {label, note};
+}
+async function submitDigest(path, body, auth, actor) {
+  if (!session || session !== auth || user !== actor || digestBusy || digestUncertain) return;
+  digestBusy = true; syncSignoffAuth();
+  const outcomes = $('digest-outcomes');
+  outcomes.replaceChildren(element('p', 'Recording decision…'));
+  let confirmed = false;
+  try {
+    const result = await api(path, body);
+    confirmed = true;
+    outcomes.replaceChildren();
+    if (path === '/digest/decide-batch') {
+      outcomes.append(element('p', `${result.decided} recorded · ${result.failed} failed`));
+      for (const row of result.results || []) {
+        const entry = digestEntries.find(entry => entry.item.kind === row.kind && entry.item.id === row.id);
+        const label = entry?.item.title || row.id;
+        const detail = row.ok ? 'Yes recorded' : row.status === 409 ? 'Changed since you looked; refresh' :
+          `Not recorded: ${typeof row.detail === 'string' ? row.detail : JSON.stringify(row.detail)}`;
+        outcomes.append(element('p', `${row.kind} · ${label}: ${detail}`, row.ok ? 'meta' : 'error'));
+      }
+    } else outcomes.append(element('p', 'Decision recorded.'));
+    // Refresh reads only; never retry a write or automatically select failed items.
+    try { await signoffs(); }
+    catch (error) {
+      digestUncertain = true;
+      outcomes.append(element('p', `Decision recorded; refresh failed (${error.message}). Do not submit it again. Refresh to review current items.`, 'error'));
+    }
+  } catch (error) {
+    if (error.status === 409) {
+      outcomes.replaceChildren(element('p', 'Changed since you looked; refresh', 'error'));
+      try { await signoffs(); }
+      catch (refreshError) {
+        digestUncertain = true;
+        outcomes.append(element('p', 'Refresh failed: ' + refreshError.message, 'error'));
+      }
+    } else {
+      // A missing response or server error does not prove the write failed.
+      const unknown = !error.status || error.status >= 500;
+      digestUncertain = unknown;
+      outcomes.replaceChildren(element('p', unknown ?
+        'Outcome unknown. No automatic retry. Refresh and reconcile before deciding again.' :
+        'Decision not recorded: ' + error.message, 'error'));
+    }
+  } finally {
+    digestBusy = false;
+    syncSignoffAuth();
+    // Includes error paths; the count must never remain an old success value.
+    await refreshDigestCount();
+  }
 }
 function renderSignoffs(items) {
   const list = $('signoff-cards'); list.replaceChildren();
-  if (!items.length) list.append(element('p', 'No pending sign-offs.'));
+  digestEntries = []; digestBatchButton = null;
+  const auth = session, actor = user;
+  if (!items.length) list.append(element('p', 'No decisions waiting.'));
   for (const item of items) {
     const card = element('article', undefined, 'card');
-    const payload = element('pre');
-    payload.textContent = item.payload_json;
-    payload.style.whiteSpace = 'pre-wrap'; payload.style.overflowWrap = 'anywhere';
-    const label = element('label', 'Decision note');
-    const note = element('textarea'); label.append(note);
-    const controls = element('div', undefined, 'actions');
-    let busy = false;
-    const buttons = [];
-    for (const [text, approved] of [['Approve', true], ['Reject', false]]) {
-      const button = element('button', text); button.type = 'button'; button.dataset.decision = String(approved);
-      button.onclick = () => run(async () => {
-        if (!session || busy) return;
-        busy = true;
-        for (const control of buttons) { control.dataset.busy = 'true'; control.disabled = true; }
-        let recorded = false;
-        try {
-          await api('/signoffs/' + encodeURIComponent(item.id) + '/decision', {approved, note: note.value});
-          recorded = true;
-          message('Sign-off decision recorded.');
-          try { await signoffs(); }
-          catch (error) { message('Decision recorded; refresh failed (' + error.message + '). Do not submit it again.', true); }
-        } finally {
-          if (!recorded) {
-            busy = false;
-            for (const control of buttons) delete control.dataset.busy;
-            syncSignoffAuth();
-          }
-        }
-      });
-      buttons.push(button); controls.append(button);
-    }
-    card.append(element('h3', item.action), element('p', item.summary),
-      element('p', `Requested by ${item.requested_by} · ${item.requested_principal}`, 'meta'),
-      element('p', new Date(item.created_at * 1000).toLocaleString(), 'meta'), payload, label, controls);  // created_at is Unix seconds
+    card.style.minWidth = '0'; card.style.overflowWrap = 'anywhere';
+    const effect = item.effect || {};
+    const reversibility = String(effect.reversibility || '').toLowerCase();
+    const tag = reversibility === 'reversible' ? 'Reversible' : reversibility === 'irreversible' ? 'Irreversible' : 'Reversibility unknown';
+    card.append(element('h3', `${item.action || 'Decision'} — ${item.title || item.id}`),
+      element('span', item.kind, 'pill'),
+      element('span', `${tag} · ${effect.gate || 'Gate unspecified'}`, 'pill'),
+      element('p', effect.reason || 'Consequence details unavailable.', 'meta'),
+      element('p', item.why_waiting));
+    const recommendation = item.recommendation;
+    card.append(element('p', !recommendation || recommendation.status === 'unavailable' ? 'No recommendation yet' :
+      `Recommendation: ${recommendation.disposition} · ${recommendation.rationale}`));
+    const provenance = item.provenance || {};
+    card.append(element('small', `Requested by ${provenance.requested_by || 'unknown'} · ${provenance.requested_principal || 'unknown'}${provenance.construction ? ' · Construction: ' + String(provenance.construction) : ''}`));
+    const entry = {item, choice: null}; digestEntries.push(entry);
+    if (digestEligible(item)) {
+      const selectLabel = element('label', 'Include in Yes to selected');
+      const choice = element('input'); choice.type = 'checkbox'; choice.checked = false;
+      choice.dataset.digestControl = 'true'; choice.style.width = 'auto';
+      choice.onchange = syncSignoffAuth;
+      selectLabel.prepend(choice); card.append(selectLabel); entry.choice = choice;
+      const {label, note} = digestNote('Decision note (required)');
+      const controls = element('div', undefined, 'actions');
+      controls.style.display = 'flex'; controls.style.flexWrap = 'wrap'; controls.style.gap = '8px';
+      for (const [text, decision] of [['Yes', 'yes'], ['No', 'no'], ['Change', 'change']]) {
+        const button = element('button', text); button.type = 'button';
+        button.dataset.digestControl = 'true'; button.dataset.decision = decision;
+        button.onclick = () => run(async () => {
+          if (!session || session !== auth || actor !== user || digestBusy || digestUncertain) return;
+          if (!note.value.trim()) { note.reportValidity(); note.focus(); return; }
+          await submitDigest('/digest/decide', {...digestReference(item), decision, note: note.value.trim()}, auth, actor);
+        });
+        controls.append(button);
+      }
+      card.append(label, controls);
+    } else card.append(element('p', 'Decision unavailable: missing or unsupported item version.', 'error'));
+    if (!session) card.append(element('p', 'Sign in to decide', 'meta'));
     list.append(card);
+  }
+  if (digestEntries.some(entry => entry.choice)) {
+    const bar = element('div', undefined, 'card');
+    const {label, note} = digestNote('Note for selected decisions (required)');
+    digestBatchButton = element('button', 'Yes to selected (0)', 'primary');
+    digestBatchButton.type = 'button'; digestBatchButton.dataset.digestControl = 'true';
+    digestBatchButton.onclick = () => run(async () => {
+      if (!session || session !== auth || actor !== user || digestBusy || digestUncertain) return;
+      const selected = digestEntries.filter(entry => entry.choice?.checked);
+      if (!selected.length) return;
+      if (selected.length > 50) { message('Select at most 50 items for one batch.', true); return; }
+      if (!note.value.trim()) { note.reportValidity(); note.focus(); return; }
+      await submitDigest('/digest/decide-batch', {items: selected.map(entry => digestReference(entry.item)), note: note.value.trim()}, auth, actor);
+    });
+    bar.append(label, digestBatchButton); list.append(bar);
   }
   syncSignoffAuth();
 }
-let signoffRequest = 0;
 async function signoffs() {
-  const ticket = ++signoffRequest, epoch = treeEpoch, token = session?.access_token;
+  const ticket = ++signoffRequest, countTicket = ++digestCountRequest;
+  const epoch = treeEpoch, auth = session, actor = user;
+  digestCount(null);
+  $('signoff-cards').replaceChildren(element('p', 'Loading decisions…'));
+  digestEntries = []; digestBatchButton = null;
   syncSignoffAuth();
-  // The server refuses demo identities here; say so instead of showing a failed load.
-  if (!token) { $('signoff-cards').replaceChildren(element('p', 'Sign in to see and decide pending sign-offs.')); return; }
-  $('signoff-cards').replaceChildren(element('p', 'Loading sign-offs…'));
-  const items = await api('/signoffs');
-  if (ticket !== signoffRequest || epoch !== treeEpoch || token !== session?.access_token || view !== 'signoffs') return;
-  renderSignoffs(items);
+  let data;
+  try { data = await api('/digest'); }
+  catch (error) {
+    if (ticket === signoffRequest && epoch === treeEpoch && auth === session && actor === user) {
+      $('signoff-cards').replaceChildren(element('p', 'Could not load decisions. Refresh to retry.', 'error'));
+      $('human-decisions-scope').textContent = 'Waiting count unavailable.';
+    }
+    throw error;
+  }
+  if (ticket !== signoffRequest || epoch !== treeEpoch || auth !== session || actor !== user || view !== 'signoffs') return;
+  if (countTicket === digestCountRequest) digestCount(data);
+  $('human-decisions-scope').textContent = `${data.counts.total}${data.complete === false ? '+' : ''} waiting · ${data.complete === false ? 'Partial coverage' : 'Complete coverage'} · ${typeof data.coverage === 'string' ? data.coverage : JSON.stringify(data.coverage)}`;
+  // An unknown write remains locked even after a read: reconcile its audit first.
+  renderSignoffs(data.items);
 }
 const TASK_VIEWS = new Set(['open', 'mine', 'post']), WORKSPACE_BUTTONS = 'nav[aria-label="Workspace"] button[data-view]';
 async function navigate(nextView) {
@@ -325,6 +463,7 @@ async function navigate(nextView) {
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   view = nextView; selected = null;
+  if (typeof refreshDigestCount === 'function' && typeof session !== 'undefined' && nextView !== 'signoffs') void refreshDigestCount();
   if (typeof boardRequest !== 'undefined') boardRequest++;
   if (typeof window !== 'undefined' && window.commonsNavigation) window.commonsNavigation.update(view, user);
   else {

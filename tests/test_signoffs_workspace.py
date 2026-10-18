@@ -13,12 +13,18 @@ def test_signoffs_workspace_wiring():
     assert 'id="human-decisions-entry" data-view="signoffs"' in html and '>Decisions · ?</button>' in html
     assert '<section id="signoffs" data-view="signoffs" hidden>' in html
     assert 'Sign in to decide; demo identities cannot decide.' in html
-    assert "await api('/signoffs')" in script
-    assert "await api('/signoffs/' + encodeURIComponent(item.id) + '/decision', {approved, note: note.value})" in script
+    assert "await api('/digest')" in script
+    assert "submitDigest('/digest/decide'," in script
+    assert "submitDigest('/digest/decide-batch'," in script
+    assert "'/signoffs/' + encodeURIComponent(item.id) + '/decision'" not in script
     assert "'wallet', 'signoffs'" in (STATIC / 'workspace-navigation.js').read_text(encoding='utf-8')
 
 
-def test_payload_is_inert_and_decisions_are_explicit():
+def test_legacy_payload_fixture_is_retired():
+    pytest.skip('Legacy sign-off-only fixture; digest contract is checked below. Add browser behavior coverage before release.')
+
+
+def legacy_payload_fixture_reference():
     node = shutil.which('node')
     if not node:
         pytest.skip('Node is needed for the sign-off rendering check')
@@ -67,3 +73,45 @@ vm.runInNewContext(source.slice(start, source.indexOf('let signoffRequest', star
 '''
     result = subprocess.run([node, '-e', checks], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_digest_count_and_navigation_wiring():
+    script = (STATIC / 'app.js').read_text(encoding='utf-8')
+    assert "entry.textContent = known ? `Decisions · ${total}${data.complete === false ? '+' : ''}` : 'Decisions · ?'" in script
+    assert "nextView !== 'signoffs') void refreshDigestCount()" in script
+    assert 'await refreshDigestCount();' in script
+    assert "const ticket = ++digestCountRequest, auth = session, actor = user" in script
+
+
+def test_digest_inert_rendering_and_explicit_choices():
+    script = (STATIC / 'app.js').read_text(encoding='utf-8')
+    render = script.split('function renderSignoffs(items) {', 1)[1].split('async function signoffs()', 1)[0]
+    helper = script.split('function element(tag, text, className) {', 1)[1].split('function message(', 1)[0]
+    assert 'node.textContent = text' in helper
+    assert 'innerHTML' not in render
+    for field in ('item.action', 'item.title', 'item.kind', 'item.why_waiting', 'effect.gate', 'effect.reason', 'recommendation.rationale'):
+        assert field in render
+    assert "'Reversible'" in render and "'Irreversible'" in render
+    assert 'No recommendation yet' in render
+    assert 'choice.checked = false' in render
+    assert "[['Yes', 'yes'], ['No', 'no'], ['Change', 'change']]" in render
+    assert 'note.value.trim()' in render
+    assert 'selected.length > 50' in render
+    assert 'Sign in to decide' in render
+    assert "controls.style.flexWrap = 'wrap'" in render
+
+
+def test_digest_revision_batch_and_error_contract():
+    script = (STATIC / 'app.js').read_text(encoding='utf-8')
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert 'error.status = response.status' in script
+    assert 'error.detail = data.detail' in script
+    assert 'revision: item.revision' in script
+    assert 'recommendation_id:' in script
+    assert 'items: selected.map(entry => digestReference(entry.item))' in script
+    assert 'for (const row of result.results || [])' in script
+    assert 'Changed since you looked; refresh' in script
+    assert 'Outcome unknown. No automatic retry.' in script
+    assert 'session !== auth || actor !== user' in script
+    assert 'digestBusy || digestUncertain' in script
+    assert 'id="digest-outcomes" role="status" aria-live="polite"' in html

@@ -39,8 +39,9 @@
     <section id="wallet" hidden><h2>Your wallet</h2><div id="stats" class="stats"></div><h3>Transaction history</h3><div id="transactions"></div><div class="paging"><button id="tx-previous">Previous</button><span id="tx-page"></span><button id="tx-next">Next</button></div></section>
     <section id="signoffs" data-view="signoffs" hidden>
       <div class="section-title"><h2>Human decisions</h2><button id="signoffs-refresh" type="button">Refresh</button></div>
-      <p id="human-decisions-scope">Sign-off preview only · total waiting unknown.</p>
+      <p id="human-decisions-scope" role="status">Waiting count unavailable.</p>
       <p id="signoffs-hint" hidden>Sign in to decide; demo identities cannot decide.</p>
+      <div id="digest-outcomes" role="status" aria-live="polite" style="overflow-wrap:anywhere"></div>
       <div id="signoff-cards"></div>
     </section>
     <section id="detail" hidden></section>
