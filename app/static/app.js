@@ -576,7 +576,8 @@ function proofSection(data, detail) {
     if (proof.human) box.append(element('p', `Human LOW verification: ${proof.human.accepted ? 'accepted' : 'rejected'} · ${proof.human.note}`));
     if (editable && proof.fresh && !['queued', 'running'].includes(review?.verdict)) { const request = element('button', 'Request AI proof review'); request.onclick = () => run(() => mutate(`/tasks/${data.id}/proof-review`)); box.append(request, element('small', 'Explicit request uses the configured provider. Missing access or unsupported video review stays inconclusive.')); }
     const humanOnly = !review || (review.verdict === 'inconclusive' && !review.criteria?.some(item => item.verdict === 'fail'));
-    if (editable && data.complexity === 'LOW' && proof.fresh && (review?.verdict === 'pass' || humanOnly)) {
+    const mediumHumanOnly = data.complexity === 'MEDIUM' && !data.required_children?.length && humanOnly;
+    if (editable && (data.complexity === 'LOW' || mediumHumanOnly) && proof.fresh && (review?.verdict === 'pass' || humanOnly)) {
       const human = element('form'); const decision = labeled(human, 'Human verification decision', 'Choose…', 'select', ['Choose…', 'Accept', 'Reject']);
       if (humanOnly) human.append(element('p', 'Human-only verification: review the evidence and record your decision. This does not record an AI pass.'));
       const note = labeled(human, 'What did you personally verify?', '', 'textarea'); note.required = true;

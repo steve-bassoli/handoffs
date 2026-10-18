@@ -56,6 +56,11 @@ def decode_upload(value):
     return proof, raw
 
 
+def human_closable(complexity, children):
+    """LOW always; MEDIUM only while undecomposed (prototyping). HIGH never closes human-only."""
+    return complexity == 'LOW' or (complexity == 'MEDIUM' and not children)
+
+
 def binding(task, requirements=()):
     return digest({'intent': {key: task[key] for key in ('id', 'goal', 'criteria')},
         'change': {'repository': task['repository'], 'profile': task.get('profile'),
@@ -125,7 +130,7 @@ class Proofs:
             ready = fresh and review and review.get('verdict') == 'pass' and review['binding'] == proof['binding']
             human_current = bool(fresh and human and human['accepted'] and human['binding'] == proof['binding']
                 and human['review_id'] == (review['review_id'] if review else None))
-            human_only = bool(task['complexity'] == 'LOW' and human_current and human.get('review_basis') == 'human-only')
+            human_only = bool(human_closable(task['complexity'], children) and human_current and human.get('review_basis') == 'human-only')
             accepted = bool(human_only or (ready and (task['complexity'] != 'LOW' or human_current)))
             public = {key: value for key, value in proof.items() if key != 'content_base64'} | {
                 'fresh': fresh, 'review': review, 'human': human, 'accepted': accepted,
@@ -148,7 +153,8 @@ class Proofs:
     @staticmethod
     def require_dependencies(task):
         from app.services import RuleError
-        if task['complexity'] != 'LOW' and len(task['required_children']) < 2:
+        # Prototyping: an undecomposed MEDIUM may close human-only like a LOW; HIGH still needs its LOWs.
+        if not human_closable(task['complexity'], task['required_children']) and len(task['required_children']) < 2:
             raise RuleError('A composite needs its approved decomposition before integrated acceptance')
         if any(record['status'] not in ('completed', 'settled') or not record['proof_id'] or not record['binding']
                for record in task['requirements']):
@@ -244,12 +250,13 @@ class Proofs:
         from app.services import RuleError, event_via, event_intent
         task = self.owner(c, actor, payload['id'])
         proof = task['proof']
-        if task['complexity'] != 'LOW' or not proof or not proof['fresh']:
-            raise RuleError('Human verification requires a LOW with current proof')
+        basis = payload.get('review_basis', 'ai-reviewed')
+        closable = task['complexity'] == 'LOW' or (basis == 'human-only' and human_closable(task['complexity'], task['required_children']))
+        if not closable or not proof or not proof['fresh']:
+            raise RuleError('Human verification requires a LOW, or an undecomposed MEDIUM, with current proof')
         if event_intent.get() == 'autonomous' or (event_via.get() is not None and event_intent.get() != 'user-directed'):
             raise RuleError('Human verification requires an explicit user-directed action', 403)
         review = proof['review']
-        basis = payload.get('review_basis', 'ai-reviewed')
         if basis == 'human-only':
             if review and (review['verdict'] != 'inconclusive' or
                     any(item['verdict'] == 'fail' for item in review.get('criteria', []))):
