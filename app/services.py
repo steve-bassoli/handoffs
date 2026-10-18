@@ -7,6 +7,7 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from app.context import project_legacy
+from app.prototype import auto_signoff_active
 from app.workflow import ROLES, constellation, dependencies, disposition, phase, profile, validate_dependencies
 from app.storage import all_rows, one
 
@@ -14,6 +15,7 @@ from app.storage import all_rows, one
 event_via = ContextVar('event_via', default=None)
 event_intent = ContextVar('event_intent', default=None)
 event_identity = ContextVar('event_identity', default=None)
+auto_signoff = ContextVar('auto_signoff', default=False)
 
 
 def now():
@@ -103,6 +105,8 @@ class Service:
             record['principal_id'] = identity['principal_id']
         else:
             record.pop('principal', None); record.pop('principal_id', None)
+        if auto_signoff.get():
+            record['signoff'] = 'prototype-auto'
         via = event_via.get()
         if via is not None:
             record['via'] = via
@@ -223,8 +227,16 @@ class Service:
 
     def execute(self, actor, key, action, payload):
         # Authorization must precede the actor-scoped idempotency cache.
-        if action in ('ai_proof_human', 'close_human'):
-            self.require_human_acceptance(actor)
+        token = None
+        if action in ('ai_proof_human', 'close_human') and self.require_human_acceptance(actor):
+            token = auto_signoff.set(True)
+        try:
+            return self._execute(actor, key, action, payload)
+        finally:
+            if token is not None:
+                auto_signoff.reset(token)
+
+    def _execute(self, actor, key, action, payload):
         fingerprint = hashlib.sha256(encode([action, payload]).encode()).hexdigest()
         with self.db.write() as c:
             cached = one(c, 'SELECT * FROM operations WHERE actor=? AND key=?', (actor, key))
@@ -502,9 +514,14 @@ class Service:
         principal = identity.get('principal')
         allowed = principal == 'human' or (
             principal == 'demo-header' and self.demo_identity == 'allow')
-        if (not allowed or identity.get('user_id') != actor
-                or not identity.get('principal_id')):
+        if identity.get('user_id') != actor or not identity.get('principal_id'):
             raise RuleError('Human acceptance requires a signed-in person', 403)
+        if allowed:
+            return False
+        # Prototype-only bypass with a hard cutoff (app/prototype.py); recorded as signoff: prototype-auto.
+        if auto_signoff_active():
+            return True
+        raise RuleError('Human acceptance requires a signed-in person', 403)
 
     def do_ai_proof_human(self, c, actor, payload):
         self.require_human_acceptance(actor)

@@ -258,7 +258,9 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
 
     @app.get('/health')
     def health():
-        return {'status': 'ok', 'mode': 'demo'}
+        from app.prototype import HARD_CUTOFF, auto_signoff_active
+        return {'status': 'ok', 'mode': 'demo', 'prototype_auto_signoff': auto_signoff_active(),
+                'prototype_auto_signoff_cutoff': HARD_CUTOFF.isoformat()}
 
     @app.get('/research', include_in_schema=False)
     def research(request: Request):
