@@ -449,6 +449,27 @@ function checkpointSection(data) {
   return section;
 }
 
+function intakeSection(data, detail) {
+  // The independent intake screen's latest verdict, and a human-only override for a veto (task acbeeff0).
+  const screens = (data.events || []).filter(e => e.kind === 'intake_screened');
+  if (!screens.length) return;
+  const last = screens[screens.length - 1].data || {};
+  const overridden = (data.events || []).some(e => e.kind === 'intake_overridden' && e.data && e.data.text_sha256 === last.text_sha256);
+  if (last.verdict === 'pass' && !overridden) return;
+  const box = element('section', undefined, 'intake-box');
+  box.append(element('h3', 'Intake screen'), element('p', `${overridden ? 'Veto overridden by a person' : 'Verdict: ' + last.verdict} (${last.mode || 'observe'} mode) · ${last.reason || 'no reason recorded'}`, 'content'));
+  if (!overridden && ['veto', 'unavailable'].includes(last.verdict)) {
+    const signedIn = typeof session !== 'undefined' && session;
+    if (!signedIn) box.append(element('p', 'Only a signed-in person can override this veto. Sign in to decide.', 'meta'));
+    else {
+      const form = element('form'); const note = labeled(form, 'Why this is right (recorded with your name)', '', 'textarea'); note.required = true;
+      form.append(element('button', `Override veto as ${session.user_id}`));
+      form.onsubmit = event => { event.preventDefault(); run(() => mutate(`/tasks/${data.id}/intake-override`, {note: note.value})); };
+      box.append(form);
+    }
+  }
+  detail.append(box);
+}
 async function show(id) {
   // Late work from a page the user already left must not change history, sections or focus.
   const epoch = typeof treeEpoch !== 'undefined' ? ++treeEpoch : null, stale = () => epoch !== null && epoch !== treeEpoch;
@@ -485,6 +506,7 @@ async function show(id) {
   await workflowSection(data, detail);
   if (stale()) return;
   proofSection(data, detail);
+  intakeSection(data, detail);
   await artifactsSection(data, detail);
   if (stale()) return;
   detail.append(element('p', `Requester: ${data.creator} · ${data.claimant ? 'Worker: ' + data.claimant : data.target ? 'Offered to ' + data.target + ' · not claimed' : 'Available to claim'} · ${data.funded ? 'Reserved demo Gold is released only on verified completion.' : 'Unfunded record. No new funding was created.'}`));

@@ -79,3 +79,11 @@ def test_wallet_and_agents_say_what_they_show_and_fail_visibly():
     assert "'Could not load transactions: '" in script and "retry.onclick = () => run(transactions)" in script
     assert "transaction${rows.length === 1 ? '' : 's'} shown, newest first" in script
     assert "'Could not load agents: '" in script
+
+
+def test_task_page_shows_intake_verdict_and_human_only_override():
+    from pathlib import Path
+    script = (Path(__file__).resolve().parents[1] / 'app' / 'static' / 'app.js').read_text(encoding='utf-8')
+    assert 'function intakeSection(data, detail)' in script and '  intakeSection(data, detail);' in script
+    assert "Only a signed-in person can override this veto." in script
+    assert "`/tasks/${data.id}/intake-override`" in script
