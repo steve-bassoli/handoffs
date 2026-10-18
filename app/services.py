@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from app.context import project_legacy
 from app.intake_screen import IntakeScreen, canonical_text, text_sha256
-from app.prototype import auto_signoff_active
+from app.prototype import auto_signoff_active, bypass_label
 from app.workflow import ROLES, constellation, dependencies, disposition, phase, profile, validate_dependencies
 from app.storage import all_rows, one
 
@@ -109,7 +109,7 @@ class Service:
         else:
             record.pop('principal', None); record.pop('principal_id', None)
         if auto_signoff.get():
-            record['signoff'] = 'prototype-auto'
+            record['signoff'] = bypass_label()
         via = event_via.get()
         if via is not None:
             record['via'] = via

@@ -151,6 +151,9 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     intake_mode = os.environ.get('HANDOFFS_INTAKE_SCREEN', 'observe')
     if intake_mode not in ('enforce', 'observe', 'off'):
         raise ValueError('HANDOFFS_INTAKE_SCREEN must be enforce, observe or off')
+    from app.prototype import door_off
+    if door_off() and intake_mode == 'enforce':
+        intake_mode = 'observe'  # Door off: the screen still records, never blocks.
     @asynccontextmanager
     async def lifespan(app):
         path = database or os.environ.get('HANDOFFS_DB', str(Path('.data/handoffs.sqlite').resolve()))
@@ -166,7 +169,7 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         service.proofs.recover()
         app.state.service = service
         app.state.credentials = Credentials(db)
-        app.state.demo_identity = os.environ.get('HANDOFFS_DEMO_IDENTITY', 'allow')
+        app.state.demo_identity = 'allow' if door_off() else os.environ.get('HANDOFFS_DEMO_IDENTITY', 'allow')
         if app.state.demo_identity not in ('allow', 'refuse'):
             raise ValueError('HANDOFFS_DEMO_IDENTITY must be allow or refuse')
         service.demo_identity = app.state.demo_identity
@@ -272,8 +275,8 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
 
     @app.get('/health')
     def health():
-        from app.prototype import HARD_CUTOFF, auto_signoff_active
-        return {'status': 'ok', 'mode': 'demo', 'prototype_auto_signoff': auto_signoff_active(),
+        from app.prototype import HARD_CUTOFF, auto_signoff_active, door_off
+        return {'status': 'ok', 'mode': 'demo', 'door': 'off' if door_off() else 'on', 'prototype_auto_signoff': auto_signoff_active(),
                 'prototype_auto_signoff_cutoff': HARD_CUTOFF.isoformat()}
 
     @app.get('/research', include_in_schema=False)
