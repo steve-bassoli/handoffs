@@ -190,6 +190,9 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     from app.recommendations import router as recommendations_router
     app.include_router(recommendations_router)
 
+    from app.digest import router as digest_router
+    app.include_router(digest_router)
+
     @app.middleware('http')
     async def revalidate_static(request: Request, call_next):
         # Deploys replace scripts in place; make browsers recheck (ETag keeps it cheap) so pages never run stale JS.
