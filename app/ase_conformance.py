@@ -12,7 +12,7 @@ ALLOWLIST = ('app/complexity.py', 'PROJECT_CHARTER.md')
 VALIDATOR_SOURCE = '''DECOMPOSITION = {'HIGH': ('HIGH', 'MEDIUM'), 'MEDIUM': ('LOW',), 'LOW': ()}
 MIN_CHILDREN = 2
 
-def validate_bounty_split(parent, levels):
+def validate_task_split(parent, levels):
     allowed = DECOMPOSITION.get(parent, ())
     if len(levels) >= MIN_CHILDREN and len(set(levels)) == 1 and levels[0] in allowed:
         return levels[0]
@@ -25,7 +25,7 @@ def _extract_validator(raw, expected_sha256):
         raise ValueError('source-binding mismatch')
     tree = ast.parse(raw.decode('utf-8'))
     functions = [n for n in tree.body if isinstance(n, ast.FunctionDef)
-                 and n.name == 'validate_bounty_split']
+                 and n.name == 'validate_task_split']
     template = ast.parse(VALIDATOR_SOURCE).body[-1]
     if len(functions) != 1 or ast.dump(functions[0]) != ast.dump(template):
         raise ValueError('unsupported validator AST')
@@ -44,7 +44,7 @@ def _extract_validator(raw, expected_sha256):
     namespace = {'__builtins__': {'len': len, 'set': set, 'ValueError': ValueError}, **constants}
     module = ast.Module(body=[functions[0]], type_ignores=[])
     exec(compile(module, '<bounded-decomposition>', 'exec'), namespace)
-    return namespace['validate_bounty_split']
+    return namespace['validate_task_split']
 
 
 def _descriptor_reads_available():

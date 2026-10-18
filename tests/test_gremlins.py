@@ -62,5 +62,5 @@ def test_witness_preserves_named_quirk_and_only_drafts_a_question_for_failure():
     assert report['sha256'] == digest({key: value for key, value in report.items() if key != 'sha256'})
     assert witness(payload) == report and report['discrepancy'] is None
     payload['mirrors']['mcp']['behavior']['result'] = 'wrong'
-    draft = witness(payload)['discrepancy']['bounty']
+    draft = witness(payload)['discrepancy']['task']
     assert draft == {'status': 'draft', 'creation_requires_human_approval': True}

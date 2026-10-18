@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from app.astra_tree import Tree
 from app.automation_mode import AUTOMATION_HEADER, MODES, apply_agent_names, current, set_mode
 from app.main import create_app
-from conftest import post_bounty
+from conftest import post_task
 from test_agent_conduit import candidate, stream_result, usage
 from test_astra_tree import thirteen
 
@@ -83,12 +83,12 @@ def test_manual_mode_refuses_automated_writes_but_not_humans(tmp_path, monkeypat
     monkeypatch.setenv('HANDOFFS_AUTOMATION_MODE', str(mode_file))
     with TestClient(create_app(tmp_path / 'test.sqlite')) as client:
         assert client.get('/api/v1/automation-mode', headers={'X-Demo-User': 'steve'}).json()['mode'] == 'manual'
-        assert post_bounty(client).status_code == 200, 'Humans still create tickets in manual mode'
-        automated = client.post('/api/v1/bounties', json={'title': 't', 'goal': 'g', 'criteria': ['c'], 'gold': 5},
+        assert post_task(client).status_code == 200, 'Humans still create tickets in manual mode'
+        automated = client.post('/api/v1/tasks', json={'title': 't', 'goal': 'g', 'criteria': ['c'], 'gold': 5},
                                 headers={'X-Demo-User': 'steve', 'Idempotency-Key': 'auto-1', AUTOMATION_HEADER: 'astra'})
         assert automated.status_code == 403 and 'Manual mode' in automated.json()['detail']
         set_mode('light', 'steve', 'test', mode_file)
-        allowed = client.post('/api/v1/bounties', json={'title': 't', 'goal': 'g', 'criteria': ['c'], 'gold': 5},
+        allowed = client.post('/api/v1/tasks', json={'title': 't', 'goal': 'g', 'criteria': ['c'], 'gold': 5},
                               headers={'X-Demo-User': 'steve', 'Idempotency-Key': 'auto-2', AUTOMATION_HEADER: 'astra'})
         assert allowed.status_code == 200
 
@@ -97,7 +97,7 @@ def test_manual_mode_accepts_attributed_user_direction_without_enabling_autonomy
     headers = {'X-Demo-User': 'steve', 'Idempotency-Key': 'directed',
                AUTOMATION_HEADER: 'codex', 'X-Action-Intent': 'user-directed'}
     payload = {'title': 'Requested task', 'goal': 'Finish', 'criteria': ['Works'], 'gold': 5}
-    response = client.post('/api/v1/bounties', json=payload, headers=headers)
+    response = client.post('/api/v1/tasks', json=payload, headers=headers)
     assert response.status_code == 200
     event = response.json()['events'][-1]
     assert event['actor'] == 'steve'
@@ -110,13 +110,13 @@ def test_manual_mode_accepts_attributed_user_direction_without_enabling_autonomy
             changed.pop('X-Action-Intent')
         else:
             changed['X-Action-Intent'] = intent
-        assert client.post('/api/v1/bounties', json=payload, headers=changed).status_code == 403
+        assert client.post('/api/v1/tasks', json=payload, headers=changed).status_code == 403
     invalid = {**headers, 'X-Action-Intent': 'guess', 'Idempotency-Key': 'invalid'}
-    assert client.post('/api/v1/bounties', json=payload, headers=invalid).status_code == 422
+    assert client.post('/api/v1/tasks', json=payload, headers=invalid).status_code == 422
     task_id = response.json()['id']
     # User direction does not grant another participant's permissions.
     wrong = {**headers, 'X-Demo-User': 'will', 'Idempotency-Key': 'wrong-user'}
-    assert client.post(f'/api/v1/bounties/{task_id}/cancel', json={}, headers=wrong).status_code == 403
+    assert client.post(f'/api/v1/tasks/{task_id}/cancel', json={}, headers=wrong).status_code == 403
 
 
 def test_bob_naming_for_light_and_heavy_trees(tmp_path):

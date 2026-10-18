@@ -6,7 +6,7 @@
     ai_started: 'AI run started', taken: 'Work taken', ai_failed: 'AI run failed',
     ai_model_changed: 'AI model changed', ai_retried: 'AI run retried',
     ai_answers: 'AI answers recorded', ai_ask: 'AI asked a question',
-    opportunity_updated: 'Task updated', edited: 'Task edited', reopened: 'Task reopened',
+    task_updated: 'Task updated', edited: 'Task edited', reopened: 'Task reopened',
     working: 'Work resumed', blocked: 'Work blocked', cancelled: 'Task cancelled',
     followup_confirmed: 'Child task confirmed', followups_confirmed: 'Child tasks confirmed',
     profile_recorded: 'Context recorded', proof_attached: 'Proof attached',
@@ -47,7 +47,7 @@
       case 'ai_retried': return 'AI run retried';
       case 'ai_answers': return `${(data.answers || []).length} answer(s) recorded`;
       case 'ai_ask': return `${(data.questions || []).length} question(s) asked`;
-      case 'opportunity_updated': return data.updated?.title || data.note || 'Task details updated';
+      case 'task_updated': return data.updated?.title || data.note || 'Task details updated';
       case 'edited': return `Changed fields: ${Object.keys(data.changes || {}).join(', ') || 'not recorded'}`;
       case 'working': return data.note || 'Work is in progress';
       case 'blocked': return data.note || 'Work is blocked';

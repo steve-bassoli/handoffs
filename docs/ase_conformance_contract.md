@@ -54,7 +54,7 @@ unsupported source; it must not import the full repository module.
 DECOMPOSITION = {'HIGH': ('HIGH', 'MEDIUM'), 'MEDIUM': ('LOW',), 'LOW': ()}
 MIN_CHILDREN = 2
 
-def validate_bounty_split(parent, levels):
+def validate_task_split(parent, levels):
     allowed = DECOMPOSITION.get(parent, ())
     if len(levels) >= MIN_CHILDREN and len(set(levels)) == 1 and levels[0] in allowed:
         return levels[0]

@@ -107,7 +107,7 @@ The wrapper changes ancestry; review host CSS selectors before wiring.
 The shared legend names the four evidence states. Policy help consumes the
 canonical teaching explanation, minimum, rules, source and fingerprint rather
 than duplicating decomposition rules in JavaScript. It requires teaching v1,
-source `app.complexity:DECOMPOSITION,MIN_CHILDREN,validate_bounty_split`, string
+source `app.complexity:DECOMPOSITION,MIN_CHILDREN,validate_task_split`, string
 explanation, integer positive minimum, string-array rule values and a lowercase
 64-hex fingerprint. The display does not require examples and does not verify
 the fingerprint cryptographically. Source/fingerprint are supplied provenance,

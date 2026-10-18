@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
-from conftest import post_bounty, write
+from conftest import post_task, write
 from test_ai import FakeLuna, decision, get_run
 
 
@@ -20,43 +20,43 @@ def accepted_app(tmp_path, decisions=None):
 @pytest.mark.parametrize('worker', ['nate', 'steve'])
 def test_accept_claims_and_starts_preparation_together(tmp_path, worker):
     with accepted_app(tmp_path) as client:
-        bounty = post_bounty(client).json()['id']
-        result = write(client, f'/bounties/{bounty}/accept', {'model': 'luna'}, worker)
+        task_id = post_task(client).json()['id']
+        result = write(client, f'/tasks/{task_id}/accept', {'model': 'luna'}, worker)
         assert result.status_code == 200
-        task = client.get('/api/v1/bounties/' + bounty).json()
+        task = client.get('/api/v1/tasks/' + task_id).json()
         assert task['claimant'] == worker and task['status'] == 'working'
         kinds = [event['kind'] for event in task['events']]
         assert kinds.index('taken') < kinds.index('ai_started') and kinds.count('taken') == 1
-        assert get_run(client, bounty)['status'] == 'needs_input'
-        assert get_run(client, bounty)['actor'] == worker
+        assert get_run(client, task_id)['status'] == 'needs_input'
+        assert get_run(client, task_id)['actor'] == worker
 
 
 def test_accept_keeps_take_rules(tmp_path):
     with accepted_app(tmp_path) as client:
-        bounty = write(client, '/bounties', {'title': 'Targeted task', 'goal': 'Deliver',
+        task_id = write(client, '/tasks', {'title': 'Targeted task', 'goal': 'Deliver',
             'criteria': ['Works'], 'gold': 10, 'target': 'nate'}).json()['id']
-        assert write(client, f'/bounties/{bounty}/accept', {}, 'steve').status_code == 403
-        task = client.get('/api/v1/bounties/' + bounty).json()
+        assert write(client, f'/tasks/{task_id}/accept', {}, 'steve').status_code == 403
+        task = client.get('/api/v1/tasks/' + task_id).json()
         assert task['status'] == 'open' and task['claimant'] is None and task['ai_run'] is None
-        assert write(client, f'/bounties/{bounty}/take', user='nate').status_code == 200
-        assert write(client, f'/bounties/{bounty}/accept', {}, 'nate').status_code == 409
-        assert client.get('/api/v1/bounties/' + bounty).json()['ai_run'] is None
+        assert write(client, f'/tasks/{task_id}/take', user='nate').status_code == 200
+        assert write(client, f'/tasks/{task_id}/accept', {}, 'nate').status_code == 409
+        assert client.get('/api/v1/tasks/' + task_id).json()['ai_run'] is None
 
 
-def test_unavailable_ai_leaves_bounty_unclaimed(client, monkeypatch):
+def test_unavailable_ai_leaves_task_unclaimed(client, monkeypatch):
     monkeypatch.delenv('OPENAI_API_KEY', raising=False)
-    bounty = post_bounty(client).json()['id']
-    assert write(client, f'/bounties/{bounty}/accept', {}, 'nate').status_code == 503
-    task = client.get('/api/v1/bounties/' + bounty).json()
+    task_id = post_task(client).json()['id']
+    assert write(client, f'/tasks/{task_id}/accept', {}, 'nate').status_code == 503
+    task = client.get('/api/v1/tasks/' + task_id).json()
     assert task['status'] == 'open' and task['claimant'] is None and task['ai_run'] is None
 
 
 def test_accept_replay_returns_same_result_without_second_run(tmp_path):
     model = FakeLuna([decision('ask', questions=['Which Python version?'])])
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=model)) as client:
-        bounty = post_bounty(client).json()['id']
-        first = write(client, f'/bounties/{bounty}/accept', {}, 'nate', key='accept')
-        second = write(client, f'/bounties/{bounty}/accept', {}, 'nate', key='accept')
+        task = post_task(client).json()['id']
+        first = write(client, f'/tasks/{task}/accept', {}, 'nate', key='accept')
+        second = write(client, f'/tasks/{task}/accept', {}, 'nate', key='accept')
         assert first.status_code == second.status_code == 200 and first.json() == second.json()
         assert model.calls == 1
 

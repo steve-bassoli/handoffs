@@ -69,7 +69,7 @@ def test_incomplete_evidence_never_calls_validator(monkeypatch, change, reason):
         data['detailsById']['C0']['classification_explicit'] = False
     def forbidden(*args):
         pytest.fail('incomplete group must not reach policy validation')
-    monkeypatch.setattr(model, 'validate_bounty_split', forbidden)
+    monkeypatch.setattr(model, 'validate_task_split', forbidden)
     assert ticket(data)['reasons'] == [reason]
 
 
@@ -78,7 +78,7 @@ def test_successful_return_is_acceptance(monkeypatch):
     def accept(parent, levels):
         calls.append((parent, levels))
         return None
-    monkeypatch.setattr(model, 'validate_bounty_split', accept)
+    monkeypatch.setattr(model, 'validate_task_split', accept)
     assert ticket(snapshot())['status'] == 'valid'
     assert calls == [('HIGH', ['MEDIUM', 'MEDIUM'])]
 
@@ -103,6 +103,6 @@ def test_deep_topology_is_iterative_and_bounded():
 def test_unexpected_validator_failure_is_not_hidden(monkeypatch):
     def broken(*args):
         raise RuntimeError('unexpected')
-    monkeypatch.setattr(model, 'validate_bounty_split', broken)
+    monkeypatch.setattr(model, 'validate_task_split', broken)
     with pytest.raises(RuntimeError):
         ticket(snapshot())

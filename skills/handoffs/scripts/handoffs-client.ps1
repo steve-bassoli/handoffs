@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)]
     [ValidateSet('Board','Mine','Show','Post','Stats','Transactions','Take','Status','Deliver','Review','Settle','Cancel')]
     [string]$Action,
-    [string]$BountyId,
+    [Alias('BountyId')][string]$TaskId,
     [string]$BodyJson = '{}',
     [string]$OperationId,
     [string]$ServiceUrl = $env:HANDOFFS_URL,
@@ -18,19 +18,19 @@ if ([string]::IsNullOrWhiteSpace($DemoUser)) { $DemoUser = 'steve' }
 $headers = @{ 'X-Demo-User' = $DemoUser }
 $method = 'Get'
 $path = switch ($Action) {
-    'Board' { "/bounties?view=open&offset=$Offset" }
-    'Mine' { "/bounties?view=mine&offset=$Offset" }
+    'Board' { "/tasks?view=open&offset=$Offset" }
+    'Mine' { "/tasks?view=mine&offset=$Offset" }
     'Stats' { '/me/stats' }
     'Transactions' { "/me/transactions?offset=$Offset" }
-    'Post' { $method = 'Post'; '/bounties' }
+    'Post' { $method = 'Post'; '/tasks' }
     default {
-        if ([string]::IsNullOrWhiteSpace($BountyId)) { throw 'BountyId is required.' }
-        $encodedId = [Uri]::EscapeDataString($BountyId)
-        if ($Action -eq 'Show') { "/bounties/$encodedId" }
+        if ([string]::IsNullOrWhiteSpace($TaskId)) { throw 'TaskId is required.' }
+        $encodedId = [Uri]::EscapeDataString($TaskId)
+        if ($Action -eq 'Show') { "/tasks/$encodedId" }
         else {
             $method = 'Post'
             $suffix = switch ($Action) { 'Deliver' { 'deliveries' }; 'Review' { 'reviews' }; default { $Action.ToLowerInvariant() } }
-            "/bounties/$encodedId/$suffix"
+            "/tasks/$encodedId/$suffix"
         }
     }
 }

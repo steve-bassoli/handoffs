@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.ai import Luna
 from app.main import create_app
-from conftest import post_bounty, write
+from conftest import post_task, write
 from test_ai import decision, get_run, source_zip
 
 
@@ -30,11 +30,11 @@ def test_provider_attempts_and_usage_survive_failures(tmp_path, monkeypatch, kin
     def provider(request):
         service = client.app.state.service
         with service.db.engine.connect() as connection:
-            persisted = service.ai.record(connection, bounty)
+            persisted = service.ai.record(connection, task)
             assert persisted['data']['request_ordinal'] == 1
             assert persisted['data']['usage']['api_calls'] == 1
             assert persisted['data']['usage']['unreported_calls'] == 1
-            attempted = [event for event in service.detail(connection, bounty)['events'] if event['kind'] == 'ai_usage']
+            attempted = [event for event in service.detail(connection, task)['events'] if event['kind'] == 'ai_usage']
             assert len(attempted) == 1
             assert attempted[0]['data']['request_ordinal'] == 1
             assert attempted[0]['data']['usage_state'] == 'unknown'
@@ -57,16 +57,16 @@ def test_provider_attempts_and_usage_survive_failures(tmp_path, monkeypatch, kin
 
     db = tmp_path / 'test.sqlite'
     with TestClient(create_app(db, ai_model=Luna(httpx.MockTransport(provider)))) as client:
-        bounty = post_bounty(client).json()['id']
+        task = post_task(client).json()['id']
         before = client.get('/api/v1/me/stats').json()
-        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
-        run = get_run(client, bounty)
+        write(client, f'/tasks/{task}/ai/start', {'source_zip': source_zip()})
+        run = get_run(client, task)
         assert run['status'] == ('failed' if code else 'needs_input')
         assert run['usage']['api_calls'] == 1
         assert run['usage']['input_tokens'] == (123 if reported else 0)
         assert run['usage']['output_tokens'] == (17 if reported else 0)
         assert run['usage']['unreported_calls'] == (0 if reported else 1)
-        detail = client.get(f'/api/v1/bounties/{bounty}').json()
+        detail = client.get(f'/api/v1/tasks/{task}').json()
         usage_events = [event['data'] for event in detail['events'] if event['kind'] == 'ai_usage']
         assert all(event['run_id'] == run['id'] and event['request_ordinal'] == 1 for event in usage_events)
         received = [event for event in usage_events if event.get('response_received')]
@@ -91,8 +91,8 @@ def test_provider_attempts_and_usage_survive_failures(tmp_path, monkeypatch, kin
         after = client.get('/api/v1/me/stats').json()
         assert (before['available_gold'], before['reserved_gold']) == (after['available_gold'], after['reserved_gold'])
     with TestClient(create_app(db, ai_model=Luna(httpx.MockTransport(provider)))) as restarted:
-        assert get_run(restarted, bounty)['usage'] == run['usage']
-        assert [event['data'] for event in restarted.get(f'/api/v1/bounties/{bounty}').json()['events']
+        assert get_run(restarted, task)['usage'] == run['usage']
+        assert [event['data'] for event in restarted.get(f'/api/v1/tasks/{task}').json()['events']
                 if event['kind'] == 'ai_usage'] == usage_events
 
 
@@ -109,14 +109,14 @@ def test_tool_rounds_are_metered_before_final_validation(tmp_path, monkeypatch):
         return httpx.Response(200, json=response(status='incomplete', incomplete_details={'reason': 'max_output_tokens'}))
 
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=Luna(httpx.MockTransport(provider)))) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
-        run = get_run(client, bounty)
+        task = post_task(client).json()['id']
+        write(client, f'/tasks/{task}/ai/start', {'source_zip': source_zip()})
+        run = get_run(client, task)
         assert run['status'] == 'failed'
         assert run['usage']['api_calls'] == 2 and run['usage']['input_tokens'] == 246
         assert run['usage']['output_tokens'] == 34 and run['usage']['unreported_calls'] == 0
         assert len(calls) == 2  # no automatic paid retry
-        events = client.get(f'/api/v1/bounties/{bounty}').json()['events']
+        events = client.get(f'/api/v1/tasks/{task}').json()['events']
         assert [event['data']['request_ordinal'] for event in events
                 if event['kind'] == 'ai_usage' and event['data'].get('response_received')] == [1, 2]
 
@@ -131,9 +131,9 @@ def test_tool_limit_stops_without_a_thirteenth_call(tmp_path, monkeypatch):
             'call_id': f'call-{len(calls)}', 'arguments': '{}'}]))
 
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=Luna(httpx.MockTransport(provider)))) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {})
-        run = get_run(client, bounty)
+        task = post_task(client).json()['id']
+        write(client, f'/tasks/{task}/ai/start', {})
+        run = get_run(client, task)
         assert run['status'] == 'failed' and 'source-reading budget' in run['error']
         assert len(calls) == run['usage']['api_calls'] == 12
         assert run['usage']['input_tokens'] == 1476
@@ -145,9 +145,9 @@ def test_bad_edit_exposes_only_a_fixed_safe_rule(tmp_path):
     result = decision('deliver', instructions='Test locally')
     result.edits = [SourceEdit(path='calc.py', before='private source excerpt not present', after='replacement')]
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=FakeLuna([result]))) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
-        task = client.get('/api/v1/bounties/' + bounty).json()
+        task_id = post_task(client).json()['id']
+        write(client, f'/tasks/{task_id}/ai/start', {'source_zip': source_zip()})
+        task = client.get('/api/v1/tasks/' + task_id).json()
         assert 'uniquely match the supplied source' in task['ai_run']['error']
         assert 'private source excerpt' not in json.dumps(task)
         assert next(event for event in task['events'] if event['kind'] == 'ai_failed')['data']['stage'] == 'source_edits'
@@ -161,7 +161,7 @@ def test_request_ordinals_span_tools_answers_retry_and_restart(tmp_path, monkeyp
         calls.append(request)
         service = client.app.state.service
         with service.db.engine.connect() as connection:
-            persisted = service.ai.record(connection, bounty)
+            persisted = service.ai.record(connection, task_id)
             assert persisted['data']['request_ordinal'] == len(calls)
             assert persisted['data']['usage']['api_calls'] == len(calls)
         if len(calls) == 1:
@@ -176,24 +176,24 @@ def test_request_ordinals_span_tools_answers_retry_and_restart(tmp_path, monkeyp
     db = tmp_path / 'test.sqlite'
     model = Luna(httpx.MockTransport(provider))
     with TestClient(create_app(db, ai_model=model)) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
-        assert get_run(client, bounty)['status'] == 'needs_input'
-        write(client, f'/bounties/{bounty}/ai/answers', {'answers': ['3.11']})
-        task = client.get(f'/api/v1/bounties/{bounty}').json()
+        task_id = post_task(client).json()['id']
+        write(client, f'/tasks/{task_id}/ai/start', {'source_zip': source_zip()})
+        assert get_run(client, task_id)['status'] == 'needs_input'
+        write(client, f'/tasks/{task_id}/ai/answers', {'answers': ['3.11']})
+        task = client.get(f'/api/v1/tasks/{task_id}').json()
         failure = next(event['data'] for event in task['events'] if event['kind'] == 'ai_failed')
         assert failure['request_ordinal'] == 3 and failure['stage'] == 'implementation_plan'
         with client.app.state.service.db.write() as connection:
-            connection.exec_driver_sql("UPDATE ai_runs SET status='running' WHERE bounty_id=?", (bounty,))
+            connection.exec_driver_sql("UPDATE ai_runs SET status='running' WHERE task_id=?", (task_id,))
     with TestClient(create_app(db, ai_model=model)) as client:
-        task = client.get(f'/api/v1/bounties/{bounty}').json()
+        task = client.get(f'/api/v1/tasks/{task_id}').json()
         interrupted = next(event['data'] for event in task['events'] if event['kind'] == 'ai_interrupted')
         assert interrupted == {'run_id': task['ai_run']['id'], 'stage': 'restart', 'request_ordinal': 3}
         received = [event['data'] for event in task['events']
                     if event['kind'] == 'ai_usage' and event['data'].get('response_received')]
         assert received[-1]['response_id'] == 'resp_fixture_3'
-        write(client, f'/bounties/{bounty}/ai/retry')
-        task = client.get(f'/api/v1/bounties/{bounty}').json()
+        write(client, f'/tasks/{task_id}/ai/retry')
+        task = client.get(f'/api/v1/tasks/{task_id}').json()
         attempts = [event['data'] for event in task['events'] if event['kind'] == 'ai_usage']
         assert [event['request_ordinal'] for event in attempts] == [1, 1, 2, 2, 3, 3, 4, 4]
         assert [event['response_id'] for event in attempts if event.get('response_received')] == [
@@ -221,9 +221,9 @@ def test_malformed_provider_metadata_is_omitted(tmp_path, monkeypatch, metadata)
         return httpx.Response(200, json=payload)
 
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=Luna(httpx.MockTransport(provider)))) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {})
-        task = client.get(f'/api/v1/bounties/{bounty}').json()
+        task_id = post_task(client).json()['id']
+        write(client, f'/tasks/{task_id}/ai/start', {})
+        task = client.get(f'/api/v1/tasks/{task_id}').json()
         received = [event['data'] for event in task['events']
                     if event['kind'] == 'ai_usage' and event['data'].get('response_received')]
         assert len(received) == 1

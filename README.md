@@ -106,7 +106,7 @@ To package selected committed source without copying a dirty working tree or
 fetching a repository:
 
 ```powershell
-.\.venv\Scripts\python.exe -m app.packages --repository C:\path\to\repo --ref <full-commit> --bounty-id <id> --path src/example.py --notes setup-and-checks.md --output support.zip
+.\.venv\Scripts\python.exe -m app.packages --repository C:\path\to\repo --ref <full-commit> --task-id <id> --path src/example.py --notes setup-and-checks.md --output support.zip
 ```
 
 Repeat `--path` for each required file. The builder records repository, exact
@@ -194,7 +194,7 @@ not integrated acceptance evidence. The expandable task tree and event history s
 actions neither pay rewards nor reserve new Gold for children. Restarted in-flight
 turns require an explicit retry; answered and completed runs survive restart.
 
-API routes under `/api/v1/bounties/{id}`: `ai/start`, `ai/answers`, `ai/retry`,
+API routes under `/api/v1/tasks/{id}`: `ai/start`, `ai/answers`, `ai/retry`,
 `ai/confirm-followups`, `ai/complete`, `ai/artifact`, `reopen`, and `lineage`. Writes use the
 same operation ID contract as the existing service. The existing demo identity
 selector is still simulated; the model key stays on the server.
@@ -234,7 +234,7 @@ LOW proof when AI review is absent or inconclusive. This records human verificat
 without an AI pass; failed or running review cannot be overridden. Provider access
 and campaign activity are not prerequisites for this task-resolution path.
 
-Routes under `/api/v1/bounties/{id}`: `POST profile`, `POST dependencies`,
+Routes under `/api/v1/tasks/{id}`: `POST profile`, `POST dependencies`,
 `GET constellation`, `POST proofs`, `GET proofs/{proof_id}`, `POST proof-review`,
 `POST proof-human`, `POST complete`. Writes require operation IDs. `ai/complete`,
 PR delivery and settlement enforce the same gate.
@@ -259,10 +259,10 @@ in a desktop host is a separate explicit step.
 
 ## Native desktop MCP connection
 
-The MCP bridge exposes `list_bounties`, `get_bounty`, `post_bounty`, `get_my_stats`, `take_bounty`, `deliver_pr`, and `get_bounty_context`. It calls the existing service; it does not open a database or call OpenAI models. Demo identity is fixed per connection. `get_my_stats` is annotated as a write because it can issue the due monthly grant; posting, taking and delivering are also marked as writes. Retain a unique `operation_id` for each intended write and reuse it for an identical retry.
+The MCP bridge exposes `list_tasks`, `get_task`, `post_task`, `get_my_stats`, `take_task`, `deliver_pr`, and `get_task_context`. It calls the existing service; it does not open a database or call OpenAI models. Demo identity is fixed per connection. `get_my_stats` is annotated as a write because it can issue the due monthly grant; posting, taking and delivering are also marked as writes. Retain a unique `operation_id` for each intended write and reuse it for an identical retry.
 
 An explicit chat claim continues into processing in the active coding session.
-`take_bounty` downloads and verifies the artifact package, returns context
+`take_task` downloads and verifies the artifact package, returns context
 previews and a local `input.zip`, and tells the caller to continue immediately.
 The cache defaults to the OS temporary directory under `handoffs-work` (override
 with `HANDOFFS_WORK_ROOT`); files are not extracted or executed. A stable

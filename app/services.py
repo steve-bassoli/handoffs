@@ -55,13 +55,13 @@ class Service:
     def balance(self, c, account):
         return one(c, 'SELECT COALESCE(SUM(amount),0) AS gold FROM gold_entries WHERE account_id=?', (account,))['gold']
 
-    def transfer(self, c, source, destination, gold, kind, bounty_id=None):
+    def transfer(self, c, source, destination, gold, kind, task_id=None):
         if gold <= 0:
             raise RuleError('Gold must be positive', 422)
         if source != 'issuance' and self.balance(c, source) < gold:
             raise RuleError('Insufficient Gold')
         transaction = str(uuid4())
-        c.exec_driver_sql('INSERT INTO gold_transactions VALUES (?,?,?,?)', (transaction, kind, bounty_id, now()))
+        c.exec_driver_sql('INSERT INTO gold_transactions VALUES (?,?,?,?)', (transaction, kind, task_id, now()))
         for account, amount in [(source, -gold), (destination, gold)]:
             c.exec_driver_sql('INSERT INTO gold_entries(transaction_id,account_id,amount) VALUES (?,?,?)', (transaction, account, amount))
 
@@ -80,8 +80,8 @@ class Service:
             reserved = one(c, "SELECT COALESCE(SUM(e.amount),0) AS gold FROM accounts a LEFT JOIN gold_entries e ON e.account_id=a.id WHERE a.user_id=? AND a.kind='escrow'", (user,))['gold']
             year, month_number = map(int, month.split('-'))
             next_month = datetime(year + (month_number == 12), month_number % 12 + 1, 1, tzinfo=ZoneInfo('America/New_York'))
-            work = all_rows(c, """SELECT e.state FROM bounties b JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE bounty_id=b.id)
-                WHERE b.creator=? OR b.target=? OR EXISTS(SELECT 1 FROM events x WHERE x.bounty_id=b.id AND x.actor=? AND x.kind='taken')""", (user, user, user))
+            work = all_rows(c, """SELECT e.state FROM tasks b JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE task_id=b.id)
+                WHERE b.creator=? OR b.target=? OR EXISTS(SELECT 1 FROM events x WHERE x.task_id=b.id AND x.actor=? AND x.kind='taken')""", (user, user, user))
             return {'user_id': user, 'available_gold': available, 'reserved_gold': reserved,
                     'monthly_gold': one(c, 'SELECT gold FROM monthly_allocations WHERE user_id=? AND month=?', (user, month))['gold'],
                     'month': month, 'next_allocation': next_month.isoformat(), 'simulated_identity': True,
@@ -92,78 +92,78 @@ class Service:
         with self.db.engine.connect() as c:
             return all_rows(c, "SELECT t.*, e.amount, a.kind AS account_kind FROM gold_transactions t JOIN gold_entries e ON e.transaction_id=t.id JOIN accounts a ON a.id=e.account_id WHERE a.user_id=? ORDER BY e.seq DESC LIMIT ? OFFSET ?", (user, limit, offset))
 
-    def event(self, c, bounty_id, kind, actor, state, data=None):
+    def event(self, c, task_id, kind, actor, state, data=None):
         record = dict(data or {})
         via = event_via.get()
         if via is not None:
             record['via'] = via
         if event_intent.get() is not None:
             record['action_intent'] = event_intent.get()
-        c.exec_driver_sql('INSERT INTO events(bounty_id,kind,actor,state,data,created_at) VALUES (?,?,?,?,?,?)',
-                          (bounty_id, kind, actor, state, encode(record), now()))
+        c.exec_driver_sql('INSERT INTO events(task_id,kind,actor,state,data,created_at) VALUES (?,?,?,?,?,?)',
+                          (task_id, kind, actor, state, encode(record), now()))
 
-    def detail(self, c, bounty_id):
-        bounty = one(c, 'SELECT * FROM bounties WHERE id=?', (bounty_id,))
-        if not bounty:
+    def detail(self, c, task_id):
+        task = one(c, 'SELECT * FROM tasks WHERE id=?', (task_id,))
+        if not task:
             raise RuleError('Task not found', 404)
-        events = all_rows(c, 'SELECT * FROM events WHERE bounty_id=? ORDER BY seq', (bounty_id,))
+        events = all_rows(c, 'SELECT * FROM events WHERE task_id=? ORDER BY seq', (task_id,))
         for event in events:
             event['data'] = json.loads(event['data'])
-        bounty['criteria'] = json.loads(bounty['criteria'])
-        bounty['context_links'] = json.loads(bounty['context_links'])
-        bounty['legacy'] = json.loads(bounty['legacy']) if bounty['legacy'] else None
-        project_legacy(bounty)
-        if bounty['legacy']:
+        task['criteria'] = json.loads(task['criteria'])
+        task['context_links'] = json.loads(task['context_links'])
+        task['legacy'] = json.loads(task['legacy']) if task['legacy'] else None
+        project_legacy(task)
+        if task['legacy']:
             documents = all_rows(c, 'SELECT source_id,data FROM import_records WHERE source=? AND source_id LIKE ? ORDER BY source_id',
-                                 (bounty['legacy']['source'], bounty['legacy']['directory'] + '/%'))
-            bounty['legacy']['documents'] = [{'path': d['source_id'], **json.loads(d['data'])} for d in documents if not d['source_id'].endswith('.json')]
-        bounty['status'] = events[-1]['state']
-        bounty['complexity'] = next((event['data']['complexity'] for event in reversed(events)
+                                 (task['legacy']['source'], task['legacy']['directory'] + '/%'))
+            task['legacy']['documents'] = [{'path': d['source_id'], **json.loads(d['data'])} for d in documents if not d['source_id'].endswith('.json')]
+        task['status'] = events[-1]['state']
+        task['complexity'] = next((event['data']['complexity'] for event in reversed(events)
                                     if event['data'].get('complexity') in ('HIGH', 'MEDIUM', 'LOW')), 'HIGH')
-        bounty['work_type'] = next((event['data']['work_type'] for event in reversed(events)
+        task['work_type'] = next((event['data']['work_type'] for event in reversed(events)
                                    if event['data'].get('work_type') in ('implementation', 'verification')), 'implementation')
-        bounty['claimant'] = next((e['actor'] for e in reversed(events) if e['kind'] == 'taken'), None)
-        bounty['completed_by'] = next((e['data'].get('worker', e['actor']) for e in reversed(events)
+        task['claimant'] = next((e['actor'] for e in reversed(events) if e['kind'] == 'taken'), None)
+        task['completed_by'] = next((e['data'].get('worker', e['actor']) for e in reversed(events)
                                       if e['kind'] in ('legacy:completed', 'locally_verified', 'proof_completed')), None)
-        bounty['events'] = events
-        bounty['profile'] = profile(events)
-        bounty['depends_on'] = dependencies(events)
-        bounty['phase'] = phase(bounty['status'])
-        bounty['disposition'] = disposition(bounty['status'])
-        bounty['coordinates'] = {'complexity': bounty['complexity'], 'phase': bounty['phase'],
-            'validation_target': (bounty['profile'] or {}).get('validation_scope')}
-        bounty['roles'] = ROLES
-        bounty['packages'] = [{'id': event['seq'], 'actor': event['actor'], 'created_at': event['created_at'],
+        task['events'] = events
+        task['profile'] = profile(events)
+        task['depends_on'] = dependencies(events)
+        task['phase'] = phase(task['status'])
+        task['disposition'] = disposition(task['status'])
+        task['coordinates'] = {'complexity': task['complexity'], 'phase': task['phase'],
+            'validation_target': (task['profile'] or {}).get('validation_scope')}
+        task['roles'] = ROLES
+        task['packages'] = [{'id': event['seq'], 'actor': event['actor'], 'created_at': event['created_at'],
                               **{key: value for key, value in event['data'].items() if key != 'files'}}
                              for event in events if event['kind'] == 'package_attached']
-        bounty['deliveries'] = all_rows(c, 'SELECT * FROM deliveries WHERE bounty_id=? ORDER BY created_at,id', (bounty_id,))
+        task['deliveries'] = all_rows(c, 'SELECT * FROM deliveries WHERE task_id=? ORDER BY created_at,id', (task_id,))
         ai = getattr(self, 'ai', None)
-        bounty['ai_options'] = ai.options() if ai else None
-        row = one(c, 'SELECT * FROM ai_runs WHERE bounty_id=?', (bounty_id,))
+        task['ai_options'] = ai.options() if ai else None
+        row = one(c, 'SELECT * FROM ai_runs WHERE task_id=?', (task_id,))
         if ai and row:
             row['data'] = json.loads(row['data'])
-            bounty['ai_run'] = ai.public(row)
+            task['ai_run'] = ai.public(row)
         else:
-            bounty['ai_run'] = None
+            task['ai_run'] = None
         if getattr(self, 'proofs', None):
-            self.proofs.project(c, bounty)
-        return bounty
+            self.proofs.project(c, task)
+        return task
 
-    def get(self, bounty_id):
+    def get(self, task_id):
         with self.db.engine.connect() as c:
-            return self.detail(c, bounty_id)
+            return self.detail(c, task_id)
 
     def listing(self, user, view, limit, offset, query=''):
         with self.db.engine.connect() as c:
             records = all_rows(c, '''SELECT b.*, e.state AS status,
-                (SELECT actor FROM events WHERE bounty_id=b.id AND kind='taken' ORDER BY seq DESC LIMIT 1) AS claimant
-                FROM bounties b JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE bounty_id=b.id)
+                (SELECT actor FROM events WHERE task_id=b.id AND kind='taken' ORDER BY seq DESC LIMIT 1) AS claimant
+                FROM tasks b JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE task_id=b.id)
                 WHERE (?='all' OR (?='open' AND (e.state='open' OR (e.state='pending' AND b.funded=0 AND b.target IS NULL))) OR
-                (?='mine' AND (b.creator=? OR b.target=? OR EXISTS(SELECT 1 FROM events x WHERE x.bounty_id=b.id AND x.actor=? AND x.kind='taken'))))
+                (?='mine' AND (b.creator=? OR b.target=? OR EXISTS(SELECT 1 FROM events x WHERE x.task_id=b.id AND x.actor=? AND x.kind='taken'))))
                 AND (b.title LIKE ? OR b.id LIKE ?) ORDER BY b.created_at DESC,b.id LIMIT ? OFFSET ?''',
                 (view, view, view, user, user, user, '%' + query + '%', '%' + query + '%', limit, offset))
             for record in records:
-                classification = one(c, "SELECT json_extract(data,'$.complexity') AS complexity FROM events WHERE bounty_id=? AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW') ORDER BY seq DESC LIMIT 1", (record['id'],))
+                classification = one(c, "SELECT json_extract(data,'$.complexity') AS complexity FROM events WHERE task_id=? AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW') ORDER BY seq DESC LIMIT 1", (record['id'],))
                 record['complexity'] = classification['complexity'] if classification else 'HIGH'
                 record['phase'] = phase(record['status'])
                 record['disposition'] = disposition(record['status'])
@@ -188,26 +188,26 @@ class Service:
     def do_post(self, c, actor, payload):
         from app.ai import read_source
         source = read_source(payload.get('source_zip'))
-        bounty_id = str(uuid4())
+        task_id = str(uuid4())
         target = payload.get('target')
         if target and not one(c, 'SELECT id FROM users WHERE id=?', (target,)):
             raise RuleError('Unknown target', 422)
-        c.exec_driver_sql('INSERT INTO bounties(id,title,goal,criteria,repository,context_links,creator,target,gold,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
-                          (bounty_id, payload['title'], payload['goal'], encode(payload['criteria']),
+        c.exec_driver_sql('INSERT INTO tasks(id,title,goal,criteria,repository,context_links,creator,target,gold,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                          (task_id, payload['title'], payload['goal'], encode(payload['criteria']),
                            payload['repository'], encode(payload['context_links']), actor, target, payload['gold'], now()))
-        c.exec_driver_sql('INSERT INTO accounts VALUES (?,?,?)', ('escrow:' + bounty_id, actor, 'escrow'))
-        self.transfer(c, 'wallet:' + actor, 'escrow:' + bounty_id, payload['gold'], 'bounty_funded', bounty_id)
-        self.event(c, bounty_id, 'posted', actor, 'open', {'complexity': payload.get('complexity', 'HIGH'),
+        c.exec_driver_sql('INSERT INTO accounts VALUES (?,?,?)', ('escrow:' + task_id, actor, 'escrow'))
+        self.transfer(c, 'wallet:' + actor, 'escrow:' + task_id, payload['gold'], 'task_funded', task_id)
+        self.event(c, task_id, 'posted', actor, 'open', {'complexity': payload.get('complexity', 'HIGH'),
                                                        'work_type': payload.get('work_type', 'implementation'),
                                                        **({'profile': payload['profile']} if payload.get('profile') else {}),
                                                        **({'source_files': source} if source else {})})
-        return self.detail(c, bounty_id)
+        return self.detail(c, task_id)
 
     def do_edit(self, c, actor, payload):
-        bounty = self.detail(c, payload['id'])
-        if actor != bounty['creator']:
+        task = self.detail(c, payload['id'])
+        if actor != task['creator']:
             raise RuleError('Only the creator can edit this task', 403)
-        if bounty['status'] != 'open' or bounty['claimant'] is not None:
+        if task['status'] != 'open' or task['claimant'] is not None:
             raise RuleError('Only open, unclaimed tasks can be edited')
         fields = ('title', 'goal', 'criteria', 'complexity', 'work_type',
                   'context_links', 'repository', 'target', 'gold')
@@ -219,40 +219,40 @@ class Service:
         gold = payload['gold']
         if type(gold) is not int or gold <= 0:
             raise RuleError('Gold must be a positive integer', 422)
-        changes = {field: {'before': bounty[field], 'after': payload[field]}
-                   for field in fields if bounty[field] != payload[field]}
-        difference = gold - bounty['gold']
+        changes = {field: {'before': task[field], 'after': payload[field]}
+                   for field in fields if task[field] != payload[field]}
+        difference = gold - task['gold']
         if difference:
-            if not bounty['funded']:
+            if not task['funded']:
                 raise RuleError('Gold cannot be changed on an unfunded task')
-            wallet, escrow = 'wallet:' + actor, 'escrow:' + bounty['id']
+            wallet, escrow = 'wallet:' + actor, 'escrow:' + task['id']
             source, destination = (wallet, escrow) if difference > 0 else (escrow, wallet)
-            self.transfer(c, source, destination, abs(difference), 'bounty_edited', bounty['id'])
+            self.transfer(c, source, destination, abs(difference), 'task_edited', task['id'])
         c.exec_driver_sql(
-            'UPDATE bounties SET title=?,goal=?,criteria=?,repository=?,context_links=?,target=?,gold=? WHERE id=?',
+            'UPDATE tasks SET title=?,goal=?,criteria=?,repository=?,context_links=?,target=?,gold=? WHERE id=?',
             (payload['title'], payload['goal'], encode(payload['criteria']),
-             payload['repository'], encode(payload['context_links']), target, gold, bounty['id']))
+             payload['repository'], encode(payload['context_links']), target, gold, task['id']))
         # Classification is projected from events; never rewrite an earlier event.
         classification = {field: payload[field] for field in ('complexity', 'work_type')
                           if field in changes}
-        self.event(c, bounty['id'], 'edited', actor, 'open',
+        self.event(c, task['id'], 'edited', actor, 'open',
                    {'changes': changes, **classification})
-        return self.detail(c, bounty['id'])
+        return self.detail(c, task['id'])
 
     def workflow_nodes(self, c):
-        records = all_rows(c, '''SELECT b.id,b.title,b.parent_id,e.state AS status FROM bounties b
-            JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE bounty_id=b.id)''')
+        records = all_rows(c, '''SELECT b.id,b.title,b.parent_id,e.state AS status FROM tasks b
+            JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE task_id=b.id)''')
         for record in records:
-            latest = one(c, "SELECT data FROM events WHERE bounty_id=? AND kind='dependencies_set' ORDER BY seq DESC LIMIT 1", (record['id'],))
+            latest = one(c, "SELECT data FROM events WHERE task_id=? AND kind='dependencies_set' ORDER BY seq DESC LIMIT 1", (record['id'],))
             record['depends_on'] = json.loads(latest['data'])['depends_on'] if latest else []
             record['phase'] = phase(record['status'])
         return records
 
-    def constellation(self, bounty_id):
+    def constellation(self, task_id):
         with self.db.engine.connect() as c:
-            self.detail(c, bounty_id)
+            self.detail(c, task_id)
             graph = constellation(self.workflow_nodes(c))
-        connected = {bounty_id}
+        connected = {task_id}
         while True:
             expanded = connected | {edge[key] for edge in graph['edges'] if edge['from'] in connected or edge['to'] in connected for key in ('from', 'to')}
             if expanded == connected:
@@ -261,8 +261,8 @@ class Service:
         return {'nodes': [node for node in graph['nodes'] if node['id'] in connected],
                 'edges': [edge for edge in graph['edges'] if edge['from'] in connected]}
 
-    def workflow_owner(self, c, actor, bounty_id):
-        task = self.detail(c, bounty_id)
+    def workflow_owner(self, c, actor, task_id):
+        task = self.detail(c, task_id)
         if actor not in (task['creator'], task['claimant']):
             raise RuleError('Only requester or current worker can change the workflow contract', 403)
         if task['phase'] == 'Closed':
@@ -301,94 +301,94 @@ class Service:
         from app.packages import attach
         return attach(self, c, actor, payload)
 
-    def require_live(self, bounty):
-        if not bounty['funded'] and not bounty['parent_id']:
+    def require_live(self, task):
+        if not task['funded'] and not task['parent_id']:
             raise RuleError('Legacy record is historical and unfunded')
 
     def do_take(self, c, actor, payload):
-        bounty = self.detail(c, payload['id'])
-        self.require_live(bounty)
-        if bounty['status'] != 'open':
+        task = self.detail(c, payload['id'])
+        self.require_live(task)
+        if task['status'] != 'open':
             raise RuleError('Task is already taken or closed')
-        if bounty['target'] not in (None, actor):
+        if task['target'] not in (None, actor):
             raise RuleError('This task is not available to this user', 403)
-        self.event(c, bounty['id'], 'taken', actor, 'working')
-        return self.detail(c, bounty['id'])
+        self.event(c, task['id'], 'taken', actor, 'working')
+        return self.detail(c, task['id'])
 
     def do_status(self, c, actor, payload):
-        bounty = self.detail(c, payload['id'])
-        self.require_live(bounty)
-        if actor != bounty['claimant']:
+        task = self.detail(c, payload['id'])
+        self.require_live(task)
+        if actor != task['claimant']:
             raise RuleError('Only the claimant can update progress', 403)
-        if bounty['status'] not in ('working', 'blocked'):
+        if task['status'] not in ('working', 'blocked'):
             raise RuleError('Task is not in progress')
-        self.event(c, bounty['id'], payload['status'], actor, payload['status'], {'note': payload['note']})
-        return self.detail(c, bounty['id'])
+        self.event(c, task['id'], payload['status'], actor, payload['status'], {'note': payload['note']})
+        return self.detail(c, task['id'])
 
     def do_deliver(self, c, actor, payload):
-        bounty = self.detail(c, payload['id'])
-        self.require_live(bounty)
-        if actor != bounty['claimant']:
+        task = self.detail(c, payload['id'])
+        self.require_live(task)
+        if actor != task['claimant']:
             raise RuleError('Only the claimant can deliver', 403)
-        if bounty['status'] not in ('working', 'blocked'):
+        if task['status'] not in ('working', 'blocked'):
             raise RuleError('Task is not in progress')
         verification = self.verifier.verify(payload['pr_url'])
         if verification['verified']:
-            self.proofs.require(c, bounty)
+            self.proofs.require(c, task)
         delivery_id = str(uuid4())
         c.exec_driver_sql('INSERT INTO deliveries VALUES (?,?,?,?,?,?,?)',
-                          (delivery_id, bounty['id'], actor, payload['pr_url'], payload['evidence'], int(verification['simulated']), now()))
-        self.event(c, bounty['id'], 'delivered', actor, 'delivered', {'delivery_id': delivery_id, 'verification': verification})
-        if verification['verified'] and bounty['funded']:
-            self.settle(c, bounty['id'], actor)
-        return self.detail(c, bounty['id'])
+                          (delivery_id, task['id'], actor, payload['pr_url'], payload['evidence'], int(verification['simulated']), now()))
+        self.event(c, task['id'], 'delivered', actor, 'delivered', {'delivery_id': delivery_id, 'verification': verification})
+        if verification['verified'] and task['funded']:
+            self.settle(c, task['id'], actor)
+        return self.detail(c, task['id'])
 
-    def settle(self, c, bounty_id, actor):
-        bounty = self.detail(c, bounty_id)
-        self.require_live(bounty)
-        if bounty['status'] != 'delivered':
+    def settle(self, c, task_id, actor):
+        task = self.detail(c, task_id)
+        self.require_live(task)
+        if task['status'] != 'delivered':
             raise RuleError('Task is not awaiting payment')
-        delivered = next(e for e in reversed(bounty['events']) if e['kind'] == 'delivered')
+        delivered = next(e for e in reversed(task['events']) if e['kind'] == 'delivered')
         if not delivered['data']['verification']['verified']:
             raise RuleError('Delivery is not verified')
-        receipt = self.proofs.require(c, bounty)
-        self.transfer(c, 'escrow:' + bounty_id, 'wallet:' + bounty['claimant'], bounty['gold'], 'bounty_paid', bounty_id)
-        self.event(c, bounty_id, 'paid', actor, 'settled', {'delivery_id': delivered['data']['delivery_id'], **receipt})
+        receipt = self.proofs.require(c, task)
+        self.transfer(c, 'escrow:' + task_id, 'wallet:' + task['claimant'], task['gold'], 'task_paid', task_id)
+        self.event(c, task_id, 'paid', actor, 'settled', {'delivery_id': delivered['data']['delivery_id'], **receipt})
 
     def do_settle(self, c, actor, payload):
-        bounty = self.detail(c, payload['id'])
-        if actor not in (bounty['creator'], bounty['claimant']):
+        task = self.detail(c, payload['id'])
+        if actor not in (task['creator'], task['claimant']):
             raise RuleError('Only participants can request settlement', 403)
-        self.settle(c, bounty['id'], actor)
-        return self.detail(c, bounty['id'])
+        self.settle(c, task['id'], actor)
+        return self.detail(c, task['id'])
 
     def do_cancel(self, c, actor, payload):
-        bounty = self.detail(c, payload['id'])
-        self.require_live(bounty)
-        if actor != bounty['creator']:
+        task = self.detail(c, payload['id'])
+        self.require_live(task)
+        if actor != task['creator']:
             raise RuleError('Only the requester can cancel', 403)
-        if bounty['status'] != 'open':
+        if task['status'] != 'open':
             raise RuleError('Only unclaimed tasks can be cancelled in this prototype')
-        if bounty['funded']:
-            self.transfer(c, 'escrow:' + bounty['id'], 'wallet:' + actor, bounty['gold'], 'bounty_refunded', bounty['id'])
-        self.event(c, bounty['id'], 'cancelled', actor, 'cancelled')
-        return self.detail(c, bounty['id'])
+        if task['funded']:
+            self.transfer(c, 'escrow:' + task['id'], 'wallet:' + actor, task['gold'], 'task_refunded', task['id'])
+        self.event(c, task['id'], 'cancelled', actor, 'cancelled')
+        return self.detail(c, task['id'])
 
     def do_review(self, c, actor, payload):
-        bounty = self.detail(c, payload['id'])
-        self.require_live(bounty)
-        if actor != bounty['creator']:
+        task = self.detail(c, payload['id'])
+        self.require_live(task)
+        if actor != task['creator']:
             raise RuleError('Only the requester can review', 403)
-        if not bounty['deliveries']:
+        if not task['deliveries']:
             raise RuleError('Nothing has been delivered')
-        self.event(c, bounty['id'], payload['decision'], actor, bounty['status'], {'note': payload['note']})
-        return self.detail(c, bounty['id'])
+        self.event(c, task['id'], payload['decision'], actor, task['status'], {'note': payload['note']})
+        return self.detail(c, task['id'])
 
     def do_ai_start(self, c, actor, payload):
         return self.ai.start(c, actor, payload)
 
     def do_accept(self, c, actor, payload):
-        # One transaction: take rules apply, and an AI start failure leaves the bounty unclaimed.
+        # One transaction: take rules apply, and an AI start failure leaves the task unclaimed.
         self.do_take(c, actor, {'id': payload['id']})
         return self.ai.start(c, actor, payload)
 
@@ -418,31 +418,31 @@ class Service:
 
     def hierarchy_violations(self):
         """Audit every parent and its children against the HIGH SIGNAL decomposition rule (read-only)."""
-        from app.complexity import validate_bounty_split
+        from app.complexity import validate_task_split
         found = []
         with self.db.engine.connect() as c:
-            parents = all_rows(c, 'SELECT parent_id, GROUP_CONCAT(id) AS children FROM bounties WHERE parent_id IS NOT NULL GROUP BY parent_id')
+            parents = all_rows(c, 'SELECT parent_id, GROUP_CONCAT(id) AS children FROM tasks WHERE parent_id IS NOT NULL GROUP BY parent_id')
             for row in parents:
                 parent = self.detail(c, row['parent_id'])
                 kids = [self.detail(c, child) for child in row['children'].split(',')]
                 try:
-                    validate_bounty_split(parent['complexity'], [kid['complexity'] for kid in kids])
+                    validate_task_split(parent['complexity'], [kid['complexity'] for kid in kids])
                 except ValueError as error:
                     found.append({'parent': parent['id'], 'parent_level': parent['complexity'],
                                   'children': {kid['id']: kid['complexity'] for kid in kids}, 'reason': str(error)})
         return found
 
-    def lineage(self, bounty_id):
+    def lineage(self, task_id):
         with self.db.engine.connect() as c:
-            task = self.detail(c, bounty_id)
+            task = self.detail(c, task_id)
             root = task['id']
             while task['parent_id']:
                 task = self.detail(c, task['parent_id'])
                 root = task['id']
             rows = all_rows(c, '''WITH RECURSIVE tree(id) AS (
-                SELECT id FROM bounties WHERE id=? UNION ALL
-                SELECT b.id FROM bounties b JOIN tree ON b.parent_id=tree.id
-            ) SELECT b.id,b.parent_id,b.title,e.state AS status FROM bounties b JOIN tree ON b.id=tree.id
-              JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE bounty_id=b.id)
+                SELECT id FROM tasks WHERE id=? UNION ALL
+                SELECT b.id FROM tasks b JOIN tree ON b.parent_id=tree.id
+            ) SELECT b.id,b.parent_id,b.title,e.state AS status FROM tasks b JOIN tree ON b.id=tree.id
+              JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE task_id=b.id)
               ORDER BY b.created_at,b.id''', (root,))
             return {'root_id': root, 'items': rows}

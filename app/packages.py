@@ -16,11 +16,11 @@ def digest(content):
     return hashlib.sha256(content).hexdigest()
 
 
-def validate_package(bounty_id, payload):
+def validate_package(task_id, payload):
     files = read_source(payload['package_zip'])
     try:
         manifest = json.loads(files['manifest.json'])
-        if manifest['schema_version'] != 1 or manifest['task_id'] != bounty_id:
+        if manifest['schema_version'] != 1 or manifest['task_id'] != task_id:
             raise ValueError()
         listed = {}
         for item in manifest['files']:
@@ -44,8 +44,8 @@ def validate_package(bounty_id, payload):
             if payload['kind'] != 'response' or not input_sha or digest(raw) != input_sha:
                 raise ValueError()
             with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-                info = archive.getinfo('bounty.json')
-                if info.file_size > 100000 or json.loads(archive.read(info))['id'] != bounty_id:
+                info = archive.getinfo('task.json')
+                if info.file_size > 100000 or json.loads(archive.read(info))['id'] != task_id:
                     raise ValueError()
             input_verified = True
         except (ValueError, KeyError, TypeError, zipfile.BadZipFile, RuntimeError, NotImplementedError):
@@ -67,7 +67,7 @@ def attach(service, connection, actor, payload):
     return service.detail(connection, task['id'])
 
 
-def build_package(repository, reference, bounty_id, paths, notes=''):
+def build_package(repository, reference, task_id, paths, notes=''):
     """Export only explicitly selected tracked files, never a working tree or secrets."""
     from app.importer import git
     revision = git(repository, 'rev-parse', '--verify', reference + '^{commit}')
@@ -87,7 +87,7 @@ def build_package(repository, reference, bounty_id, paths, notes=''):
     if notes:
         files['SETUP_AND_CHECKS.md'] = notes
         entries.append({'path': 'SETUP_AND_CHECKS.md', 'sha256': digest(notes.encode())})
-    files['manifest.json'] = encode({'schema_version': 1, 'task_id': bounty_id, 'repository': origin,
+    files['manifest.json'] = encode({'schema_version': 1, 'task_id': task_id, 'repository': origin,
         'revision': revision, 'purpose': 'Pinned source / support; not proof of live verification', 'files': entries})
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
@@ -96,7 +96,7 @@ def build_package(repository, reference, bounty_id, paths, notes=''):
             entry.compress_type = zipfile.ZIP_DEFLATED
             archive.writestr(entry, content.encode())
     raw = buffer.getvalue()
-    validate_package(bounty_id, {'kind': 'support', 'package_zip': base64.b64encode(raw).decode()})
+    validate_package(task_id, {'kind': 'support', 'package_zip': base64.b64encode(raw).decode()})
     return raw
 
 
@@ -104,16 +104,16 @@ def main():
     parser = argparse.ArgumentParser(description='Build a focused support ZIP from pinned Git files. No network fetch or code execution.')
     parser.add_argument('--repository', required=True)
     parser.add_argument('--ref', required=True)
-    parser.add_argument('--bounty-id', required=True)
+    parser.add_argument('--task-id', required=True)
     parser.add_argument('--path', action='append', required=True)
     parser.add_argument('--notes', help='Local UTF-8 setup and verification notes to include')
     parser.add_argument('--output', required=True)
     args = parser.parse_args()
     notes = Path(args.notes).read_text(encoding='utf-8-sig') if args.notes else ''
-    raw = build_package(args.repository, args.ref, args.bounty_id, args.path, notes)
+    raw = build_package(args.repository, args.ref, args.task_id, args.path, notes)
     with Path(args.output).open('xb') as output:
         output.write(raw)
-    print(encode({'task_id': args.bounty_id, 'path': args.output, 'sha256': digest(raw), 'bytes': len(raw)}))
+    print(encode({'task_id': args.task_id, 'path': args.output, 'sha256': digest(raw), 'bytes': len(raw)}))
 
 
 if __name__ == '__main__':

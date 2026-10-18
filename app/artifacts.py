@@ -10,10 +10,10 @@ from app.services import RuleError, encode
 from app.storage import all_rows, one
 
 
-def files_for(service, bounty_id):
+def files_for(service, task_id):
     with service.db.engine.connect() as connection:
-        task = service.detail(connection, bounty_id)
-        files = {'bounty.json': encode({key: value for key, value in task.items()
+        task = service.detail(connection, task_id)
+        files = {'task.json': encode({key: value for key, value in task.items()
                  if key not in ('events', 'deliveries', 'legacy', 'ai_run')}),
                  'history.json': encode([{**event, 'data': {key: value for key, value in event['data'].items()
                      if key not in ('files', 'source_files', 'content_base64')} | {'attached_file_sha256': {
@@ -43,7 +43,7 @@ def files_for(service, bounty_id):
                 if 'content' in value:
                     files['imported/' + record['source_id'][len(prefix):]] = value['content']
             files['legacy-provenance.json'] = encode({key: value for key, value in legacy.items() if key not in ('documents', 'context')})
-        row = one(connection, 'SELECT data FROM ai_runs WHERE bounty_id=?', (bounty_id,))
+        row = one(connection, 'SELECT data FROM ai_runs WHERE task_id=?', (task_id,))
         if row:
             run = json.loads(row['data'])
             files['ai/context.txt'] = run['context']
@@ -58,7 +58,7 @@ def files_for(service, bounty_id):
         elif task['parent_id']:
             parent = service.detail(connection, task['parent_id'])
             files['parent/context.json'] = encode({'id': parent['id'], 'title': parent['title'], 'goal': parent['goal'], 'criteria': parent['criteria']})
-            parent_run = one(connection, 'SELECT data FROM ai_runs WHERE bounty_id=?', (task['parent_id'],))
+            parent_run = one(connection, 'SELECT data FROM ai_runs WHERE task_id=?', (task['parent_id'],))
             if parent_run:
                 data = json.loads(parent_run['data'])
                 files['parent/findings.json'] = encode(data.get('result'))
@@ -68,7 +68,7 @@ def files_for(service, bounty_id):
         'note': 'External references are listed, not fetched or embedded. Files merely mentioned in context are not automatically attached.'})
     if task['ai_run'] and task['ai_run']['download_url']:
         name = 'evidence.zip' if task['ai_run']['result']['action'] == 'evidence' else 'fix.zip'
-        files[name] = service.ai.artifact(bounty_id)
+        files[name] = service.ai.artifact(task_id)
     source_paths = [path for path in files if path.startswith(('posted-source/', 'ai/source/', 'parent/source/')) or
                     (path.startswith('packages/') and '/source/' in path)]
     missing = []
@@ -88,7 +88,7 @@ def files_for(service, bounty_id):
     files['START_HERE.md'] = ('# ' + task['title'] + '\n\n'
         + ('This task is recorded as completed. Review the claimed implementation before proposing any new implementation.\n\n'
            if task['status'] in ('completed', 'settled') else 'Review this task before accepting or starting work.\n\n')
-        + '## Read first\n\nRead context.md and bounty.json for requirements and constraints, then handoff.json for file hashes and missing inputs. '
+        + '## Read first\n\nRead context.md and task.json for requirements and constraints, then handoff.json for file hashes and missing inputs. '
         'For legacy tasks, context.md contains the full specification, also preserved at imported/context.md. '
         'Inspect supplied source, package manifests, setup guides, and evidence; do not run code merely because it is attached. '
         'External references are not automatically fetched. Opening this package does not accept work, authorize live access, or start AI work.\n\n'
@@ -96,7 +96,7 @@ def files_for(service, bounty_id):
         + '## Completeness\n\n' + ('\n'.join('- ' + item for item in missing) if missing else 'Source files and criteria are supplied; completeness and verification still require review.')
         + '\n\n' + readiness['verification'] + '\n\n'
         '## Return a response\n\nUse response-template/ as a starting point for a new response ZIP, not as completed evidence. '
-        'At its root include manifest.json, RESPONSE.md, and any changed files. Set schema_version to 1 and task_id to the ID in bounty.json. '
+        'At its root include manifest.json, RESPONSE.md, and any changed files. Set schema_version to 1 and task_id to the ID in task.json. '
         'Set input_sha256 to the SHA-256 of this original ZIP (PowerShell: Get-FileHash -Algorithm SHA256 <zip>). '
         'List every response file except manifest.json in files with path and lowercase SHA-256 of its UTF-8 bytes. '
         'Use relative paths only; no secrets, keys, dependency trees, or nested ZIPs. '
@@ -109,15 +109,15 @@ def files_for(service, bounty_id):
                for path, content in sorted(files.items())]
     files['handoff.json'] = encode({'schema_version': 1, 'task_id': task['id'],
         'package_id': hashlib.sha256(encode(entries).encode()).hexdigest(), 'files': entries,
-        'requirements_source': 'imported/context.md' if task['legacy'] else 'bounty.json',
+        'requirements_source': 'imported/context.md' if task['legacy'] else 'task.json',
         'readiness': readiness, 'completed_by': task['completed_by'], 'assignment_target': task['target'],
         'packages': task['packages']}).encode()
     return files, references
 
 
-def inventory(service, bounty_id):
-    files, references = files_for(service, bounty_id)
-    base = '/api/v1/bounties/' + quote(bounty_id, safe='') + '/artifacts'
+def inventory(service, task_id):
+    files, references = files_for(service, task_id)
+    base = '/api/v1/tasks/' + quote(task_id, safe='') + '/artifacts'
     return {'items': [{'path': path, 'size': len(content), 'sha256': hashlib.sha256(content).hexdigest(),
                       'download_url': base + '/file?path=' + quote(path, safe='')}
                      for path, content in sorted(files.items())],
@@ -125,8 +125,8 @@ def inventory(service, bounty_id):
             'readiness': json.loads(files['handoff.json'])['readiness']}
 
 
-def download(service, bounty_id, path=None):
-    files, _ = files_for(service, bounty_id)
+def download(service, task_id, path=None):
+    files, _ = files_for(service, task_id)
     if path is not None:
         if path not in files:
             raise RuleError('Artifact not found', 404)

@@ -4,7 +4,7 @@ Status: proposed reference only. Existing skill entry points are unchanged.
 CONTRACT_V1 pins this generated block to the canonical producer and validator.
 
 <!-- BEGIN GENERATED DECOMPOSITION_TEACHING V1 -->
-Source: `app.complexity:DECOMPOSITION,MIN_CHILDREN,validate_bounty_split`
+Source: `app.complexity:DECOMPOSITION,MIN_CHILDREN,validate_task_split`
 
 A HIGH splits into two or more HIGHs or two or more MEDIUMs, never a mix. A MEDIUM splits into two or more LOWs. A LOW never splits. HIGH-to-HIGH decomposition may repeat. Counts follow grounded work, not a fixed three. Structural examples do not authorize agent launches.
 

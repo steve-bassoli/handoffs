@@ -7,31 +7,31 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.proof_reviewer import ProofReviewer
-from conftest import FixtureProofReviewer, post_bounty, write
+from conftest import FixtureProofReviewer, post_task, write
 from test_proofs import upload
 
 
 def prepare(client, video=False):
-    bounty = post_bounty(client, gold=10).json()['id']
-    assert write(client, f'/bounties/{bounty}/take', user='nate').status_code == 200
-    assert write(client, f'/bounties/{bounty}/profile', {'baseline_revision': 'base',
+    task = post_task(client, gold=10).json()['id']
+    assert write(client, f'/tasks/{task}/take', user='nate').status_code == 200
+    assert write(client, f'/tasks/{task}/profile', {'baseline_revision': 'base',
         'candidate_revision': 'candidate', 'environment': 'isolated metering fixture'}, 'nate').status_code == 200
     proof = upload()
     if video:
         proof.update(filename='proof.mp4', media_type='video/mp4',
                      content_base64=base64.b64encode(b'\x00\x00\x00\x18ftypisom').decode())
-    assert write(client, f'/bounties/{bounty}/proofs', proof, 'nate').status_code == 200
-    return bounty
+    assert write(client, f'/tasks/{task}/proofs', proof, 'nate').status_code == 200
+    return task
 
 
-def queue(client, bounty):
+def queue(client, task):
     service = client.app.state.service
     with service.db.write() as c:
-        return service.proofs.queue(c, 'nate', bounty)['proof']['review']['review_id']
+        return service.proofs.queue(c, 'nate', task)['proof']['review']['review_id']
 
 
-def detail(client, bounty):
-    return client.get('/api/v1/bounties/' + bounty).json()
+def detail(client, task):
+    return client.get('/api/v1/tasks/' + task).json()
 
 
 def observations(task):
@@ -67,13 +67,13 @@ def response_body(case, usage):
 ])
 def test_received_usage_survives_verdict_and_response_failures(client, monkeypatch, case, usage, state, verdict):
     monkeypatch.setenv('OPENAI_API_KEY', 'fixture-key')
-    bounty = prepare(client)
+    task_id = prepare(client)
     before = balances(client)
     service = client.app.state.service
 
     def handler(request):
         # The independent read sees a committed attempt before MockTransport receives the request.
-        current = detail(client, bounty)
+        current = detail(client, task_id)
         assert observations(current)[-1]['api_calls'] == 1
         assert current['proof']['review']['usage']['usage_state'] == 'unknown'
         assert current['proof']['review']['verdict'] == 'running'
@@ -85,9 +85,9 @@ def test_received_usage_survives_verdict_and_response_failures(client, monkeypat
         return httpx.Response(400 if case == 'http' else 200, json=response_body(case, usage))
 
     service.proofs.reviewer = ProofReviewer(httpx.MockTransport(handler))
-    review_id = queue(client, bounty)
-    service.proofs.run(bounty, review_id)
-    task = detail(client, bounty)
+    review_id = queue(client, task_id)
+    service.proofs.run(task_id, review_id)
+    task = detail(client, task_id)
     summary = task['proof']['review']['usage']
     assert summary['usage_state'] == state and summary['api_calls'] == 1
     assert summary['unreported_calls'] == int(state == 'unknown')
@@ -104,7 +104,7 @@ def test_received_usage_survives_verdict_and_response_failures(client, monkeypat
 
 def test_timeout_retains_one_unknown_attempt_and_replay_does_not_dispatch(client, monkeypatch):
     monkeypatch.setenv('OPENAI_API_KEY', 'fixture-key')
-    bounty = prepare(client)
+    task_id = prepare(client)
     calls = []
 
     def handler(request):
@@ -113,12 +113,12 @@ def test_timeout_retains_one_unknown_attempt_and_replay_does_not_dispatch(client
 
     service = client.app.state.service
     service.proofs.reviewer = ProofReviewer(httpx.MockTransport(handler))
-    first = write(client, f'/bounties/{bounty}/proof-review', user='nate', key='same-review')
+    first = write(client, f'/tasks/{task_id}/proof-review', user='nate', key='same-review')
     assert first.status_code == 200
     review_id = first.json()['proof']['review']['review_id']
-    assert write(client, f'/bounties/{bounty}/proof-review', user='nate', key='same-review').status_code == 200
-    service.proofs.run(bounty, review_id)
-    task = detail(client, bounty)
+    assert write(client, f'/tasks/{task_id}/proof-review', user='nate', key='same-review').status_code == 200
+    service.proofs.run(task_id, review_id)
+    task = detail(client, task_id)
     assert len(calls) == 1 and len(observations(task)) == 1
     assert task['proof']['review']['usage']['usage_state'] == 'unknown'
     assert task['proof']['review']['usage']['input_tokens'] is None
@@ -129,11 +129,11 @@ def test_timeout_retains_one_unknown_attempt_and_replay_does_not_dispatch(client
 @pytest.mark.parametrize('video', [False, True])
 def test_explicit_unavailable_branches_record_no_request(client, monkeypatch, video):
     monkeypatch.delenv('OPENAI_API_KEY', raising=False)
-    bounty = prepare(client, video=video)
+    task_id = prepare(client, video=video)
     before = balances(client)
     service = client.app.state.service
-    service.proofs.run(bounty, queue(client, bounty))
-    task = detail(client, bounty)
+    service.proofs.run(task_id, queue(client, task_id))
+    task = detail(client, task_id)
     summary = task['proof']['review']['usage']
     assert summary['usage_state'] == 'no_request'
     assert (summary['api_calls'], summary['input_tokens'], summary['output_tokens']) == (0, 0, 0)
@@ -143,11 +143,11 @@ def test_explicit_unavailable_branches_record_no_request(client, monkeypatch, vi
 
 
 def test_callback_free_custom_reviewer_is_unobserved(client):
-    bounty = prepare(client)
+    task_id = prepare(client)
     service = client.app.state.service
     service.proofs.reviewer = FixtureProofReviewer()
-    service.proofs.run(bounty, queue(client, bounty))
-    task = detail(client, bounty)
+    service.proofs.run(task_id, queue(client, task_id))
+    task = detail(client, task_id)
     summary = task['proof']['review']['usage']
     assert summary['usage_state'] == 'unobserved'
     assert summary['api_calls'] is summary['input_tokens'] is summary['output_tokens'] is None
@@ -157,22 +157,22 @@ def test_callback_free_custom_reviewer_is_unobserved(client):
 
 def test_stale_proof_keeps_received_usage_and_fresh_status(client, monkeypatch):
     monkeypatch.setenv('OPENAI_API_KEY', 'fixture-key')
-    bounty = prepare(client)
+    task_id = prepare(client)
     before = balances(client)
     service = client.app.state.service
 
     def handler(request):
-        task = detail(client, bounty)
-        assert write(client, f'/bounties/{bounty}/profile',
+        task = detail(client, task_id)
+        assert write(client, f'/tasks/{task_id}/profile',
                      {**task['profile'], 'candidate_revision': 'changed'}, 'nate').status_code == 200
         # A current lifecycle state must survive the later usage event.
         with service.db.write() as c:
-            service.event(c, bounty, 'fixture_status', 'nate', 'blocked', {'note': 'isolated fixture'})
+            service.event(c, task_id, 'fixture_status', 'nate', 'blocked', {'note': 'isolated fixture'})
         return httpx.Response(200, json=response_body('valid', {'input_tokens': 8, 'output_tokens': 2}))
 
     service.proofs.reviewer = ProofReviewer(httpx.MockTransport(handler))
-    service.proofs.run(bounty, queue(client, bounty))
-    task = detail(client, bounty)
+    service.proofs.run(task_id, queue(client, task_id))
+    task = detail(client, task_id)
     assert task['status'] == 'blocked' and not task['proof']['fresh']
     assert task['proof']['review']['usage']['input_tokens'] == 8
     assert task['proof']['review']['verdict'] == 'inconclusive' and not task['proof']['accepted']
@@ -183,20 +183,20 @@ def test_stale_proof_keeps_received_usage_and_fresh_status(client, monkeypatch):
 def test_restart_retains_observations_without_retrying(tmp_path, received):
     database = tmp_path / 'restart.sqlite'
     with TestClient(create_app(database)) as client:
-        bounty = prepare(client)
+        task_id = prepare(client)
         service = client.app.state.service
-        review_id = queue(client, bounty)
+        review_id = queue(client, task_id)
         with service.db.write() as c:
-            task = service.detail(c, bounty)
+            task = service.detail(c, task_id)
             meta = task['proof']['review']
-            service.event(c, bounty, 'proof_review_started', 'nate', task['status'],
+            service.event(c, task_id, 'proof_review_started', 'nate', task['status'],
                           {**{key: meta[key] for key in ('review_id', 'proof_id', 'binding')}, 'verdict': 'running'})
             observation = {key: meta[key] for key in ('review_id', 'proof_id', 'binding')}
-            service.event(c, bounty, 'proof_review_usage', 'nate', task['status'],
+            service.event(c, task_id, 'proof_review_usage', 'nate', task['status'],
                           {**observation, 'stage': 'request_started', 'request_ordinal': 1,
                            'api_calls': 1, 'usage_state': 'unknown', 'model': 'fixture-model'})
             if received:
-                service.event(c, bounty, 'proof_review_usage', 'nate', task['status'],
+                service.event(c, task_id, 'proof_review_usage', 'nate', task['status'],
                               {**observation, 'stage': 'response_received', 'request_ordinal': 1,
                                'usage_state': 'reported', 'input_tokens': 6, 'output_tokens': 1})
         before = balances(client)
@@ -209,8 +209,8 @@ def test_restart_retains_observations_without_retrying(tmp_path, received):
             raise AssertionError('Recovery must not retry a request')
 
     with TestClient(create_app(database, proof_reviewer=NoRetry())) as client:
-        client.app.state.service.proofs.run(bounty, review_id)
-        task = detail(client, bounty)
+        client.app.state.service.proofs.run(task_id, review_id)
+        task = detail(client, task_id)
         summary = task['proof']['review']['usage']
         assert summary['usage_state'] == ('reported' if received else 'unknown')
         assert summary['api_calls'] == 1 and summary['elapsed_ms'] is None
@@ -223,16 +223,16 @@ def test_restart_retains_observations_without_retrying(tmp_path, received):
 
 def test_current_review_summary_does_not_reuse_prior_usage(client, monkeypatch):
     monkeypatch.setenv('OPENAI_API_KEY', 'fixture-key')
-    bounty = prepare(client)
+    task_id = prepare(client)
     service = client.app.state.service
     service.proofs.reviewer = ProofReviewer(httpx.MockTransport(lambda request: httpx.Response(200,
         json=response_body('invalid', {'input_tokens': 8, 'output_tokens': 2}))))
-    first = queue(client, bounty)
-    service.proofs.run(bounty, first)
+    first = queue(client, task_id)
+    service.proofs.run(task_id, first)
     service.proofs.reviewer = FixtureProofReviewer()
-    second = queue(client, bounty)
-    service.proofs.run(bounty, second)
-    task = detail(client, bounty)
+    second = queue(client, task_id)
+    service.proofs.run(task_id, second)
+    task = detail(client, task_id)
     assert first != second and task['proof']['review']['review_id'] == second
     assert task['proof']['review']['usage']['usage_state'] == 'unobserved'
     assert task['proof']['review']['usage']['input_tokens'] is None
@@ -243,13 +243,13 @@ def test_current_review_summary_does_not_reuse_prior_usage(client, monkeypatch):
                                               ('resp_' + 'a' * 124, 'completed'), ('resp_é', 'completed')])
 def test_response_correlation_keeps_only_bounded_safe_values(client, monkeypatch, identifier, status):
     monkeypatch.setenv('OPENAI_API_KEY', 'fixture-key')
-    bounty = prepare(client)
+    task = prepare(client)
     body = response_body('valid', {'input_tokens': 1, 'output_tokens': 0, 'cached_tokens': 999})
     body.update(id=identifier, status=status)
     service = client.app.state.service
     service.proofs.reviewer = ProofReviewer(httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
-    service.proofs.run(bounty, queue(client, bounty))
-    receipt = observations(detail(client, bounty))[-1]
+    service.proofs.run(task, queue(client, task))
+    receipt = observations(detail(client, task))[-1]
     assert ('response_id' in receipt) == (identifier == 'resp_valid_123')
     assert ('response_status' in receipt) == (status == 'completed')
     assert 'cached_tokens' not in receipt

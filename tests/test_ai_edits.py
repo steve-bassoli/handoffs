@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.ai import SourceEdit, materialize_edits
 from app.main import create_app
-from conftest import post_bounty, write
+from conftest import post_task, write
 from test_ai import FakeLuna, decision, get_run, source_zip
 
 
@@ -20,15 +20,15 @@ def edited(path='calc.py', before='return a - b', after='return a + b'):
 
 def test_edits_produce_complete_download_without_claiming_verification(tmp_path):
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=FakeLuna([edited()]))) as client:
-        bounty = post_bounty(client).json()['id']
+        task = post_task(client).json()['id']
         before = client.get('/api/v1/me/stats').json()
-        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip()})
-        assert get_run(client, bounty)['status'] == 'ready'
-        with zipfile.ZipFile(io.BytesIO(client.get(f'/api/v1/bounties/{bounty}/ai/artifact').content)) as archive:
+        write(client, f'/tasks/{task}/ai/start', {'source_zip': source_zip()})
+        assert get_run(client, task)['status'] == 'ready'
+        with zipfile.ZipFile(io.BytesIO(client.get(f'/api/v1/tasks/{task}/ai/artifact').content)) as archive:
             assert 'return a + b' in archive.read('workspace/calc.py').decode()
             assert '-    return a - b' in archive.read('changes.patch').decode()
             assert 'No build or tests have been run' in archive.read('START_HERE.md').decode()
-        assert client.get(f'/api/v1/bounties/{bounty}').json()['phase'] != 'Closed'
+        assert client.get(f'/api/v1/tasks/{task}').json()['phase'] != 'Closed'
         after = client.get('/api/v1/me/stats').json()
         assert (before['available_gold'], before['reserved_gold']) == (after['available_gold'], after['reserved_gold'])
 
@@ -68,6 +68,6 @@ def test_multiple_edits_preserve_untouched_source_and_plan_gate(tmp_path):
     assert len(result.files) == 1 and result.files[0].content.startswith('# keep me\n')
     result.plan[0].files = ['unrelated.py']
     with TestClient(create_app(tmp_path / 'test.sqlite', ai_model=FakeLuna([result]))) as client:
-        bounty = post_bounty(client).json()['id']
-        write(client, f'/bounties/{bounty}/ai/start', {'source_zip': source_zip(source)})
-        assert get_run(client, bounty)['status'] == 'failed'
+        task = post_task(client).json()['id']
+        write(client, f'/tasks/{task}/ai/start', {'source_zip': source_zip(source)})
+        assert get_run(client, task)['status'] == 'failed'

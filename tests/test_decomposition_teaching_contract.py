@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.complexity import DECOMPOSITION, MIN_CHILDREN, validate_bounty_split
+from app.complexity import DECOMPOSITION, MIN_CHILDREN, validate_task_split
 from app.decomposition_teaching import build_teaching, render_markdown
 
 BEGIN = '<!-- BEGIN GENERATED DECOMPOSITION_TEACHING V1 -->'
@@ -16,7 +16,7 @@ REFERENCES = ('docs/decomposition_rule.md',
               'skills/handoffs/references/decomposition-rule.md')
 FIXTURE = {
     'version': 1,
-    'source': 'app.complexity:DECOMPOSITION,MIN_CHILDREN,validate_bounty_split',
+    'source': 'app.complexity:DECOMPOSITION,MIN_CHILDREN,validate_task_split',
     'min_children': 2,
     'rules': {'HIGH': ['HIGH', 'MEDIUM'], 'MEDIUM': ['LOW'], 'LOW': []},
     'explanation': (
@@ -52,7 +52,7 @@ def semantic_digest(teaching):
 
 def split_valid(split):
     try:
-        validate_bounty_split(split['parent'], split['children'])
+        validate_task_split(split['parent'], split['children'])
     except ValueError:
         return False
     return True

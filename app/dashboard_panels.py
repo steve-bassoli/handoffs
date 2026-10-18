@@ -17,29 +17,29 @@ def task_flow(service, task_id, observed):
                 if root in visited:
                     raise ValueError('cyclic task ancestry')
                 visited.add(root)
-                parent = one(connection, 'SELECT parent_id FROM bounties WHERE id=?', (root,))
+                parent = one(connection, 'SELECT parent_id FROM tasks WHERE id=?', (root,))
                 if not parent or parent['parent_id'] is None:
                     break
                 root = parent['parent_id']
             else:
                 raise ValueError('task ancestry exceeds bound')
             rows = all_rows(connection, '''WITH RECURSIVE tree(id) AS (
-                SELECT ? UNION SELECT b.id FROM bounties b JOIN tree ON b.parent_id=tree.id LIMIT 101)
-                SELECT b.id,b.parent_id,b.title,COALESCE((SELECT json_extract(data,'$.complexity') FROM events WHERE bounty_id=b.id AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW') ORDER BY seq DESC LIMIT 1),'HIGH') AS complexity,e.state AS status,
-                (SELECT actor FROM events WHERE bounty_id=b.id AND kind='taken' ORDER BY seq DESC LIMIT 1) AS claimant FROM bounties b
-                JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE bounty_id=b.id)
+                SELECT ? UNION SELECT b.id FROM tasks b JOIN tree ON b.parent_id=tree.id LIMIT 101)
+                SELECT b.id,b.parent_id,b.title,COALESCE((SELECT json_extract(data,'$.complexity') FROM events WHERE task_id=b.id AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW') ORDER BY seq DESC LIMIT 1),'HIGH') AS complexity,e.state AS status,
+                (SELECT actor FROM events WHERE task_id=b.id AND kind='taken' ORDER BY seq DESC LIMIT 1) AS claimant FROM tasks b
+                JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE task_id=b.id)
                 WHERE b.id IN (SELECT id FROM tree) ORDER BY b.created_at,b.id''', (root,))
         else:
-            rows = all_rows(connection, '''SELECT b.id,b.parent_id,b.title,COALESCE((SELECT json_extract(data,'$.complexity') FROM events WHERE bounty_id=b.id AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW') ORDER BY seq DESC LIMIT 1),'HIGH') AS complexity,e.state AS status,
-                (SELECT actor FROM events WHERE bounty_id=b.id AND kind='taken' ORDER BY seq DESC LIMIT 1) AS claimant FROM bounties b
-                JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE bounty_id=b.id)
+            rows = all_rows(connection, '''SELECT b.id,b.parent_id,b.title,COALESCE((SELECT json_extract(data,'$.complexity') FROM events WHERE task_id=b.id AND json_extract(data,'$.complexity') IN ('HIGH','MEDIUM','LOW') ORDER BY seq DESC LIMIT 1),'HIGH') AS complexity,e.state AS status,
+                (SELECT actor FROM events WHERE task_id=b.id AND kind='taken' ORDER BY seq DESC LIMIT 1) AS claimant FROM tasks b
+                JOIN events e ON e.seq=(SELECT MAX(seq) FROM events WHERE task_id=b.id)
                 ORDER BY b.created_at DESC,b.id LIMIT 101''')
         details = {}
         kinds = sorted(KINDS)
         placeholders = ','.join('?' for _ in kinds)
         for row in rows[:100]:
             events = all_rows(connection, f'''SELECT kind,data,created_at FROM events
-                WHERE bounty_id=? AND kind IN ({placeholders}) ORDER BY seq DESC LIMIT 50''', (row['id'], *kinds))
+                WHERE task_id=? AND kind IN ({placeholders}) ORDER BY seq DESC LIMIT 50''', (row['id'], *kinds))
             clean = []
             for event in reversed(events):
                 data = json.loads(event['data'])

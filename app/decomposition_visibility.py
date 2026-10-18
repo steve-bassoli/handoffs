@@ -1,5 +1,5 @@
 """Pure visibility projection; coverage is evidence, never inferred from nesting."""
-from app.complexity import validate_bounty_split
+from app.complexity import validate_task_split
 
 MAX_TICKETS = 10000
 
@@ -79,7 +79,7 @@ def project_decomposition_visibility(lineage, detailsById, coverage):
             status, reason = 'not_yet_split', 'no_children'
         else:
             try:
-                validate_bounty_split(detail(key)['complexity'],
+                validate_task_split(detail(key)['complexity'],
                                       [detail(c)['complexity'] for c in child_ids])
             except ValueError:
                 status, reason = 'violation', 'split_invalid'

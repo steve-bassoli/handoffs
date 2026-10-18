@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from app.complexity import DECOMPOSITION, MIN_CHILDREN, validate_bounty_split
+from app.complexity import DECOMPOSITION, MIN_CHILDREN, validate_task_split
 from app import decomposition_teaching as producer
 
 
@@ -53,7 +53,7 @@ def test_six_examples_match_validator_and_contract():
         outcomes = []
         for split in example['splits']:
             try:
-                validate_bounty_split(split['parent'], split['children'])
+                validate_task_split(split['parent'], split['children'])
             except ValueError:
                 outcomes.append(False)
             else:
@@ -65,7 +65,7 @@ def test_low_leafhood_is_not_an_empty_split():
     assert producer.build_teaching()['rules']['LOW'] == []
     for children in ([], ['LOW', 'LOW']):
         with pytest.raises(ValueError):
-            validate_bounty_split('LOW', children)
+            validate_task_split('LOW', children)
 
 
 def test_deterministic_fresh_data_and_markdown():

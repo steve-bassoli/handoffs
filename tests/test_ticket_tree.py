@@ -58,7 +58,7 @@ const text = n => all(n).map(x => x.textContent).join(' | ');
   assert.match(evaluate(`assembleTicketTree({root_id:'a',items:[{id:'a',parent_id:'b'},{id:'b',parent_id:'a'}]},'a').warnings.join(' ')`), /Cycle detected/);
   assert.match(evaluate(`assembleTicketTree({root_id:'absent',items:[{id:'x',parent_id:'missing'}]},'gone').warnings.join(' ')`), /Missing root.*Missing requested.*Missing parent/);
   assert.match(evaluate(`assembleTicketTree({items:[null,{id:'x'},{id:'x'}]},'x').warnings.join(' ')`), /Missing node ID.*Duplicate node/);
-  assert.equal(evaluate(`evidencePackageCount({items:[{path:'bounty.json'},{path:'packages/4-response/a'},{path:'packages/4-response/b'},{path:'packages/7-support/a'}]})`), 2);
+  assert.equal(evaluate(`evidencePackageCount({items:[{path:'task.json'},{path:'packages/4-response/a'},{path:'packages/4-response/b'},{path:'packages/7-support/a'}]})`), 2);
   assert.equal(evaluate(`evidencePackageCount({items:[]})`), 0);
   assert.equal(evaluate(`evidencePackageCount({})`), null);
   assert.equal(evaluate(`ticketHash('#tree=a%2Fb').id`), 'a/b');

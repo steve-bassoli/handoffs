@@ -84,7 +84,7 @@
       let task = null, taskError = null;
       if (items.some(item => item.kind === 'task')) {
         try {
-          const found = await deps.api('/bounties?limit=1');
+          const found = await deps.api('/tasks?limit=1');
           const list = Array.isArray(found) ? found : (found && Array.isArray(found.items) ? found.items : []);
           task = list.length ? list[0] : null;
         } catch (error) { taskError = error; }

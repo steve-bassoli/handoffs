@@ -30,7 +30,7 @@ def test_registry_read_is_private_read_only_and_does_not_mint_stats(tmp_path, mo
     assert item == {'id': 'agent-one', 'role': 'worker', 'level': 1, 'state': 'released',
                     'started': 'start', 'ended': 'end', 'pressure': 1,
                     'credits': None, 'admiration': None, 'growth': None,
-                    'name': None, 'session': None, 'task': None, 'directive': None, 'opportunity': None}
+                    'name': None, 'session': None, 'task': None, 'directive': None, 'task_id': None}
     assert 'private' not in response.text and 'pid' not in response.text
     assert path.read_bytes() == before
     assert client.get('/api/v1/agents', headers={'X-Demo-User': 'unknown'}).status_code == 401
@@ -62,7 +62,7 @@ def test_missing_registry_is_not_created_and_empty_is_distinct(tmp_path):
     assert roster(path) == {'available': True, 'items': []}
 
 
-def test_tree_agent_shows_task_directive_pressure_and_campaign_opportunity(tmp_path):
+def test_tree_agent_shows_task_directive_pressure_and_campaign_task(tmp_path):
     path = tmp_path / 'budget.sqlite'
     root = tmp_path / 'astra-tree'
     session = root / '20261017T090000Z-it2'
@@ -73,7 +73,7 @@ def test_tree_agent_shows_task_directive_pressure_and_campaign_opportunity(tmp_p
         'fe_study': {'role': 'LOW crawler: study screens', 'parent': 'frontend', 'level': 3}}}), encoding='utf-8')
     (session / 'frontend' / 'round-01.json').write_text(json.dumps({'directives': {'fe_study': 'Crawl frmStudy first'}}), encoding='utf-8')
     (session / 'fe_study' / 'round-01.json').write_text(json.dumps({'pressure': 2}), encoding='utf-8')
-    (root / 'campaign-opportunity.json').write_text(json.dumps({'id': 'opp-1', 'sessions_since': '20261017T082340Z'}), encoding='utf-8')
+    (root / 'campaign-task.json').write_text(json.dumps({'id': 'task-1', 'sessions_since': '20261017T082340Z'}), encoding='utf-8')
     with sqlite3.connect(path) as db:
         db.execute(SCHEMA)
         db.execute('INSERT INTO astra_agents VALUES (?,?,?,?,?,?,?,?,?,?)',
@@ -81,6 +81,6 @@ def test_tree_agent_shows_task_directive_pressure_and_campaign_opportunity(tmp_p
     item = roster(path)['items'][0]
     assert (item['name'], item['session'], item['pressure']) == ('fe_study', '20261017T090000Z-it2', 2)
     assert item['task'] == 'LOW crawler: study screens' and item['directive'] == 'Crawl frmStudy first'
-    assert item['opportunity'] == 'opp-1'
-    (root / 'campaign-opportunity.json').write_text(json.dumps({'id': 'opp-1', 'sessions_since': '20261018'}), encoding='utf-8')
-    assert roster(path)['items'][0]['opportunity'] is None
+    assert item['task_id'] == 'task-1'
+    (root / 'campaign-task.json').write_text(json.dumps({'id': 'task-1', 'sessions_since': '20261018'}), encoding='utf-8')
+    assert roster(path)['items'][0]['task_id'] is None

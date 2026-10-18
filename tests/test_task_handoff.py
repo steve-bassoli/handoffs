@@ -16,7 +16,7 @@ def task():
 
 
 def package(*, identity='task-1', corrupt=False, unsafe=False):
-    files = {'bounty.json': json.dumps(task()).encode(),
+    files = {'task.json': json.dumps(task()).encode(),
              'context.md': b'Implement only the accepted task criteria.',
              'source.py': b'raise RuntimeError("Do not execute attached source")'}
     if unsafe:

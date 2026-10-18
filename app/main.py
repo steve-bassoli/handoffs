@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Literal
@@ -27,7 +28,7 @@ from app.automation_mode import AUTOMATION_HEADER, ACTION_INTENT_HEADER, current
 RESEARCH_PATH = Path(__file__).resolve().parents[1] / 'PLAN' / 'AI_RESEARCH.md'
 
 
-class PostBounty(BaseModel):
+class PostTask(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     goal: str = Field(min_length=1)
     criteria: list[str] = Field(min_length=1)
@@ -41,7 +42,7 @@ class PostBounty(BaseModel):
     profile: Profile | None = None
 
 
-class EditBounty(BaseModel):
+class EditTask(BaseModel):
     model_config = {'extra': 'forbid'}
     title: str = Field(min_length=1, max_length=160)
     goal: str = Field(min_length=1)
@@ -63,7 +64,7 @@ class Prerequisites(BaseModel):
     depends_on: list[str] = Field(max_length=30)
 
 
-class ReopenBounty(BaseModel):
+class ReopenTask(BaseModel):
     complexity: Literal['HIGH', 'MEDIUM', 'LOW']
     note: str = Field(min_length=1, max_length=2000)
 
@@ -267,134 +268,134 @@ this page does not query the live Codex quota meter.</p>
     def transactions(request: Request, user=Depends(actor), limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0)):
         return request.app.state.service.transactions(user, limit, offset)
 
-    @app.get('/api/v1/bounties')
-    def bounties(request: Request, user=Depends(actor), view: Literal['open', 'mine', 'all'] = 'open',
+    @app.get('/api/v1/tasks')
+    def tasks(request: Request, user=Depends(actor), view: Literal['open', 'mine', 'all'] = 'open',
                  limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0), q: str = ''):
         return request.app.state.service.listing(user, view, limit, offset, q)
 
-    @app.get('/api/v1/bounties/{bounty_id}')
-    def bounty(bounty_id: str, request: Request, user=Depends(actor)):
-        return request.app.state.service.get(bounty_id)
+    @app.get('/api/v1/tasks/{task_id}')
+    def task(task_id: str, request: Request, user=Depends(actor)):
+        return request.app.state.service.get(task_id)
 
-    @app.get('/api/v1/bounties/{bounty_id}/artifacts')
-    def artifacts(bounty_id: str, request: Request, user=Depends(actor)):
-        return inventory(request.app.state.service, bounty_id)
+    @app.get('/api/v1/tasks/{task_id}/artifacts')
+    def artifacts(task_id: str, request: Request, user=Depends(actor)):
+        return inventory(request.app.state.service, task_id)
 
-    @app.get('/api/v1/bounties/{bounty_id}/artifacts/download')
-    def artifact_bundle(bounty_id: str, request: Request, user=Depends(actor)):
-        return Response(download(request.app.state.service, bounty_id), media_type='application/zip',
+    @app.get('/api/v1/tasks/{task_id}/artifacts/download')
+    def artifact_bundle(task_id: str, request: Request, user=Depends(actor)):
+        return Response(download(request.app.state.service, task_id), media_type='application/zip',
                         headers={'Content-Disposition': 'attachment; filename="task-artifacts.zip"'})
 
-    @app.get('/api/v1/bounties/{bounty_id}/artifacts/file')
-    def artifact_file(bounty_id: str, request: Request, path: str, user=Depends(actor)):
-        content = download(request.app.state.service, bounty_id, path)
+    @app.get('/api/v1/tasks/{task_id}/artifacts/file')
+    def artifact_file(task_id: str, request: Request, path: str, user=Depends(actor)):
+        content = download(request.app.state.service, task_id, path)
         return Response(content, media_type='application/octet-stream',
                         headers={'Content-Disposition': "attachment; filename*=UTF-8''" + quote(path.rsplit('/', 1)[-1], safe='')})
 
-    @app.post('/api/v1/bounties')
-    def post(payload: PostBounty, request: Request, user=Depends(actor),
+    @app.post('/api/v1/tasks')
+    def post(payload: PostTask, request: Request, user=Depends(actor),
              idempotency_key: str = Header(min_length=1, max_length=200)):
         return request.app.state.service.execute(user, idempotency_key, 'post', payload.model_dump())
 
-    @app.post('/api/v1/bounties/{bounty_id}/edit')
-    def edit(bounty_id: str, payload: EditBounty, request: Request, user=Depends(actor),
+    @app.post('/api/v1/tasks/{task_id}/edit')
+    def edit(task_id: str, payload: EditTask, request: Request, user=Depends(actor),
              idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'edit', {'id': bounty_id, **payload.model_dump()})
+        return request.app.state.service.execute(user, idempotency_key, 'edit', {'id': task_id, **payload.model_dump()})
 
-    @app.post('/api/v1/bounties/{bounty_id}/packages')
-    def attach_package(bounty_id: str, payload: EvidencePackage, request: Request, user=Depends(actor),
+    @app.post('/api/v1/tasks/{task_id}/packages')
+    def attach_package(task_id: str, payload: EvidencePackage, request: Request, user=Depends(actor),
                        idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'attach_package', {'id': bounty_id, **payload.model_dump()})
+        return request.app.state.service.execute(user, idempotency_key, 'attach_package', {'id': task_id, **payload.model_dump()})
 
-    @app.post('/api/v1/bounties/{bounty_id}/reopen')
-    def reopen(bounty_id: str, payload: ReopenBounty, request: Request, user=Depends(actor),
+    @app.post('/api/v1/tasks/{task_id}/reopen')
+    def reopen(task_id: str, payload: ReopenTask, request: Request, user=Depends(actor),
                idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'ai_reopen', {'id': bounty_id, **payload.model_dump()})
+        return request.app.state.service.execute(user, idempotency_key, 'ai_reopen', {'id': task_id, **payload.model_dump()})
 
-    @app.post('/api/v1/bounties/{bounty_id}/take')
-    def take(bounty_id: str, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'take', {'id': bounty_id})
+    @app.post('/api/v1/tasks/{task_id}/take')
+    def take(task_id: str, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'take', {'id': task_id})
 
-    @app.post('/api/v1/bounties/{bounty_id}/status')
-    def progress(bounty_id: str, payload: Progress, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'status', {'id': bounty_id, **payload.model_dump()})
+    @app.post('/api/v1/tasks/{task_id}/status')
+    def progress(task_id: str, payload: Progress, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'status', {'id': task_id, **payload.model_dump()})
 
-    @app.post('/api/v1/bounties/{bounty_id}/deliveries')
-    def deliver(bounty_id: str, payload: Delivery, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'deliver', {'id': bounty_id, **payload.model_dump(mode='json')})
+    @app.post('/api/v1/tasks/{task_id}/deliveries')
+    def deliver(task_id: str, payload: Delivery, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'deliver', {'id': task_id, **payload.model_dump(mode='json')})
 
-    @app.post('/api/v1/bounties/{bounty_id}/settle')
-    def settle(bounty_id: str, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'settle', {'id': bounty_id})
+    @app.post('/api/v1/tasks/{task_id}/settle')
+    def settle(task_id: str, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'settle', {'id': task_id})
 
-    @app.post('/api/v1/bounties/{bounty_id}/cancel')
-    def cancel(bounty_id: str, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'cancel', {'id': bounty_id})
+    @app.post('/api/v1/tasks/{task_id}/cancel')
+    def cancel(task_id: str, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'cancel', {'id': task_id})
 
-    @app.post('/api/v1/bounties/{bounty_id}/reviews')
-    def review(bounty_id: str, payload: Review, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'review', {'id': bounty_id, **payload.model_dump()})
+    @app.post('/api/v1/tasks/{task_id}/reviews')
+    def review(task_id: str, payload: Review, request: Request, user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
+        return request.app.state.service.execute(user, idempotency_key, 'review', {'id': task_id, **payload.model_dump()})
 
-    def ai_write(request, background, user, key, action, bounty_id, payload):
+    def ai_write(request, background, user, key, action, task_id, payload):
         service = request.app.state.service
-        result = service.execute(user, key, action, {'id': bounty_id, **payload})
+        result = service.execute(user, key, action, {'id': task_id, **payload})
         if action in ('accept', 'ai_start', 'ai_answer', 'ai_retry'):
-            background.add_task(service.ai.generate, bounty_id)
+            background.add_task(service.ai.generate, task_id)
         return result
 
-    @app.post('/api/v1/bounties/{bounty_id}/accept')
-    def accept(bounty_id: str, payload: AIStart, request: Request, background: BackgroundTasks,
+    @app.post('/api/v1/tasks/{task_id}/accept')
+    def accept(task_id: str, payload: AIStart, request: Request, background: BackgroundTasks,
                user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return ai_write(request, background, user, idempotency_key, 'accept', bounty_id, payload.model_dump())
+        return ai_write(request, background, user, idempotency_key, 'accept', task_id, payload.model_dump())
 
-    @app.post('/api/v1/bounties/{bounty_id}/ai/start')
-    def ai_start(bounty_id: str, payload: AIStart, request: Request, background: BackgroundTasks,
+    @app.post('/api/v1/tasks/{task_id}/ai/start')
+    def ai_start(task_id: str, payload: AIStart, request: Request, background: BackgroundTasks,
                  user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return ai_write(request, background, user, idempotency_key, 'ai_start', bounty_id, payload.model_dump())
+        return ai_write(request, background, user, idempotency_key, 'ai_start', task_id, payload.model_dump())
 
-    @app.post('/api/v1/bounties/{bounty_id}/ai/answers')
-    def ai_answer(bounty_id: str, payload: AIAnswers, request: Request, background: BackgroundTasks,
+    @app.post('/api/v1/tasks/{task_id}/ai/answers')
+    def ai_answer(task_id: str, payload: AIAnswers, request: Request, background: BackgroundTasks,
                   user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return ai_write(request, background, user, idempotency_key, 'ai_answer', bounty_id, payload.model_dump())
+        return ai_write(request, background, user, idempotency_key, 'ai_answer', task_id, payload.model_dump())
 
-    @app.post('/api/v1/bounties/{bounty_id}/ai/retry')
-    def ai_retry(bounty_id: str, request: Request, background: BackgroundTasks,
+    @app.post('/api/v1/tasks/{task_id}/ai/retry')
+    def ai_retry(task_id: str, request: Request, background: BackgroundTasks,
                  payload: AIModelChoice | None = None,
                  user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return ai_write(request, background, user, idempotency_key, 'ai_retry', bounty_id,
+        return ai_write(request, background, user, idempotency_key, 'ai_retry', task_id,
                         payload.model_dump() if payload else {})
 
-    @app.post('/api/v1/bounties/{bounty_id}/ai/confirm-followups')
-    def ai_confirm(bounty_id: str, payload: AIConfirm, request: Request, background: BackgroundTasks,
+    @app.post('/api/v1/tasks/{task_id}/ai/confirm-followups')
+    def ai_confirm(task_id: str, payload: AIConfirm, request: Request, background: BackgroundTasks,
                    user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return ai_write(request, background, user, idempotency_key, 'ai_confirm', bounty_id, payload.model_dump())
+        return ai_write(request, background, user, idempotency_key, 'ai_confirm', task_id, payload.model_dump())
 
-    @app.get('/api/v1/bounties/{bounty_id}/ai/artifact')
-    def ai_artifact(bounty_id: str, request: Request, user=Depends(actor)):
-        return Response(request.app.state.service.ai.artifact(bounty_id), media_type='application/zip',
-                        headers={'Content-Disposition': f'attachment; filename="task-{bounty_id}.zip"'})
+    @app.get('/api/v1/tasks/{task_id}/ai/artifact')
+    def ai_artifact(task_id: str, request: Request, user=Depends(actor)):
+        return Response(request.app.state.service.ai.artifact(task_id), media_type='application/zip',
+                        headers={'Content-Disposition': f'attachment; filename="task-{task_id}.zip"'})
 
-    @app.post('/api/v1/bounties/{bounty_id}/ai/complete')
-    def ai_complete(bounty_id: str, payload: AIVerification, request: Request, background: BackgroundTasks,
+    @app.post('/api/v1/tasks/{task_id}/ai/complete')
+    def ai_complete(task_id: str, payload: AIVerification, request: Request, background: BackgroundTasks,
                     user=Depends(actor), idempotency_key: str = Header(min_length=1, max_length=200)):
-        return ai_write(request, background, user, idempotency_key, 'ai_complete', bounty_id, payload.model_dump())
+        return ai_write(request, background, user, idempotency_key, 'ai_complete', task_id, payload.model_dump())
 
-    @app.get('/api/v1/bounties/{bounty_id}/lineage')
-    def lineage(bounty_id: str, request: Request, user=Depends(actor)):
-        return request.app.state.service.lineage(bounty_id)
+    @app.get('/api/v1/tasks/{task_id}/lineage')
+    def lineage(task_id: str, request: Request, user=Depends(actor)):
+        return request.app.state.service.lineage(task_id)
 
-    @app.get('/api/v1/bounties/{bounty_id}/constellation')
-    def graph(bounty_id: str, request: Request, user=Depends(actor)):
-        return request.app.state.service.constellation(bounty_id)
+    @app.get('/api/v1/tasks/{task_id}/constellation')
+    def graph(task_id: str, request: Request, user=Depends(actor)):
+        return request.app.state.service.constellation(task_id)
 
-    @app.post('/api/v1/bounties/{bounty_id}/proofs')
-    def attach_proof(bounty_id: str, payload: ProofUpload, request: Request, user=Depends(actor),
+    @app.post('/api/v1/tasks/{task_id}/proofs')
+    def attach_proof(task_id: str, payload: ProofUpload, request: Request, user=Depends(actor),
                      idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'ai_proof_attach', {'id': bounty_id, **payload.model_dump()})
+        return request.app.state.service.execute(user, idempotency_key, 'ai_proof_attach', {'id': task_id, **payload.model_dump()})
 
-    @app.get('/api/v1/bounties/{bounty_id}/proofs/{proof_id}')
-    def proof_file(bounty_id: str, proof_id: str, request: Request, user=Depends(actor)):
-        task = request.app.state.service.get(bounty_id)
+    @app.get('/api/v1/tasks/{task_id}/proofs/{proof_id}')
+    def proof_file(task_id: str, proof_id: str, request: Request, user=Depends(actor)):
+        task = request.app.state.service.get(task_id)
         record = next((event['data'] for event in task['events'] if event['kind'] == 'proof_attached' and event['data']['proof_id'] == proof_id), None)
         if not record:
             raise RuleError('Proof artifact not found', 404)
@@ -403,33 +404,33 @@ this page does not query the live Codex quota meter.</p>
             headers={'Content-Disposition': "attachment; filename*=UTF-8''" + quote(record['filename'], safe=''),
                      'X-Content-Type-Options': 'nosniff'})
 
-    @app.post('/api/v1/bounties/{bounty_id}/proof-review')
-    def review_proof(bounty_id: str, request: Request, background: BackgroundTasks, user=Depends(actor),
+    @app.post('/api/v1/tasks/{task_id}/proof-review')
+    def review_proof(task_id: str, request: Request, background: BackgroundTasks, user=Depends(actor),
                      idempotency_key: str = Header(min_length=1, max_length=200)):
         service = request.app.state.service
-        result = service.execute(user, idempotency_key, 'ai_proof_queue', {'id': bounty_id})
-        background.add_task(service.proofs.run, bounty_id, result['proof']['review']['review_id'])
+        result = service.execute(user, idempotency_key, 'ai_proof_queue', {'id': task_id})
+        background.add_task(service.proofs.run, task_id, result['proof']['review']['review_id'])
         return result
 
-    @app.post('/api/v1/bounties/{bounty_id}/proof-human')
-    def verify_proof(bounty_id: str, payload: HumanProof, request: Request, user=Depends(actor),
+    @app.post('/api/v1/tasks/{task_id}/proof-human')
+    def verify_proof(task_id: str, payload: HumanProof, request: Request, user=Depends(actor),
                      idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'ai_proof_human', {'id': bounty_id, **payload.model_dump()})
+        return request.app.state.service.execute(user, idempotency_key, 'ai_proof_human', {'id': task_id, **payload.model_dump()})
 
-    @app.post('/api/v1/bounties/{bounty_id}/complete')
-    def complete_proof(bounty_id: str, payload: CompleteProof, request: Request, user=Depends(actor),
+    @app.post('/api/v1/tasks/{task_id}/complete')
+    def complete_proof(task_id: str, payload: CompleteProof, request: Request, user=Depends(actor),
                        idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'ai_proof_complete', {'id': bounty_id, **payload.model_dump()})
+        return request.app.state.service.execute(user, idempotency_key, 'ai_proof_complete', {'id': task_id, **payload.model_dump()})
 
-    @app.post('/api/v1/bounties/{bounty_id}/profile')
-    def profile(bounty_id: str, payload: Profile, request: Request, user=Depends(actor),
+    @app.post('/api/v1/tasks/{task_id}/profile')
+    def profile(task_id: str, payload: Profile, request: Request, user=Depends(actor),
                 idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'ai_profile', {'id': bounty_id, 'profile': payload.model_dump()})
+        return request.app.state.service.execute(user, idempotency_key, 'ai_profile', {'id': task_id, 'profile': payload.model_dump()})
 
-    @app.post('/api/v1/bounties/{bounty_id}/dependencies')
-    def prerequisites(bounty_id: str, payload: Prerequisites, request: Request, user=Depends(actor),
+    @app.post('/api/v1/tasks/{task_id}/dependencies')
+    def prerequisites(task_id: str, payload: Prerequisites, request: Request, user=Depends(actor),
                       idempotency_key: str = Header(min_length=1, max_length=200)):
-        return request.app.state.service.execute(user, idempotency_key, 'ai_dependencies', {'id': bounty_id, **payload.model_dump()})
+        return request.app.state.service.execute(user, idempotency_key, 'ai_dependencies', {'id': task_id, **payload.model_dump()})
 
     static = Path(__file__).parent / 'static'
     app.mount('/static', StaticFiles(directory=static), name='static')
@@ -446,6 +447,16 @@ this page does not query the live Codex quota meter.</p>
     def dashboard_page():
         return FileResponse(static / 'dashboard.html', headers={'Cache-Control': 'no-store'})
 
+    # Hidden, deprecated compatibility aliases: the API was /api/v1/bounties before the rename to tasks.
+    # Same endpoint objects, so validation, auth, idempotency and background work are identical.
+    legacy_prefix = '/api/v1/' + 'bount' + 'ies'
+    for route in tuple(app.routes):
+        if isinstance(route, APIRoute) and (route.path == '/api/v1/tasks' or route.path.startswith('/api/v1/tasks/')):
+            app.add_api_route(legacy_prefix + route.path[len('/api/v1/tasks'):], route.endpoint,
+                              methods=sorted(route.methods), status_code=route.status_code,
+                              response_model=route.response_model, response_class=route.response_class,
+                              dependencies=route.dependencies, deprecated=True, include_in_schema=False,
+                              name='legacy_' + route.name)
     return app
 
 

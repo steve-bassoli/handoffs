@@ -23,14 +23,14 @@ def legacy_requirements(context):
     return goal, criteria
 
 
-def project_legacy(bounty):
-    legacy = bounty['legacy']
+def project_legacy(task):
+    legacy = task['legacy']
     if not legacy:
         return
     goal, criteria = legacy_requirements(legacy['context'])
-    if bounty['goal'] == 'Historical imported assignment' and goal:
-        bounty['goal'] = goal
-    if not bounty['criteria'] and criteria:
-        bounty['criteria'] = criteria
-    if not bounty['repository']:
-        bounty['repository'] = legacy['source'].removeprefix('git:')
+    if task['goal'] == 'Historical imported assignment' and goal:
+        task['goal'] = goal
+    if not task['criteria'] and criteria:
+        task['criteria'] = criteria
+    if not task['repository']:
+        task['repository'] = legacy['source'].removeprefix('git:')
