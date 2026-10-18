@@ -9,6 +9,42 @@ if (typeof sessionStorage !== 'undefined') try {
   else sessionStorage.removeItem(SESSION_KEY);
 } catch { sessionStorage.removeItem(SESSION_KEY); }
 let user = session ? session.user_id : localStorage.getItem('handoffs-user') || 'steve';
+let postDraftOwner = null;
+function renderPostDraftOwner(note = '') {
+  if (typeof document === 'undefined') return;
+  const form = $('post-form');
+  if (!form) return;
+  let label = $('post-draft-owner');
+  if (!label) {
+    label = document.createElement('p');
+    label.id = 'post-draft-owner';
+    label.setAttribute('role', 'status');
+    label.setAttribute('aria-live', 'polite');
+    form.before(label);
+  }
+  label.textContent = postDraftOwner ? `Draft owner: ${postDraftOwner.principal} (${postDraftOwner.auth ? 'signed in' : 'demo'}). Not saved across reloads.` : note;
+  label.hidden = !label.textContent;
+}
+function syncPostDraftOwner() {
+  if (!postDraftOwner) return false;
+  const owner = postDraftOwner;
+  if (owner.user === user && owner.auth === session && owner.token === session?.access_token &&
+      owner.principal === (session?.user_id || user)) return false;
+  postDraftOwner = null;
+  if (typeof document !== 'undefined') $('post-form')?.reset();
+  const note = 'Draft cleared because the identity or session changed. Nothing was transferred to the new identity.';
+  renderPostDraftOwner(note);
+  message(note);
+  return true;
+}
+function recordPostDraftOwner() {
+  // A changed identity must discard old fields, not adopt them on the next input.
+  if (syncPostDraftOwner()) return;
+  if (!postDraftOwner) postDraftOwner = {
+    user, auth: session, token: session?.access_token, principal: session?.user_id || user
+  };
+  renderPostDraftOwner();
+}
 function identityHeaders() {
   return session ? {Authorization: 'Bearer ' + session.access_token} : {'X-Demo-User': user};
 }
@@ -21,6 +57,7 @@ function renderAuth() {
     user = session.user_id;
     if (![...$('user').options].some(option => option.value === user)) $('user').append(new Option(user, user));
   }
+  if (typeof syncPostDraftOwner === 'function') syncPostDraftOwner();
   $('user').value = user;
   $('user').disabled = !!session || (typeof postPending !== 'undefined' && postPending);
   syncSignoffAuth();
@@ -272,6 +309,7 @@ async function signoffs() {
 }
 const TASK_VIEWS = new Set(['open', 'mine', 'post']), WORKSPACE_BUTTONS = 'nav[aria-label="Workspace"] button[data-view]';
 async function navigate(nextView) {
+  if (typeof syncPostDraftOwner === 'function') syncPostDraftOwner();
   const epoch = typeof treeEpoch !== 'undefined' ? ++treeEpoch : null;
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
@@ -1038,6 +1076,15 @@ $('next').onclick = () => run(async () => { offset += pageSize; await board(); }
 $('tx-previous').onclick = () => run(async () => { txOffset = Math.max(0, txOffset - pageSize); await transactions(); });
 $('tx-next').onclick = () => run(async () => { txOffset += pageSize; await transactions(); });
 const postSourceZip = sourceInput($('post-form'));
+if (typeof document !== 'undefined' && $('post-form')) {
+  const form = $('post-form');
+  form.addEventListener('input', recordPostDraftOwner);
+  form.addEventListener('change', recordPostDraftOwner);
+  form.addEventListener('reset', () => {
+    postDraftOwner = null;
+    renderPostDraftOwner();
+  });
+}
 $('post-form').onsubmit = e => {
   e.preventDefault();
   if (postPending) return;

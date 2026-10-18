@@ -149,6 +149,81 @@ function fixture() {
     assert result.returncode == 0, result.stderr
 
 
+def test_post_draft_owner_return_switch_and_reset():
+    import shutil
+    import subprocess
+    import pytest
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('Node is needed for draft ownership checks')
+    checks = r'''
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync('app/static/app.js', 'utf8');
+const helpers = source.slice(source.indexOf('let postDraftOwner = null;'), source.indexOf('function identityHeaders()'));
+const navigation = source.slice(source.indexOf('const TASK_VIEWS ='), source.indexOf('async function mutate('));
+const binding = source.slice(source.indexOf("if (typeof document !== 'undefined' && $('post-form'))"), source.indexOf("$('post-form').onsubmit = e => {"));
+function fixture() {
+  const nodes = {}, listeners = {};
+  const form = {value: '', zip: '', resets: 0,
+    before(label) { nodes[label.id] = label; },
+    addEventListener(type, handler) { listeners[type] = handler; },
+    reset() { listeners.reset(); this.value = ''; this.zip = ''; this.resets++; }};
+  nodes['post-form'] = form;
+  const c = {user: 'steve', session: null, view: 'post', selected: null,
+    aiPoll: null, proofPoll: null, clearTimeout() {}, messages: [],
+    $: id => nodes[id] || (nodes[id] = {hidden: true}),
+    document: {createElement: () => ({setAttribute() {}, textContent: ''}), querySelectorAll: () => []},
+    history: {replaceState() {}}, location: {pathname: '/', search: ''},
+    message: text => c.messages.push(text), stats: async () => {}, board: async () => {}};
+  vm.runInNewContext(helpers + navigation + binding, c);
+  return {c, form, listeners, nodes};
+}
+(async () => {
+  let f = fixture();
+  f.form.value = 'Private draft'; f.form.zip = 'chosen.zip'; f.listeners.input();
+  assert.match(f.nodes['post-draft-owner'].textContent, /Draft owner: steve \(demo\)/);
+  assert.equal(f.nodes['post-draft-owner'].hidden, false);
+  await f.c.navigate('open'); await f.c.navigate('post');
+  assert.equal(f.form.value, 'Private draft');
+  assert.equal(f.form.zip, 'chosen.zip');
+  assert.equal(f.form.resets, 0);
+  assert.match(f.nodes['post-draft-owner'].textContent, /Draft owner: steve/);
+  for (const change of [
+    c => { c.user = 'other'; },
+    c => { c.session = {access_token: 'new', user_id: 'steve'}; },
+    c => { c.session.access_token = 'rotated'; },
+    c => { c.session = {...c.session}; },
+    c => { c.session = null; }
+  ]) {
+    f = fixture();
+    f.c.session = {access_token: 'initial', user_id: 'steve'};
+    f.form.value = 'Private draft'; f.form.zip = 'chosen.zip'; f.listeners.change();
+    assert.match(f.nodes['post-draft-owner'].textContent, /steve \(signed in\)/);
+    change(f.c); await f.c.navigate('post');
+    assert.equal(f.form.value, ''); assert.equal(f.form.zip, '');
+    assert.equal(f.form.resets, 1);
+    assert.match(f.nodes['post-draft-owner'].textContent, /Draft cleared.*identity or session changed/);
+    assert.ok(f.c.messages.some(text => text.includes('Nothing was transferred')));
+    f.form.value = 'New draft'; f.listeners.input();
+    assert.match(f.nodes['post-draft-owner'].textContent, /Draft owner:/);
+    f.form.reset();
+    assert.equal(f.nodes['post-draft-owner'].hidden, true);
+  }
+  // The auth and picker entry points must reach the ownership check.
+  const auth = source.slice(source.indexOf('function renderAuth()'), source.indexOf('function clearSession()'));
+  assert.ok(auth.includes('syncPostDraftOwner()'));
+  const picker = source.slice(source.indexOf("$('user').onchange"), source.indexOf("$('signin-form').onsubmit"));
+  assert.ok(picker.includes("await navigate('open')"));
+  // Helpers are safe to define and synchronize without a DOM.
+  vm.runInNewContext(helpers + '\nsyncPostDraftOwner();', {user: 'steve', session: null});
+})().catch(error => { console.error(error); process.exitCode = 1; });
+'''
+    result = subprocess.run([node, '-e', checks], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
 def test_late_task_detail_cannot_pull_the_user_back():
     import shutil
     import subprocess
