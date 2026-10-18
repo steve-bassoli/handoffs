@@ -261,6 +261,18 @@ in a desktop host is a separate explicit step.
 
 The MCP bridge exposes `list_bounties`, `get_bounty`, `post_bounty`, `get_my_stats`, `take_bounty`, `deliver_pr`, and `get_bounty_context`. It calls the existing service; it does not open a database or call OpenAI models. Demo identity is fixed per connection. `get_my_stats` is annotated as a write because it can issue the due monthly grant; posting, taking and delivering are also marked as writes. Retain a unique `operation_id` for each intended write and reuse it for an identical retry.
 
+An explicit chat claim continues into processing in the active coding session.
+`take_bounty` downloads and verifies the artifact package, returns context
+previews and a local `input.zip`, and tells the caller to continue immediately.
+The cache defaults to the OS temporary directory under `handoffs-work` (override
+with `HANDOFFS_WORK_ROOT`); files are not extracted or executed. A stable
+execution ID per service/user/task/claim allows retries to resume without new
+claims or background workers. A failed download/validation returns an explicit
+blocked processing result while preserving the claim. Manual reports its Sol
+mapping; this does not change the host's model or make a provider call. The
+coding client must follow the continuation instruction. The browser's separate
+AI-preparation Accept flow retains its existing provider requirements.
+
 Keep the HTTP service running, then register the local server with the desktop/Codex host:
 
 ```powershell

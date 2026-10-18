@@ -99,11 +99,59 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             own = await call(requester, 'post_bounty', {**arguments, 'gold': 10, 'operation_id': 'own-work'})
             claimed = await call(requester, 'take_bounty', {'bounty_id': own['id'], 'operation_id': 'self-claim'})
             assert claimed['claimant'] == 'steve' and claimed['status'] == 'working'
+            processing = claimed['processing']
+            assert processing['state'] == 'context-ready'
+            assert Path(processing['package_path']).is_file()
+            assert processing['mode'] == 'manual' and processing['model'] == 'gpt-6.1-sol'
+            assert 'no provider request' in processing['executor']
+            assert 'context.md' in processing['documents']
+            for operation in ['self-claim', 'another-accept-same-task']:
+                replay = await call(requester, 'take_bounty', {'bounty_id': own['id'], 'operation_id': operation})
+                assert replay['processing']['execution_id'] == processing['execution_id']
+                assert replay['processing']['reused'] is True
+                assert sum(event['kind'] == 'taken' for event in replay['events']) == 1
+                assert replay['ai_run'] is None
             invalid = await worker.call_tool('list_bounties', {'limit': 0})
             assert invalid.isError
             missing = await worker.call_tool('get_bounty', {'bounty_id': 'missing'})
             assert missing.isError and '404' in missing.content[0].text
     asyncio.run(scenario())
+
+
+def test_claim_reports_package_failure_and_resumes_same_claim(client, monkeypatch, tmp_path):
+    from app import mcp_server
+    from conftest import post_bounty
+    monkeypatch.setenv('HANDOFFS_WORK_ROOT', str(tmp_path / 'work'))
+    monkeypatch.setattr(mcp_server, 'DEMO_USER', 'steve')
+    bounty = post_bounty(client).json()['id']
+    def request(method, path, **kwargs):
+        response = client.request(method, '/api/v1' + path, json=kwargs.get('body'),
+            headers={'X-Demo-User': 'steve', 'Idempotency-Key': kwargs.get('operation_id', '')})
+        if not response.is_success:
+            raise RuntimeError(f'HANDOFFS {response.status_code}: {response.json()["detail"]}')
+        return response.json()
+    monkeypatch.setattr(mcp_server, 'request', request)
+    class FailedDownload:
+        def __enter__(self):
+            raise httpx.ConnectError('offline')
+        def __exit__(self, *args):
+            pass
+    monkeypatch.setattr(mcp_server.httpx, 'stream', lambda *a, **k: FailedDownload())
+    result = mcp_server.take_bounty(bounty, 'claim-without-package')
+    assert result['claimant'] == 'steve' and result['processing']['state'] == 'blocked'
+    assert 'download failed' in result['processing']['error']
+    assert 'same operation_id' in result['processing']['next_action']
+    assert not list(tmp_path.rglob('input.zip'))
+    from contextlib import contextmanager
+    raw = client.get(f'/api/v1/bounties/{bounty}/artifacts/download', headers={'X-Demo-User': 'steve'}).content
+    @contextmanager
+    def recovered(*args, **kwargs):
+        yield httpx.Response(200, request=httpx.Request('GET', 'http://fixture'), content=raw)
+    monkeypatch.setattr(mcp_server.httpx, 'stream', recovered)
+    resumed = mcp_server.take_bounty(bounty, 'claim-without-package')
+    assert resumed['processing']['state'] == 'context-ready'
+    assert sum(event['kind'] == 'taken' for event in resumed['events']) == 1
+    assert resumed['ai_run'] is None
 
 
 def test_stdio_unavailable_service_returns_tool_error(tmp_path):
