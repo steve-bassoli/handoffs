@@ -118,6 +118,7 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         service.proofs.recover()
         app.state.service = service
         app.state.mode_path = Path(os.environ.get('HANDOFFS_AUTOMATION_MODE', Path(path).with_name('automation-mode.json')))
+        app.state.dashboard_sessions = Path(os.environ.get('HANDOFFS_DASHBOARD_SESSIONS', db.path.parent / 'astra-tree')).resolve()
         try:
             yield
         finally:
@@ -215,6 +216,19 @@ this page does not query the live Codex quota meter.</p>
     @app.get('/api/v1/agents')
     def agents(user=Depends(actor)):
         return JSONResponse(roster(), headers={'Cache-Control': 'no-store'})
+
+    @app.get('/api/dashboard/live')
+    def dashboard_snapshot(request: Request, task: str | None = Query(default=None, max_length=200),
+                           session: str | None = Query(default=None, max_length=200),
+                           x_demo_user: str | None = Header(default=None)):
+        from app.dashboard_api import live_snapshot
+        if not x_demo_user:
+            raise RuleError('Select a dashboard identity', 401)
+        user = request.app.state.service.user(DemoIdentity().resolve(x_demo_user))['id']
+        result = live_snapshot(request.app.state.service, user, roster(),
+            current_mode(request.app.state.mode_path), request.app.state.dashboard_sessions,
+            task_id=task, session_id=session)
+        return JSONResponse(result, headers={'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'})
 
     @app.post('/api/v1/gremlins/{breed}')
     def gremlins(breed: Literal['mimic', 'saboteur', 'witness'], payload: Comparison, user=Depends(actor)):

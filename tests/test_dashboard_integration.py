@@ -1,0 +1,61 @@
+import json
+
+import pytest
+
+from conftest import post_bounty
+
+
+@pytest.fixture
+def registered(monkeypatch):
+    data = {'available': True, 'items': [{'id': 'agent-1', 'name': 'bob', 'level': 1,
+        'state': 'active', 'pressure': 1, 'session': 'session-1', 'run': 'PRIVATE PATH',
+        'directive': 'PRIVATE PROMPT'}]}
+    monkeypatch.setattr('app.main.roster', lambda: data)
+    return data
+
+
+def test_live_dashboard_requires_selected_identity_and_does_not_mutate(client, registered):
+    assert client.get('/api/dashboard/live').status_code == 401
+    assert client.get('/api/dashboard/live', headers={'X-Demo-User': 'unknown'}).status_code in (401, 403, 404)
+    task = post_bounty(client).json()['id']
+    with client.app.state.service.db.engine.connect() as connection:
+        before = {table: connection.exec_driver_sql('SELECT COUNT(*) FROM ' + table).scalar()
+                  for table in ('events', 'gold_entries', 'monthly_allocations', 'operations')}
+    response = client.get('/api/dashboard/live', params={'task': task}, headers={'X-Demo-User': 'steve'})
+    assert response.status_code == 200
+    assert response.headers['cache-control'] == 'no-store'
+    snapshot = response.json()
+    assert snapshot['mode']['value'] == 'manual'
+    assert snapshot['agents'][0]['name'] == 'bob'
+    assert snapshot['agents'][0]['live_confirmed'] is None
+    assert snapshot['agents'][0]['interrupted_occupied_lease'] is None
+    assert snapshot['context']['selected_task'] == task
+    assert snapshot['context']['sessions'] == ['session-1']
+    assert snapshot['session']['id'] is None
+    assert 'PRIVATE' not in response.text
+    with client.app.state.service.db.engine.connect() as connection:
+        after = {table: connection.exec_driver_sql('SELECT COUNT(*) FROM ' + table).scalar() for table in before}
+    assert after == before
+
+
+def test_selected_registered_tree_is_allowlisted_and_confined(client, registered):
+    root = client.app.state.dashboard_sessions
+    directory = root / 'session-1'
+    directory.mkdir(parents=True)
+    (directory / 'plan.json').write_text(json.dumps({'tree': {'bob': {'level': 1, 'parent': None,
+        'role': 'PRIVATE PROMPT', 'shelf': 'PRIVATE PATH'}}}), encoding='utf-8')
+    (directory / 'board.jsonl').write_text('{"event":"pressure_stop","at_utc":"2026-10-17T20:00:00Z","directive":"PRIVATE"}\n', encoding='utf-8')
+    (directory / 'summary.json').write_text('{"requests":3,"unknown_usage":false,"final_synthesis":"PRIVATE"}', encoding='utf-8')
+    headers = {'X-Demo-User': 'steve'}
+    result = client.get('/api/dashboard/live', params={'session': 'session-1'}, headers=headers)
+    assert result.status_code == 200
+    data = result.json()
+    assert data['session']['plan'] == {'agents': [{'name': 'bob', 'level': 1, 'parent': None}]}
+    assert data['session']['board']['pressure_stop_count'] == 1
+    assert data['sources']['board']['event_at'] == '2026-10-17T20:00:00Z'
+    assert data['session']['summary']['requests'] == 3
+    assert 'PRIVATE' not in result.text
+    assert client.get('/api/dashboard/live', params={'session': '../outside'}, headers=headers).status_code == 422
+    assert client.get('/api/dashboard/live', params={'session': 'not-registered'}, headers=headers).status_code == 404
+    registered['available'] = False
+    assert client.get('/api/dashboard/live', params={'session': 'session-1'}, headers=headers).json()['sources']['plan']['status'] == 'unavailable'
