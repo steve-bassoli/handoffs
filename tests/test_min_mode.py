@@ -70,8 +70,9 @@ def test_min_page_is_served(client):
 
 
 def test_asks_pressure_first_then_exactly_three_options_per_level():
-    board = [{'id': 'abc-1', 'title': 'Fix the thing'}]
-    for level, first in ((1, 'Take the next open task'), (2, 'Read one open task'), (3, 'Read one open task')):
+    task = {'id': 'abc-1', 'title': 'Fix the thing'}
+    for level, first, board in ((1, 'Take the next open task', [task]), (2, 'Read one open task', {'items': [task], 'limit': 1}),
+                                (3, 'Read one open task', [task])):
         out = run(board=board, steps=[{'click': f'{level} ·'}])
         initial, after = out['steps']
         assert 'How much pressure are you under right now?' in initial['text']
@@ -89,7 +90,7 @@ def test_overloaded_options_are_rest_shaped_and_rest_view_starts_nothing():
     out = run(board=[], steps=[{'click': '3 ·'}, {'click': 'Step away for now'}, {'click': 'Back to the three options'}])
     options = out['steps'][1]['choices']
     assert [c['tag'] for c in options] == ['a', 'a', 'button']
-    assert 'No open task right now' in out['steps'][1]['text']
+    assert 'No open task for you right now' in out['steps'][1]['text']
     assert options[1]['href'] == '/dashboard?user=nate'
     rest = out['steps'][2]
     assert 'Nothing here needs you right now.' in rest['text'] and rest['choices'] == []
