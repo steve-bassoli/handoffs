@@ -109,7 +109,7 @@ async function agentRoster() {
   } finally { $('agents-refresh').disabled = false; }
 }
 async function navigate(nextView) {
-  treeEpoch++;
+  if (typeof treeEpoch !== 'undefined') treeEpoch++;
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   view = nextView; selected = null;
@@ -177,7 +177,7 @@ async function accept(data, button) {
   await trackAccept(data.id, data.title);
 }
 async function show(id) {
-  treeEpoch++;
+  if (typeof treeEpoch !== 'undefined') treeEpoch++;
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   const data = await api('/bounties/' + encodeURIComponent(id));
