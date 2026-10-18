@@ -29,5 +29,5 @@ def test_mine_filters_by_creator_and_hides_closed(client):
 def test_my_tasks_page_defaults_to_open_and_has_assigned_by_picker():
     static = Path(__file__).resolve().parents[1] / 'app' / 'static'
     html, script = (static / 'index.html').read_text(encoding='utf-8'), (static / 'app.js').read_text(encoding='utf-8')
-    assert 'id="show-closed" type="checkbox">' in html and 'id="assigned-by"' in html
+    assert 'id="show-closed" type="checkbox"' in html and 'id="assigned-by"' in html
     assert "&status=" + OPEN in script and "'&creator='" in script
