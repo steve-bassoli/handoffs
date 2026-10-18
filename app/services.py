@@ -126,6 +126,8 @@ class Service:
         task['completed_by'] = next((e['data'].get('worker', e['actor']) for e in reversed(events)
                                       if e['kind'] in ('legacy:completed', 'locally_verified', 'proof_completed')), None)
         task['events'] = events
+        task['checkpoint'] = next((e['data']['checkpoint'] for e in events if e['kind'] == 'posted' and 'checkpoint' in e['data']), None)
+        task['continuation_id'] = next((e['data']['continuation_id'] for e in reversed(events) if e['kind'] == 'checkpointed'), None)
         task['profile'] = profile(events)
         task['depends_on'] = dependencies(events)
         task['phase'] = phase(task['status'])
@@ -216,7 +218,11 @@ class Service:
                 if cached['fingerprint'] != fingerprint:
                     raise RuleError('Idempotency key already used for different input')
                 return json.loads(cached['result'])
-            if not action.startswith('ai_') and action != 'attach_package':
+            if payload.get('id') and action != 'attach_package':
+                latest = one(c, 'SELECT state FROM events WHERE task_id=? ORDER BY seq DESC LIMIT 1', (payload['id'],))
+                if latest and latest['state'] == 'superseded':
+                    raise RuleError('This task is closed; use its linked continuation')
+            if not action.startswith('ai_') and action not in ('attach_package', 'checkpoint'):
                 self.grant_month(c, actor)
             result = getattr(self, 'do_' + action)(c, actor, payload)
             c.exec_driver_sql('INSERT INTO operations VALUES (?,?,?,?)', (actor, key, fingerprint, encode(result)))
@@ -275,6 +281,10 @@ class Service:
         self.event(c, task['id'], 'edited', actor, 'open',
                    {'changes': changes, **classification})
         return self.detail(c, task['id'])
+
+    def do_checkpoint(self, c, actor, payload):
+        from app.checkpoints import checkpoint
+        return checkpoint(self, c, actor, payload)
 
     def workflow_nodes(self, c):
         records = all_rows(c, '''SELECT b.id,b.title,b.parent_id,e.state AS status FROM tasks b

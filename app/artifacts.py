@@ -23,6 +23,12 @@ def files_for(service, task_id):
                  'context.md': '# ' + task['title'] + '\n\n' + task['goal'] + '\n\n## Acceptance criteria\n\n'
                      + '\n'.join('- ' + criterion for criterion in task['criteria'])}
         references = ([task['repository']] if task['repository'] else []) + task['context_links']
+        if task.get('checkpoint'):
+            files['checkpoint.json'] = encode(task['checkpoint'])
+            files['context.md'] += '\n\n## Progress checkpoint\n\n' + task['checkpoint']['notes']
+            files['context.md'] += '\n\nPrior task: ' + task['checkpoint']['previous_task_id']
+            files['context.md'] += '\nPrior evidence: ' + task['checkpoint']['artifact_url']
+            files['context.md'] += '\nPrior acceptance is not transferred to this continuation.\n'
         for event in task['events']:
             if event['kind'] == 'proof_attached':
                 record = event['data']
