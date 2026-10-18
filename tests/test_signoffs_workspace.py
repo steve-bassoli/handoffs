@@ -10,9 +10,9 @@ STATIC = Path(__file__).resolve().parents[1] / 'app' / 'static'
 def test_signoffs_workspace_wiring():
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
     script = (STATIC / 'app.js').read_text(encoding='utf-8')
-    assert '<button data-view="signoffs">Sign-offs</button>' in html
+    assert 'id="human-decisions-entry" data-view="signoffs"' in html and '>Decisions · ?</button>' in html
     assert '<section id="signoffs" data-view="signoffs" hidden>' in html
-    assert 'Sign in to approve; demo identities cannot decide' in html
+    assert 'Sign in to decide; demo identities cannot decide.' in html
     assert "await api('/signoffs')" in script
     assert "await api('/signoffs/' + encodeURIComponent(item.id) + '/decision', {approved, note: note.value})" in script
     assert "'wallet', 'signoffs'" in (STATIC / 'workspace-navigation.js').read_text(encoding='utf-8')

@@ -27,7 +27,7 @@
   <main>
     <section class="intro"><div><p class="eyebrow" title="Auditable Self-improving Ecosystem">ASE · AUDITABLE SELF-IMPROVING ECOSYSTEM</p><h1>Ask freely. Share freely. Build together.</h1><p>Share what you know. Choose useful work. Create software with human guidance and AI.</p></div>
       <div class="balance"><span>Available Gold</span><strong id="gold">—</strong><small id="reserved">Loading wallet…</small></div></section>
-    <nav aria-label="Workspace"><button data-view="open" class="selected">Tasks</button><a id="dashboard-link" href="/dashboard">Dashboard</a><button data-view="gremlins">Gremlins</button><button data-view="agents">Agents</button><button data-view="wallet">Wallet & Stats</button><button data-view="signoffs">Sign-offs</button><a id="min-link" href="/min" title="One question, three options">MIN</a></nav>
+    <nav aria-label="Workspace"><button data-view="open" class="selected">Tasks</button><button id="human-decisions-entry" data-view="signoffs" type="button" aria-controls="signoffs" aria-label="Human decisions; waiting count unavailable">Decisions · ?</button><a id="dashboard-link" href="/dashboard">Dashboard</a><button data-view="gremlins">Gremlins</button><button data-view="agents">Agents</button><button data-view="wallet">Wallet & Stats</button><a id="min-link" href="/min" title="One question, three options">MIN</a></nav>
     <div id="tasks-toolbar" class="tasks-toolbar" role="navigation" aria-label="Tasks"><button type="button" data-task-view="open">Browse</button><button type="button" data-task-view="mine">My tasks</button><button type="button" data-task-view="post" class="primary">+ Post task</button></div>
     <p id="door-banner" role="status" hidden style="background:#fff4e5;border-left:4px solid #b45309;color:#7c2d12;padding:10px 14px;margin:12px 0"></p>
     <p id="notice" role="status"></p>
@@ -38,8 +38,9 @@
     </section>
     <section id="wallet" hidden><h2>Your wallet</h2><div id="stats" class="stats"></div><h3>Transaction history</h3><div id="transactions"></div><div class="paging"><button id="tx-previous">Previous</button><span id="tx-page"></span><button id="tx-next">Next</button></div></section>
     <section id="signoffs" data-view="signoffs" hidden>
-      <div class="section-title"><h2>Pending sign-offs</h2><button id="signoffs-refresh" type="button">Refresh</button></div>
-      <p id="signoffs-hint" hidden>Sign in to approve; demo identities cannot decide</p>
+      <div class="section-title"><h2>Human decisions</h2><button id="signoffs-refresh" type="button">Refresh</button></div>
+      <p id="human-decisions-scope">Sign-off preview only · total waiting unknown.</p>
+      <p id="signoffs-hint" hidden>Sign in to decide; demo identities cannot decide.</p>
       <div id="signoff-cards"></div>
     </section>
     <section id="detail" hidden></section>
