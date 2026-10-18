@@ -109,7 +109,7 @@ def build_digest(service, user):
         if screened and screened['data'].get('verdict') in {'veto', 'unavailable'}:
             data = screened['data']
             digest = data['text_sha256']
-            overridden = any(e['kind'] == 'intake_overridden'
+            overridden = any(e['kind'] in ('intake_overridden', 'intake_veto_upheld')
                              and e['data'].get('principal') == 'human'
                              and e['data'].get('text_sha256') == digest for e in history)
             if not overridden:

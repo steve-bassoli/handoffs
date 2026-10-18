@@ -625,6 +625,10 @@ class Service:
             return True
         raise RuleError('Human acceptance requires a signed-in person', 403)
 
+    def do_ai_digest_decide(self, c, actor, payload):
+        from app.digest_decide import decide
+        return decide(self, c, actor, payload, event_identity.get() or {})
+
     def do_ai_proof_human(self, c, actor, payload):
         self.require_human_acceptance(actor)
         return self.proofs.human(c, actor, payload)

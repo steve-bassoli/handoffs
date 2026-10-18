@@ -190,6 +190,9 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     from app.recommendations import router as recommendations_router
     app.include_router(recommendations_router)
 
+    from app.digest_decide import router as digest_decide_router
+    app.include_router(digest_decide_router)
+
     from app.digest import router as digest_router
     app.include_router(digest_router)
 
