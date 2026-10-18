@@ -112,6 +112,7 @@ async function navigate(nextView) {
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   view = nextView; selected = null;
+  if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user);
   history.replaceState(null, '', location.pathname + location.search + (view === 'agents' ? '#agents' : ''));
   for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents']) $(id).hidden = true;
   for (const button of document.querySelectorAll('nav button')) button.classList.toggle('selected', button.dataset.view === view);
@@ -180,16 +181,19 @@ async function show(id) {
   clearTimeout(proofPoll);
   const data = await api('/bounties/' + encodeURIComponent(id));
   selected = id;
+  if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user) + '&task=' + encodeURIComponent(id);
   history.replaceState(null, '', '#task=' + encodeURIComponent(id));
   for (const section of ['board', 'post', 'wallet', 'gremlins', 'agents']) $(section).hidden = true;
   const current = $('detail');
   const refreshing = !current.hidden && current.querySelector('.detail-head code')?.textContent === id;
   const detail = element('div');
   const back = element('button', '← Back to board'); back.onclick = () => run(() => navigate('open'));
+  const dashboard = element('a', 'Open dashboard for this task');
+  dashboard.href = '/dashboard?user=' + encodeURIComponent(user) + '&task=' + encodeURIComponent(id);
   const header = element('div', undefined, 'detail-head'); header.append(element('span', data.phase, 'pill'), element('span', data.complexity, 'pill'), element('span', `Target: ${data.profile?.validation_scope || 'Unclassified'}`, 'pill'));
   if (data.funded) header.append(element('span', `${data.gold} GOLD`, 'pill bounty-gold'));
   header.append(element('h2', data.title), element('code', data.id));
-  detail.append(back, header, element('h3', 'Goal'), element('p', data.goal, 'content'), element('h3', 'Completion criteria'));
+  detail.append(back, dashboard, header, element('h3', 'Goal'), element('p', data.goal, 'content'), element('h3', 'Completion criteria'));
   const rail = element('ol', undefined, 'phase-rail'); rail.setAttribute('aria-label', 'Task lifecycle');
   for (const phase of ['Posted', 'Claimed', 'Closed']) { const item = element('li', phase); if (phase === data.phase) item.setAttribute('aria-current', 'step'); rail.append(item); }
   header.append(rail, element('small', `${data.disposition || data.status.replaceAll('_', ' ')} · Target is declared, not evidence of execution.`));

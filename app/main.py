@@ -415,6 +415,10 @@ this page does not query the live Codex quota meter.</p>
     def index():
         return FileResponse(static / 'index.html')
 
+    @app.get('/dashboard', include_in_schema=False)
+    def dashboard_page():
+        return FileResponse(static / 'dashboard.html', headers={'Cache-Control': 'no-store'})
+
     return app
 
 

@@ -59,3 +59,15 @@ def test_selected_registered_tree_is_allowlisted_and_confined(client, registered
     assert client.get('/api/dashboard/live', params={'session': 'not-registered'}, headers=headers).status_code == 404
     registered['available'] = False
     assert client.get('/api/dashboard/live', params={'session': 'session-1'}, headers=headers).json()['sources']['plan']['status'] == 'unavailable'
+
+
+def test_dashboard_page_and_main_navigation_are_connected(client):
+    assert 'id="dashboard-link" href="/dashboard"' in client.get('/').text
+    page = client.get('/dashboard')
+    assert page.status_code == 200
+    assert page.headers['cache-control'] == 'no-store'
+    assert 'dashboard-integration.js' in page.text
+    assert 'id="dashboard-user"' in page.text
+    assert 'id="dashboard-task"' in page.text
+    assert 'id="dashboard-session"' in page.text
+    assert 'Back to Tasks' in page.text

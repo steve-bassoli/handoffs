@@ -6,12 +6,20 @@
   <title>Mission control</title>
   <link rel="stylesheet" href="/static/dashboard.css">
   <script src="/static/dashboard-live.js" defer></script>
+  <script src="/static/dashboard-integration.js" defer></script>
 </head>
 <body>
   <main id="dashboard" aria-labelledby="dashboard-title">
     <header>
       <h1 id="dashboard-title">Mission control</h1>
+      <p><a href="/" id="dashboard-home">← Back to Tasks</a></p>
       <p>Read-only observations. Unknown is not confirmation.</p>
+      <div class="controls">
+        <label>Selected user <select id="dashboard-user"><option value="">Choose a user</option></select></label>
+        <label>Task <select id="dashboard-task"><option value="">All tasks</option></select></label>
+        <label>Session <select id="dashboard-session"><option value="">No session selected</option></select></label>
+      </div>
+      <p id="dashboard-context-status" role="status">Choose a registered user to connect.</p>
       <p data-dashboard-status role="status" aria-live="polite">Not configured — no requests</p>
       <noscript><p>JavaScript is required for dashboard observations and refresh controls.</p></noscript>
       <div class="controls" aria-label="Refresh controls">
@@ -24,14 +32,14 @@
       <div data-dashboard-slot="live"><p>No observations received.</p></div>
     </section>
     <section aria-labelledby="flow-title">
-      <h2 id="flow-title">Flow · session metadata</h2>
+      <h2 id="flow-title">Flow · tasks and activity</h2>
       <div data-dashboard-slot="flow"><p>No observations received.</p></div>
     </section>
     <section aria-labelledby="ops-title">
       <h2 id="ops-title">Ops · mode and sources</h2>
       <div data-dashboard-slot="ops"><p>No observations received.</p></div>
     </section>
-    <footer>Receipt time is local browser time, not source event freshness. Integration must explicitly configure the read endpoint and authorized identity.</footer>
+    <footer>Receipt time is local browser time, not source event freshness or confirmed agent liveness. Reads do not start agents or spend API funds. Identity uses the selected demo user.</footer>
   </main>
 </body>
 </html>

@@ -15,6 +15,14 @@ name/level/parent; shelves, prompts, directives and final synthesis are excluded
 An unavailable source remains explicitly unavailable. Liveness and interrupted
 lease counts remain unknown without independent evidence.
 
+The main navigation includes Dashboard; task detail adds Open dashboard for this
+task. `/dashboard?user=<selected-user>&task=<id>&session=<registered-session>`
+boots the existing controller against the live snapshot route. User selection is
+validated against registered demo users. A previously selected stored user may be
+reused; missing or invalid identity never guesses Steve. Task/session selectors
+recreate the controller, clear previous-context data and preserve read-only behavior.
+The standalone static URL uses the same bootstrap. Back to Tasks returns to the app.
+
 Integration tasks: live snapshot `8a39479d-5b3f-4b62-9cc2-06ad27960688`, navigation
 `b80fc67a-e894-452d-b0e5-7649cb09799b`, flow/Ops
 `0bc3a9ee-21d9-49a0-84c2-c2376e6b6392`.

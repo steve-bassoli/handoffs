@@ -38,6 +38,11 @@ button {
   cursor: pointer;
 }
 button:focus-visible { outline: 3px solid #ffd275; outline-offset: 3px; }
+a { color: #b4daf5; }
+a:focus-visible, select:focus-visible { outline: 3px solid #ffd275; outline-offset: 3px; }
+label { display: flex; flex-direction: column; gap: .25rem; max-width: 100%; }
+select { font: inherit; padding: .5rem; max-width: 28rem; min-height: 2.75rem; }
+option { color: #101923; background: #edf3f8; }
 footer { font-size: .9rem; }
 @media (min-width: 60rem) {
   main { grid-template-columns: 1fr 1fr; }
