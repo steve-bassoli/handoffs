@@ -13,6 +13,7 @@ from app.storage import all_rows, one
 
 event_via = ContextVar('event_via', default=None)
 event_intent = ContextVar('event_intent', default=None)
+event_identity = ContextVar('event_identity', default=None)
 
 
 def now():
@@ -94,6 +95,13 @@ class Service:
 
     def event(self, c, task_id, kind, actor, state, data=None):
         record = dict(data or {})
+        identity = event_identity.get()
+        # Payloads cannot forge these fields; non-request work carries none.
+        if identity:
+            record['principal'] = identity['principal']
+            record['principal_id'] = identity['principal_id']
+        else:
+            record.pop('principal', None); record.pop('principal_id', None)
         via = event_via.get()
         if via is not None:
             record['via'] = via

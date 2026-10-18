@@ -6,7 +6,8 @@ from app.main import create_app
 
 
 @pytest.fixture
-def client(tmp_path):
+def client(tmp_path, monkeypatch):
+    monkeypatch.setenv('HANDOFFS_DEMO_IDENTITY', 'allow')
     with TestClient(create_app(tmp_path / 'test.sqlite')) as client:
         yield client
 

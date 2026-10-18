@@ -15,6 +15,8 @@ from typing import Literal
 from app.adapters import DemoDeliveryVerifier, DemoIdentity
 from app.services import RuleError, Service, event_via, event_intent
 from app.storage import Database
+from app.credentials import Credentials
+from app.services import event_identity
 from app.ai import AIRuns, Luna
 from app.artifacts import download, inventory
 from app.workflow import Profile
@@ -26,6 +28,12 @@ from app.automation_mode import AUTOMATION_HEADER, ACTION_INTENT_HEADER, current
 
 
 RESEARCH_PATH = Path(__file__).resolve().parents[1] / 'PLAN' / 'AI_RESEARCH.md'
+
+
+class Login(BaseModel):
+    model_config = {'extra': 'forbid'}
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1, max_length=1024)
 
 
 class PostTask(BaseModel):
@@ -146,6 +154,10 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
         service.ai.recover()
         service.proofs.recover()
         app.state.service = service
+        app.state.credentials = Credentials(db)
+        app.state.demo_identity = os.environ.get('HANDOFFS_DEMO_IDENTITY', 'allow')
+        if app.state.demo_identity not in ('allow', 'refuse'):
+            raise ValueError('HANDOFFS_DEMO_IDENTITY must be allow or refuse')
         app.state.mode_path = Path(os.environ.get('HANDOFFS_AUTOMATION_MODE', Path(path).with_name('automation-mode.json')))
         app.state.dashboard_sessions = Path(os.environ.get('HANDOFFS_DASHBOARD_SESSIONS', db.path.parent / 'astra-tree')).resolve()
         app.state.dashboard_ledger = Path(os.environ.get('HANDOFFS_API_BUDGET_DB', db.path.with_name('api-budget.sqlite'))).resolve()
@@ -189,12 +201,59 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
             event_via.reset(token)
             event_intent.reset(intent_token)
 
+    @app.middleware('http')
+    async def authenticated_identity(request: Request, call_next):
+        # Resolve in async middleware: sync dependencies run in a copied context.
+        # Login and the public user picker are not board writes.
+        if (not request.url.path.startswith('/api/')
+                or (request.method == 'POST' and request.url.path == '/api/v1/auth/login')
+                or (request.method == 'GET' and request.url.path == '/api/v1/users')):
+            return await call_next(request)
+        try:
+            authorization = request.headers.get('Authorization')
+            if authorization is not None:
+                scheme, separator, secret = authorization.partition(' ')
+                if scheme.lower() != 'bearer' or not separator or not secret or len(secret) > 512:
+                    raise RuleError('Invalid credentials', 401)
+                identity = request.app.state.credentials.resolve(secret)
+            elif request.app.state.demo_identity == 'allow':
+                selector = request.headers.get('X-Demo-User')
+                # The live dashboard never defaults to an identity.
+                if not selector and request.url.path.startswith('/api/dashboard'):
+                    raise RuleError('Select a dashboard identity', 401)
+                user = request.app.state.service.user(DemoIdentity().resolve(selector or 'steve'))['id']
+                identity = {'user_id': user, 'principal': 'demo-header', 'principal_id': 'demo-header:' + user}
+            else:
+                raise RuleError('Authentication required', 401)
+        except RuleError as error:
+            return JSONResponse(status_code=error.status, content={'detail': error.message},
+                                headers={'WWW-Authenticate': 'Bearer', 'Cache-Control': 'no-store'})
+        request.state.identity = identity
+        context_token = event_identity.set(identity)
+        try:
+            return await call_next(request)
+        finally:
+            event_identity.reset(context_token)
+
     @app.exception_handler(RuleError)
     async def rule_error(request: Request, error: RuleError):
         return JSONResponse(status_code=error.status, content={'detail': error.message})
 
-    def actor(request: Request, x_demo_user: str = Header(default='steve')):
-        return request.app.state.service.user(DemoIdentity().resolve(x_demo_user))['id']
+    def actor(request: Request):
+        return request.state.identity['user_id']
+
+    @app.post('/api/v1/auth/login')
+    def login(payload: Login, request: Request):
+        result = request.app.state.credentials.login(payload.username, payload.password)
+        return JSONResponse(result, headers={'Cache-Control': 'no-store'})
+
+    @app.post('/api/v1/auth/logout')
+    def logout(request: Request, user=Depends(actor)):
+        identity = request.state.identity
+        if identity['principal'] != 'human':
+            raise RuleError('Human session required', 403)
+        request.app.state.credentials.revoke(identity['principal_id'])
+        return JSONResponse({'ok': True}, headers={'Cache-Control': 'no-store'})
 
     @app.get('/health')
     def health():
@@ -268,9 +327,7 @@ this page does not query the live Codex quota meter.</p>
                            x_demo_user: str | None = Header(default=None)):
         from app.dashboard_api import live_snapshot
         from app.dashboard_panels import add_panels
-        if not x_demo_user:
-            raise RuleError('Select a dashboard identity', 401)
-        user = request.app.state.service.user(DemoIdentity().resolve(x_demo_user))['id']
+        user = request.state.identity['user_id']
         roster_data = roster()
         result = live_snapshot(request.app.state.service, user, roster_data,
             current_mode(request.app.state.mode_path), request.app.state.dashboard_sessions,

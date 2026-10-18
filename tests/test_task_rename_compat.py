@@ -75,7 +75,7 @@ def test_002_upgrade_preserves_all_rows_balances_constraints_and_downgrade(tmp_p
             c.exec_driver_sql('CREATE INDEX ix_events_bounty_id ON events(bounty_id)')
             before = snapshot(c)
             money = balances(c)
-        migrate(db, 'head')
+        migrate(db, '003')
         with db.engine.connect() as c:
             assert snapshot(c) == expected_after(before)
             assert balances(c) == {('legacy:task' if key == 'legacy:bounty' else key): value for key, value in money.items()}
