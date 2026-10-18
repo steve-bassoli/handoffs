@@ -263,7 +263,6 @@ async function show(id) {
       detail.append(element('h3', document.path), element('p', document.content, 'content'));
     }
   }
-  detail.append(element('h3', 'History'));
   if (window.renderHistory) detail.append(window.renderHistory(data.events, {element, link: id => '#task=' + encodeURIComponent(id)}));
   else for (const event of data.events) {
     const row = element('div', undefined, 'event'); row.append(element('span', `${event.actor} · ${event.kind}${event.data.note ? ' · ' + event.data.note : ''}`), element('span', new Date(event.created_at).toLocaleString())); detail.append(row);
