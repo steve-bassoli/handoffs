@@ -21,6 +21,8 @@ MODES = {
               'summary': 'Autonomous campaign: 1 Sol over 3 Terra; user-directed tasks remain available'},
     'heavy': {'agents': 4, 'levels': ('astra', 'sol'), 'automated_writes': True,
               'summary': 'Autonomous campaign: 1 Astra over 3 Sol; user-directed tasks remain available'},
+    'team': {'agents': 5, 'levels': ('sol', 'sol', 'terra'), 'automated_writes': False,
+             'summary': '5 agents: bob-the-architect (Sol) over bob-the-builder (Sol) over 3 bobs (Terra); proposals only'},
     'max': {'agents': 13, 'levels': ('astra', 'sol', 'sol'), 'automated_writes': True,
             'summary': '13 agents: 1 Astra over 3 Sol, each over 3 Sol; automation may write (parked)'},
 }

@@ -53,7 +53,7 @@ def build_snapshot(*, roster=None, mode=None, session=None, observed_at):
     source('mode', 'unavailable' if mode is None else 'invalid')
     if isinstance(mode, dict):
         value = mode.get('mode')
-        if value in ('manual', 'light', 'heavy', 'max'):
+        if value in ('manual', 'light', 'heavy', 'team', 'max'):
             normalized_mode.update(value=value, agents=integer(mode.get('agents')),
                                    automated_writes=_boolean(mode.get('automated_writes')))
             source('mode', 'available')

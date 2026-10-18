@@ -24,6 +24,7 @@ from app.automation_mode import MODES as AUTOMATION_MODES, MODEL_SETTINGS, curre
 
 MESSAGE_LIMIT = 4000
 MAX_MESSAGES = 10
+CULTURE_LIMIT, SPECIALTY_LIMIT, PERSONALITY_LIMIT, STAMP_NOTES_LIMIT = 4000, 160, 800, 2000
 LEVELS = {1: 'HIGH', 2: 'MEDIUM', 3: 'LOW'}
 MODELS = MODEL_SETTINGS  # Single-model plans (no automation mode): astra, sol, terra or luna for every level.
 from app.rules import SHARED, ROLE_RULES
@@ -62,6 +63,13 @@ def outgoing(sender, candidate, names, nodes=None):
     return messages
 
 
+def card(value):
+    """A personality card: specialty and personality only (voice and relationship, never scope, authority or limits)."""
+    if not isinstance(value, dict) or not all(isinstance(value.get(key), str) and value[key].strip() for key in ('specialty', 'personality')):
+        return None
+    return {'specialty': clip(value['specialty'].strip(), SPECIALTY_LIMIT), 'personality': clip(value['personality'].strip(), PERSONALITY_LIMIT)}
+
+
 class Tree:
     def __init__(self, plan, session, minutes, transport=None, clock=time.monotonic, mode=None):
         self.plan, self.session, self.transport, self.clock = plan, Path(session), transport, clock
@@ -96,6 +104,14 @@ class Tree:
         self.stopped = set()
         self.rounds = []
         self.lock = threading.Lock()
+        # Team culture (Steve, 2026-10-18): each bob writes the cards of the bobs directly under it and mirrors them.
+        # The top bob's card and the culture come from the owner's plan; the protected rule texts stay the instructions.
+        self.culture = clip(plan['culture'], CULTURE_LIMIT) if isinstance(plan.get('culture'), str) and plan['culture'].strip() else None
+        self.cards = {name: None for name in self.names}
+        self.cards[self.root] = card(plan['coordinator'].get('card'))
+        self.team = bool(self.culture or self.cards[self.root])
+        self.clock_owner = self.root if plan.get('clock_owner') == 'root' else None  # Only the top bob sees the clock.
+        self.stamp = None
 
     def add(self, parent, children):
         level = self.nodes[parent]['level'] + 1
@@ -157,7 +173,7 @@ class Tree:
         siblings = self.nodes[parent]['children'] if parent else []
         with self.lock:
             inbox, self.inbox[name] = self.inbox[name], []
-        return {'session_goal': self.plan['goal'], 'authority': self.plan['authority'], 'round': round_number,
+        value = {'session_goal': self.plan['goal'], 'authority': self.plan['authority'], 'round': round_number,
                 'minutes_remaining': self.minutes_left(), 'final_synthesis_required': final,
                 'your_name': name, 'complexity': LEVELS[node['level']], 'your_role': node['role'],
                 'parent': parent, 'directive': clip(directive, 6000),
@@ -169,6 +185,13 @@ class Tree:
                 'inbox': inbox, 'your_previous_output': clip(self.last[name], 12000),
                 'source_shelf': list(self.shelves[name]),
                 'reply_format': 'one JSON object'}  # json_object output requires the word in the input.
+        if self.clock_owner and name != self.clock_owner:
+            del value['minutes_remaining']  # The launcher still enforces the time box for everyone.
+        if self.team:
+            with self.lock:
+                value.update(team_culture=self.culture, your_card=self.cards[name],
+                             children_cards={child: self.cards[child] for child in node['children']})
+        return value
 
     def turn(self, name, round_number, final=False):
         content = self.content(name, round_number, final)
@@ -191,10 +214,32 @@ class Tree:
         self.state[name] = state
         if candidate is not None:
             self.last[name] = candidate
+            if self.team:
+                self.accept_cards(name, candidate)
+            if self.team and name == self.root and isinstance(candidate.get('stamp'), dict):
+                notes = candidate['stamp'].get('notes')
+                self.stamp = {'approved': candidate['stamp'].get('approved') is True, 'round': round_number,
+                              'notes': clip(notes, STAMP_NOTES_LIMIT) if isinstance(notes, str) else ''}
+                self.log({'event': 'stamp', 'agent': name, **self.stamp})
             if candidate.get('pressure') == 3:
                 self.stopped.add(name)
                 self.log({'event': 'pressure_stop', 'agent': name})
         return record, candidate
+
+    def accept_cards(self, name, candidate):
+        """A bob may set the cards of the bobs directly under it, and no one else's."""
+        cards = candidate.get('cards')
+        if not isinstance(cards, dict):
+            return
+        for target, value in list(cards.items())[:3]:
+            accepted = card(value) if target in self.nodes[name]['children'] else None
+            if accepted:
+                with self.lock:
+                    self.cards[target] = accepted
+                self.log({'event': 'card_set', 'by': name, 'for': target, **accepted})
+            else:
+                self.log({'event': 'card_refused', 'by': name, 'for': clip(str(target), 80),
+                          'reason': 'not a direct child' if target not in self.nodes[name]['children'] else 'needs specialty and personality'})
 
     def phase(self, names, round_number, final=False):
         active = [name for name in names if name not in self.stopped]
@@ -265,6 +310,7 @@ class Tree:
                    'reported_output_tokens': sum(r.get('usage', {}).get('output_tokens', 0) for r in receipts),
                    'upper_bound_cents_for_reported_usage': upper, 'stopped_agents': sorted(self.stopped),
                    'final_synthesis': root.get('synthesis') if isinstance(root, dict) else None,
+                   **({'cards': self.cards, 'architect_stamp': self.stamp} if self.team else {}),
                    'automatic_retry': False, 'candidates_applied': False, 'human_accepted': False}
         save(self.session / 'summary.json', summary)
         return summary

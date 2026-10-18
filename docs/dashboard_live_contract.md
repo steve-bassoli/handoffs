@@ -24,7 +24,7 @@ Sort lexically by id; duplicate IDs invalidate the roster.
 Reported activity does not establish live confirmation or an interrupted lease.
 Only explicit authorized evidence may supply those booleans.
 PRESSURE describes operational reliability, not personal health; 3 means STOP NOW.
-mode: {value: manual|light|heavy|max|null, agents: nonnegative integer|null,
+mode: {value: manual|light|heavy|team|max|null, agents: nonnegative integer|null,
 automated_writes: boolean|null, source: 'mode'}.
 session: {id: string|null, plan: object|null, board: object|null, summary: object|null}.
 Null means unknown/unsupported, not zero, false or an empty confirmed population.
