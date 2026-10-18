@@ -4,8 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mission control</title>
-  <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/flow.css">
+  <link rel="stylesheet" href="/static/dashboard.css">
   <script src="/static/dashboard-live.js" defer></script>
   <script src="/static/flow.js" defer></script>
   <script src="/static/dashboard-flow.js" defer></script>
@@ -13,7 +14,11 @@
   <script src="/static/dashboard-panels.js" defer></script>
   <script src="/static/dashboard-integration.js" defer></script>
 </head>
-<body>
+<body class="dashboard-page">
+  <header>
+    <a class="brand" href="/" aria-label="Thermo Fisher Scientific The Commons home"><img class="brand-logo" src="/static/thermo-fisher-logo.svg" alt="Thermo Fisher Scientific" width="160" height="35"><span class="brand-copy">The Commons<small>Human-guided AI development</small></span></a>
+  </header>
+  <div class="demo">Prototype · Demo identity and PR verification · Gold is application credit</div>
   <main id="dashboard" aria-labelledby="dashboard-title">
     <header>
       <h1 id="dashboard-title">Mission control</h1>
