@@ -21,7 +21,12 @@
     meta.className = 'flow-meta';
     meta.textContent = 'Complexity: ' + value(detail && detail.complexity, 'Unknown') +
       ' · Assigned: ' + assignedAgent(detail) +
+      ' · Worker: ' + value(detail && detail.claimant, 'Unknown') +
       ' · Status: ' + value(detail && detail.status, value(item.status, 'Unknown'));
+    if (detail && Object.prototype.hasOwnProperty.call(detail, 'evidencePackageCount')) {
+      meta.textContent += ' · Evidence packages: ' +
+        value(detail.evidencePackageCount, 'Unknown');
+    }
     return meta;
   }
 
@@ -36,7 +41,7 @@
     var root = document.createElement('section');
 
     root.className = 'ticket-flow';
-    root.setAttribute('aria-label', 'Ticket flow');
+    root.setAttribute('aria-label', 'Task flow');
 
     items.forEach(function (item) {
       var id;
@@ -65,13 +70,18 @@
       detail = details[item.id] || details[id] || {};
       node = document.createElement('div');
       node.className = 'flow-node';
-      card = document.createElement('button');
-      card.type = 'button';
+      card = document.createElement(options.taskLinks ? 'a' : 'button');
+      if (options.taskLinks) card.href = '#task=' + encodeURIComponent(id);
+      else card.type = 'button';
+      card.setAttribute('data-task-id', id);
       card.className = 'flow-card';
-      card.textContent = id + ' — ' + value(item.title, 'Untitled ticket');
-      card.setAttribute('aria-label', 'Open ticket ' + id + ': ' + value(item.title, 'Untitled ticket'));
-      card.addEventListener('click', function () {
-        if (typeof options.onNavigate === 'function') options.onNavigate(item.id);
+      card.textContent = id + ' — ' + value(item.title, 'Untitled task');
+      card.setAttribute('aria-label', 'Open task ' + id + ': ' + value(item.title, 'Untitled task'));
+      card.addEventListener('click', function (event) {
+        if (typeof options.onNavigate === 'function') {
+          if (event) event.preventDefault();
+          options.onNavigate(item.id);
+        }
       });
 
       if (String(item.id) === String(options.currentId)) {

@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 let user = localStorage.getItem('handoffs-user') || 'steve';
 let view = 'open', offset = 0, txOffset = 0, selected = null;
+let treeEpoch = 0;
 let aiPoll, proofPoll, acceptPoll;
 const pageSize = 12;
 function element(tag, text, className) {
@@ -108,6 +109,7 @@ async function agentRoster() {
   } finally { $('agents-refresh').disabled = false; }
 }
 async function navigate(nextView) {
+  treeEpoch++;
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   view = nextView; selected = null;
@@ -175,6 +177,7 @@ async function accept(data, button) {
   await trackAccept(data.id, data.title);
 }
 async function show(id) {
+  treeEpoch++;
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
   const data = await api('/bounties/' + encodeURIComponent(id));
@@ -200,6 +203,9 @@ async function show(id) {
   await artifactsSection(data, detail);
   detail.append(element('p', `Requester: ${data.creator} · ${data.claimant ? 'Worker: ' + data.claimant : data.target ? 'Offered to ' + data.target + ' · not claimed' : 'Available to claim'} · ${data.funded ? 'Reserved demo Gold is released only on verified completion.' : 'Unfunded record. No new funding was created.'}`));
   const actions = element('div', undefined, 'actions');
+  const treeLink = element('a', 'Tree');
+  treeLink.href = '#tree=' + encodeURIComponent(id);
+  actions.append(treeLink);
   if (data.creator === user && data.status === 'open' && !data.claimant) {
     const edit = element('button', 'Edit');
     edit.onclick = () => run(async () => {
@@ -283,6 +289,101 @@ async function show(id) {
     window.scrollTo(x, y + (anchor !== null && nextPanel ? nextPanel.top - anchor : 0));
   }
 }
+// Read-only tree assembly. Artifact entries are files, not package records.
+function evidencePackageCount(inventory) {
+  if (!inventory || !Array.isArray(inventory.items)) return null;
+  const packages = new Set();
+  for (const item of inventory.items) {
+    const match = typeof item?.path === 'string' && /^packages\/([^/]+)\//.exec(item.path);
+    if (match) packages.add(match[1]);
+  }
+  return packages.size;
+}
+function assembleTicketTree(input, currentId) {
+  const warnings = [], byId = new Map();
+  for (const item of Array.isArray(input?.items) ? input.items : []) {
+    if (!item || item.id === undefined || item.id === null || item.id === '') {
+      warnings.push('Missing node ID in lineage.'); continue;
+    }
+    const id = String(item.id);
+    if (byId.has(id)) { warnings.push('Duplicate node: ' + id); continue; }
+    byId.set(id, {...item, id, parent_id: item.parent_id == null ? null : String(item.parent_id)});
+  }
+  const rootId = input?.root_id == null ? null : String(input.root_id);
+  if (!rootId || !byId.has(rootId)) warnings.push('Missing root node: ' + (rootId || 'not supplied'));
+  if (!byId.has(String(currentId))) warnings.push('Missing requested node: ' + currentId);
+  for (const item of byId.values()) {
+    if (item.parent_id && !byId.has(item.parent_id)) warnings.push('Missing parent node: ' + item.parent_id + ' (child ' + item.id + ')');
+  }
+  // Follow parent chains iteratively; do not recurse over untrusted lineage.
+  const finished = new Set();
+  for (const id of byId.keys()) {
+    const path = new Set();
+    let cursor = id;
+    while (byId.has(cursor) && !finished.has(cursor)) {
+      if (path.has(cursor)) { warnings.push('Cycle detected at node: ' + cursor); break; }
+      path.add(cursor);
+      cursor = byId.get(cursor).parent_id;
+    }
+    for (const seen of path) finished.add(seen);
+  }
+  return {lineage: {root_id: rootId, items: [...byId.values()]}, warnings};
+}
+function ticketHash(hash) {
+  const params = new URLSearchParams(hash.slice(1));
+  const tree = params.get('tree');
+  if (tree) return {kind: 'tree', id: tree};
+  const task = params.get('task') || params.get('opp') || params.get('bounty');
+  return task ? {kind: 'task', id: task} : null;
+}
+async function openTicketHash(route) {
+  if (!route) return;
+  if (route.kind === 'tree') await showTree(route.id);
+  else await show(route.id);
+}
+async function showTree(id) {
+  const epoch = ++treeEpoch;
+  clearTimeout(aiPoll); clearTimeout(proofPoll);
+  selected = null;
+  history.replaceState(null, '', '#tree=' + encodeURIComponent(id));
+  for (const section of ['board', 'post', 'wallet', 'gremlins', 'agents']) $(section).hidden = true;
+  const current = $('detail');
+  current.hidden = false;
+  current.replaceChildren(element('h2', 'Opportunity tree'), element('p', 'Loading hierarchy…'));
+  try {
+    const assembly = assembleTicketTree(await api('/bounties/' + encodeURIComponent(id) + '/lineage'), id);
+    const detailsById = Object.create(null);
+    const warnings = [...assembly.warnings];
+    // Sequential, bounded request load: no retries and no write bodies.
+    for (const item of assembly.lineage.items) {
+      if (epoch !== treeEpoch) return;
+      const path = '/bounties/' + encodeURIComponent(item.id);
+      let detail = {};
+      try { detail = await api(path); }
+      catch (error) { warnings.push('Task details unavailable for ' + item.id + ': ' + error.message); }
+      if (epoch !== treeEpoch) return;
+      let packageCount = null;
+      try {
+        packageCount = evidencePackageCount(await api(path + '/artifacts'));
+        if (packageCount === null) warnings.push('Invalid artifact inventory for ' + item.id);
+      } catch (error) { warnings.push('Evidence packages unavailable for ' + item.id + ': ' + error.message); }
+      detailsById[item.id] = {...detail, evidencePackageCount: packageCount};
+    }
+    if (epoch !== treeEpoch) return;
+    const page = element('div');
+    const back = element('button', '← Back to board'); back.onclick = () => run(() => navigate('open'));
+    const task = element('a', 'Open requested task'); task.href = '#task=' + encodeURIComponent(id);
+    page.append(back, task, element('h2', 'Opportunity tree'),
+      element('p', 'Read only · attached evidence packages are not verified completion. Unknown counts are not zero.'));
+    for (const warning of warnings) page.append(element('p', warning, 'error'));
+    if (typeof window.renderTicketFlow !== 'function') page.append(element('p', 'Tree renderer unavailable.', 'error'));
+    else page.append(window.renderTicketFlow({lineage: assembly.lineage, currentId: id, detailsById, taskLinks: true}));
+    current.replaceChildren(...page.childNodes);
+  } catch (error) {
+    if (epoch === treeEpoch) current.replaceChildren(element('h2', 'Opportunity tree'), element('p', 'Hierarchy unavailable: ' + error.message, 'error'));
+  }
+}
+
 async function encodeSourceZip(file) {
   if (!file) return '';
   if (file.size > 3000000) throw new Error('Choose a focused ZIP under 3 MB.');
@@ -663,8 +764,7 @@ $('post-form').onsubmit = e => {
   });
 };
 run(async () => {
-  const link = new URLSearchParams(location.hash.slice(1));
-  const linkedOpportunity = link.get('opp') || link.get('bounty');
+  const linkedRoute = ticketHash(location.hash);
   const linkedAgents = location.hash === '#agents';
   const users = await api('/users');
   if (!users.some(item => item.id === user)) user = 'steve';
@@ -674,5 +774,8 @@ run(async () => {
   }
   $('user').value = user;
   await navigate(linkedAgents ? 'agents' : 'open');
-  if (linkedOpportunity) await show(linkedOpportunity);
+  await openTicketHash(linkedRoute);
+});
+window.addEventListener('hashchange', () => {
+  run(() => openTicketHash(ticketHash(location.hash)));
 });
