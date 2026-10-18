@@ -32,7 +32,7 @@ def test_my_tasks_page_defaults_to_open_and_has_assigned_by_picker():
     assert 'id="show-closed" type="checkbox"' in html and 'id="assigned-by"' in html
     assert "&status=" + OPEN in script and "'&creator='" in script
     # The toggle always reports what it did, even when no closed task matches.
-    assert 'id="mine-note"' in html and 'No closed tasks${who} on this page' in script
+    assert 'id="board-note"' in html and 'No closed tasks${who} on this page' in script
 
 
 def test_static_scripts_revalidate_so_deploys_are_not_stale(client):
@@ -70,7 +70,7 @@ vm.runInNewContext(board + '\nthis.board = board;', context);
   pending[0].resolve({items: [card('old-a'), card('old-b')], creators: ['nate']});
   await first;
   assert.equal(nodes.cards.children.length, 1, 'stale response must not replace the latest cards');
-  assert.match(nodes['mine-note'].textContent, /· 1 open shown$/, 'the note describes the latest result, not the stale one');
+  assert.match(nodes['board-note'].textContent, /· 1 open shown · this page$/, 'the note describes the latest result, not the stale one');
 })().catch(error => { console.error(error); process.exitCode = 1; });
 '''
     result = subprocess.run([node, '-e', checks], capture_output=True, text=True)

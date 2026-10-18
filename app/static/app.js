@@ -107,9 +107,22 @@ async function board() {
   // My Tasks hides closed work unless asked; the picker narrows to one poster.
   const filters = !mine || !picker ? '' : (($('show-closed').checked ? '' : '&status=open,pending,working,blocked,delivered,awaiting_approval') +
     (picker.value ? '&creator=' + encodeURIComponent(picker.value) : ''));
+  const note = $('board-note');
+  $('cards').replaceChildren(element('p', 'Loading tasks…'));
+  if (note) note.textContent = `${mine ? 'My tasks' : 'Browse'} · loading`;
+  $('previous').disabled = true; $('next').disabled = true;
+  $('page-label').textContent = `Page ${offset / pageSize + 1}`;
   let result;
   try { result = await api(`/tasks?view=${view}&limit=${pageSize}&offset=${offset}&q=${encodeURIComponent($('search').value)}${filters}`); }
-  catch (error) { if (ticket === boardRequest) throw error; return; }
+  catch (error) {
+    if (ticket !== boardRequest) return;
+    const box = element('div', undefined, 'error');
+    const retry = element('button', 'Retry'); retry.onclick = () => run(() => board());
+    box.append(element('p', 'Could not load tasks. ' + error.message), retry);
+    $('cards').replaceChildren(box);
+    if (note) note.textContent = `${mine ? 'My tasks' : 'Browse'} · load failed · result count unavailable`;
+    return;
+  }
   if (ticket !== boardRequest) return;
   if (mine && picker) {
     const chosen = picker.value; picker.replaceChildren(new Option('Anyone', ''));
@@ -117,7 +130,24 @@ async function board() {
     picker.value = chosen;
   }
   $('cards').replaceChildren();
-  if (!result.items.length) $('cards').append(element('div', mine && (picker?.value || !$('show-closed').checked) ? 'No tasks match these filters. Try Show closed or Posted by Anyone.' : view === 'mine' ? 'Tasks you post or volunteer for will appear here.' : 'Nothing open right now. Post a task when you have useful work to share.', 'empty'));
+  if (!result.items.length) {
+    const filtered = !!$('search').value || (mine && (picker?.value || !$('show-closed').checked));
+    const box = element('div', undefined, 'empty');
+    if (offset > 0) {
+      const previous = element('button', 'Previous');
+      previous.onclick = () => run(async () => { offset = Math.max(0, offset - pageSize); await board(); });
+      box.append(element('p', 'No tasks on this page. Try the previous page.'), previous);
+    } else if (filtered) {
+      const clear = element('button', 'Clear filters');
+      clear.onclick = () => run(async () => {
+        $('search').value = ''; offset = 0;
+        if (mine) { $('show-closed').checked = false; if (picker) picker.value = ''; }
+        await board();
+      });
+      box.append(element('p', 'No tasks match these filters.'), clear);
+    } else box.append(element('p', mine ? 'Tasks you post or volunteer for will appear here.' : 'Nothing open right now. Post a task when you have useful work to share.'));
+    $('cards').append(box);
+  }
   for (const item of result.items) {
     const card = element('article', undefined, 'card');
     if (item.phase === 'Closed') card.classList.add('closed-card');
@@ -127,12 +157,16 @@ async function board() {
     card.append(top, element('h3', item.title), element('div', `${item.creator} · ${item.claimant ? 'Claimed by ' + item.claimant : item.target ? 'Offered to ' + item.target + ' · not claimed' : 'Available to claim'} · ${item.disposition || item.status.replaceAll('_', ' ')}${item.funded ? '' : ' · Unfunded'}`, 'meta'), button);
     $('cards').append(card);
   }
-  if (mine && $('mine-note')) {
+  if (mine && note) {
     // Say what the toggle did, so an empty change still reads as working.
     const closed = result.items.filter(item => item.phase === 'Closed').length;
     const who = picker.value ? ` from ${picker.value}` : '';
-    $('mine-note').textContent = !$('show-closed').checked ? `${result.items.length} open shown${who} · closed hidden` :
+    note.textContent = !$('show-closed').checked ? `${result.items.length} open shown${who} · closed hidden` :
       closed ? `${result.items.length} shown${who} · ${closed} closed` : `No closed tasks${who} on this page · ${result.items.length} open shown`;
+  }
+  if (note) {
+    if (!mine) note.textContent = `${result.items.length} open shown · closed hidden`;
+    note.textContent = `${mine ? 'My tasks' : 'Browse'} · ${note.textContent} · this page${$('search').value ? ' · search: ' + $('search').value : ''}`;
   }
   $('previous').disabled = offset === 0; $('next').disabled = result.items.length < pageSize;
   $('page-label').textContent = `Page ${offset / pageSize + 1}`;
