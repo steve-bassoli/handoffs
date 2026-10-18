@@ -80,6 +80,24 @@ def test_user_directed_manual_completion_needs_no_provider_but_retains_evidence(
     assert directed(f'/tasks/{task}/complete', {'note': 'Duplicate'}).status_code == 409
 
 
+@pytest.mark.parametrize('complexity, closes', [('MEDIUM', True), ('HIGH', False)])
+def test_prototype_undecomposed_medium_closes_human_only_but_high_does_not(client, complexity, closes):
+    task = write(client, '/tasks', {'title': 'Composite', 'goal': 'Finish', 'criteria': ['Works'],
+        'gold': 10, 'complexity': complexity}).json()['id']
+    assert write(client, f'/tasks/{task}/take').status_code == 200
+    write(client, f'/tasks/{task}/profile', {'baseline_revision': 'base', 'candidate_revision': 'patch', 'environment': 'fixture'})
+    assert (write(client, f'/tasks/{task}/proofs', upload()).status_code == 200) is closes
+    decision = {'accepted': True, 'review_basis': 'human-only', 'note': 'Human verified evidence'}
+    assert (write(client, f'/tasks/{task}/proof-human', decision).status_code == 200) is closes
+    if closes:
+        ai_basis = write(client, f'/tasks/{task}/proof-human', {**decision, 'review_basis': 'ai-reviewed'})
+        assert ai_basis.status_code == 409
+    closed = write(client, f'/tasks/{task}/complete', {'note': 'Prototype closure'})
+    assert (closed.status_code == 200) is closes
+    if closes:
+        assert closed.json()['events'][-1]['data']['verification_method'] == 'human-only'
+
+
 def test_human_only_verification_cannot_override_failure_or_survive_changed_context(client):
     task = claimed(client)
     write(client, f'/tasks/{task}/profile', {'baseline_revision': 'base', 'candidate_revision': 'patch', 'environment': 'fixture'}, 'nate')

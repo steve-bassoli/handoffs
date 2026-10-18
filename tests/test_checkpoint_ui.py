@@ -11,11 +11,11 @@ from conftest import write
 
 def test_continuation_does_not_bypass_unmet_ro3_decomposition(client):
     original = write(client, '/tasks', {'title': 'Composite fixture', 'goal': 'Verify RO3',
-        'criteria': ['Integrated evidence'], 'gold': 5, 'complexity': 'MEDIUM'}).json()
+        'criteria': ['Integrated evidence'], 'gold': 5, 'complexity': 'HIGH'}).json()
     response = write(client, f"/tasks/{original['id']}/checkpoint", {'notes': 'Draft saved; decomposition remains pending.'})
     assert response.status_code == 200
     continuation = response.json()
-    assert continuation['complexity'] == 'MEDIUM' and continuation['required_children'] == []
+    assert continuation['complexity'] == 'HIGH' and continuation['required_children'] == []
     with pytest.raises(RuleError, match='approved decomposition'):
         client.app.state.service.proofs.require_dependencies(continuation)
 
