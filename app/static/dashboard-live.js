@@ -60,10 +60,15 @@
       });
     }
     function schedule() {
-      if (dead || paused || authentication || !endpoint || timer !== null) return;
+      if (dead || paused || authentication || busy || !endpoint || timer !== null) return;
       const delay = Math.max(doc.hidden ? 10000 : 2500,
         failures ? Math.min(60000, 2500 * Math.pow(2, Math.min(failures, 5))) : 2500);
       timer = later(function () { timer = null; refresh(); }, delay);
+    }
+    function visibilityChanged() {
+      if (timer !== null) cancel(timer);
+      timer = null;
+      schedule();
     }
     function valid(s) {
       const object = x => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -130,11 +135,17 @@
     }
     if (pauseButton) pauseButton.addEventListener('click', pause);
     if (resumeButton) resumeButton.addEventListener('click', resume);
+    doc.addEventListener('visibilitychange', visibilityChanged);
     paint(); if (endpoint) refresh();
     return {register: register, pause: pause, resume: resume, destroy: function () {
       dead = true; if (timer !== null) cancel(timer); timer = null;
       if (pauseButton) pauseButton.removeEventListener('click', pause);
       if (resumeButton) resumeButton.removeEventListener('click', resume);
+      doc.removeEventListener('visibilitychange', visibilityChanged);
     }};
   };
+  // The host may inject this configuration before this deferred local script.
+  // No endpoint or identity is inferred when configuration is absent.
+  const root = document.getElementById && document.getElementById('dashboard');
+  if (root) window.dashboard = window.createDashboard(root, window.dashboardConfig || {});
 }());
