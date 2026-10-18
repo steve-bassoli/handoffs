@@ -22,3 +22,33 @@ def test_selection_and_bindings_are_scoped_to_workspace_and_task_views():
     assert "TASK_VIEWS.has(view) ? 'open' : view" in script and "setAttribute('aria-current', 'page')" in script
     # Legacy #view=open|mine|post links still route through the shared helper.
     assert "const views = new Set(['open', 'mine', 'post'," in (STATIC / 'workspace-navigation.js').read_text(encoding='utf-8')
+
+
+def test_confirmed_post_stays_confirmed_when_refresh_fails():
+    import shutil
+    import subprocess
+    import pytest
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('Node is needed for the pure JavaScript posting check')
+    checks = r'''
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync('app/static/app.js', 'utf8');
+const mutate = source.slice(source.indexOf('async function mutate('), source.indexOf('const acceptStages'));
+const context = {messages: [], document: {querySelectorAll: () => []}, $: () => ({}),
+  message(text, error) { context.messages.push([text, Boolean(error)]); },
+  api: async () => ({id: 'task-1', status: 'pending'}),
+  stats: async () => { throw new Error('stats offline'); }, show: async () => {}};
+vm.runInNewContext(mutate + '\nthis.mutate = mutate;', context);
+(async () => {
+  const posted = await context.mutate('/tasks', {}, 'Task posted:');
+  assert.equal(posted.id, 'task-1', 'the created task is still returned so the form resets');
+  const [text, error] = context.messages.at(-1);
+  assert.ok(error && text.includes('task-1') && text.includes('do not post it again'), text);
+  await assert.rejects(context.mutate('/tasks/x/take', {}), /stats offline/, 'other writes keep their behavior');
+})().catch(error => { console.error(error); process.exitCode = 1; });
+'''
+    result = subprocess.run([node, '-e', checks], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr

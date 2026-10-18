@@ -157,14 +157,20 @@ async function navigate(nextView) {
   else if (view === 'wallet') { $('wallet').hidden = false; await transactions(); }
   else { $('board').hidden = false; $('board-title').textContent = view === 'mine' ? 'My tasks' : 'Open tasks'; await board(); }
 }
-async function mutate(path, body = {}) {
+async function mutate(path, body = {}, created = '') {
   $('user').disabled = true;
   for (const button of document.querySelectorAll('button:not(:disabled)')) { button.dataset.busy = 'true'; button.disabled = true; }
   try {
     const result = await api(path, body);
-    message(result.status === 'settled' ? 'Verified completion recorded. Reserved demo Gold was paid.' : 'Saved.');
-    await stats();
-    await show(result.id);
+    message(result.status === 'settled' ? 'Verified completion recorded. Reserved demo Gold was paid.' : created ? `${created} ${result.id}.` : 'Saved.');
+    try {
+      await stats();
+      await show(result.id);
+    } catch (error) {
+      // The write is confirmed; a failed follow-up read must not look like a failed post (a retry would duplicate it).
+      if (!created) throw error;
+      message(`${created} ${result.id}. Refreshing the page failed (${error.message}); do not post it again.`, true);
+    }
     return result;
   } finally {
     $('user').disabled = false;
@@ -849,7 +855,7 @@ $('post-form').onsubmit = e => {
     const lines = name => form.get(name).split('\n').map(s => s.trim()).filter(Boolean);
     const result = await mutate('/tasks', {title: form.get('title'), goal: form.get('goal'), criteria: lines('criteria'),
       repository: form.get('repository'), context_links: lines('context_links'), complexity: form.get('complexity'), work_type: form.get('work_type'), gold: Number(form.get('gold')), target: form.get('target') || null,
-      source_zip: await postSourceZip()});
+      source_zip: await postSourceZip()}, 'Task posted:');
     if (result) e.target.reset();
   });
 };
