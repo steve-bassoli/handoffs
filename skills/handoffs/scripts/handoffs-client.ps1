@@ -15,7 +15,12 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrWhiteSpace($ServiceUrl)) { $ServiceUrl = 'http://127.0.0.1:8000' }
 if ([string]::IsNullOrWhiteSpace($DemoUser)) { $DemoUser = 'steve' }
-$headers = @{ 'X-Demo-User' = $DemoUser }
+$headers = @{}
+if ($env:HANDOFFS_TOKEN) {
+    $headers['Authorization'] = 'Bearer ' + $env:HANDOFFS_TOKEN
+} else {
+    $headers['X-Demo-User'] = $DemoUser
+}
 $method = 'Get'
 $path = switch ($Action) {
     'Board' { "/tasks?view=open&offset=$Offset" }

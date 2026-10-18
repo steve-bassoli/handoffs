@@ -4,7 +4,9 @@ with the current tree ticket as --scope. Never retry an unknown outcome blindly.
 """
 import argparse
 import json
+import os
 import sys
+from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -20,6 +22,7 @@ def main():
     parser.add_argument('url')
     parser.add_argument('--method', choices=('POST', 'PUT', 'PATCH', 'DELETE'), default='POST')
     parser.add_argument('--user', required=True)
+    parser.add_argument('--token-file', help='Read Bearer token from a private UTF-8 file; overrides HANDOFFS_TOKEN')
     parser.add_argument('--intent', choices=('user-directed', 'autonomous'), required=True)
     parser.add_argument('--scope')
     parser.add_argument('--idempotency-key', required=True)
@@ -31,18 +34,35 @@ def main():
         parser.error('Autonomous writes require --scope TASK_ID')
     body = sys.stdin.read()
     json.loads(body)
-    headers = {'Content-Type': 'application/json', 'X-Demo-User': args.user,
+    token = os.environ.get('HANDOFFS_TOKEN', '')
+    if args.token_file:
+        try:
+            token = Path(args.token_file).read_text(encoding='utf-8').strip()
+        except (OSError, UnicodeError):
+            parser.error('Cannot read token file')
+        if not token:
+            parser.error('Token file is empty')
+    if token and (any(character.isspace() for character in token) or not token.isascii()):
+        parser.error('Invalid token format')
+    headers = {'Content-Type': 'application/json',
                'X-Automation': 'relay', 'X-Action-Intent': args.intent,
                'Idempotency-Key': args.idempotency_key}
+    if token:
+        headers['Authorization'] = 'Bearer ' + token
+    else:
+        headers['X-Demo-User'] = args.user
+        print('WARNING: no HANDOFFS_TOKEN or token file; using demo identity, not authentication.', file=sys.stderr)
+    def safe_output(text):
+        return text.replace(token, '[REDACTED]') if token else text
     if args.scope:
         headers['X-Automation-Scope'] = args.scope
     request = Request(args.url, data=body.encode('utf-8'), headers=headers, method=args.method)
     try:
         with build_opener(NoRedirect()).open(request, timeout=30) as response:
-            print(response.read().decode('utf-8'))
+            print(safe_output(response.read().decode('utf-8')))
     except HTTPError as error:
         print('HTTP ' + str(error.code), file=sys.stderr)
-        print(error.read().decode('utf-8'), file=sys.stderr)
+        print(safe_output(error.read().decode('utf-8')), file=sys.stderr)
         return 1
     except OSError:
         print('Transport failure: outcome unknown; inspect history before any retry.', file=sys.stderr)

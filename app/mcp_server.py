@@ -35,8 +35,13 @@ STATS = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHin
 OperationId = Annotated[str, Field(min_length=1, max_length=200)]
 
 
+def identity_headers():
+    token = os.environ.get('HANDOFFS_TOKEN')
+    return {'Authorization': 'Bearer ' + token} if token else {'X-Demo-User': DEMO_USER}
+
+
 def request(method, path, *, body=None, operation_id=None):
-    headers = {'X-Demo-User': DEMO_USER}
+    headers = identity_headers()
     if operation_id:
         headers['Idempotency-Key'] = operation_id
         # These tools require an explicit user request; campaign callers must not infer it.
@@ -165,7 +170,7 @@ def take_task(task_id: str, operation_id: OperationId) -> dict[str, Any]:
     def download():
         try:
             with httpx.stream('GET', SERVICE_URL + '/api/v1' + path + '/artifacts/download',
-                              headers={'X-Demo-User': DEMO_USER}, timeout=30, follow_redirects=False) as response:
+                              headers=identity_headers(), timeout=30, follow_redirects=False) as response:
                 response.raise_for_status()
                 raw = bytearray()
                 for chunk in response.iter_bytes():

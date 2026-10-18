@@ -16,6 +16,12 @@
   <header>
     <a class="brand" href="/" aria-label="Thermo Fisher Scientific The Commons home"><img class="brand-logo" src="/static/thermo-fisher-logo.svg" alt="Thermo Fisher Scientific" width="160" height="35"><span class="brand-copy">The Commons<small>Human-guided AI development</small></span></a>
     <label class="identity">Demo user <select id="user" aria-label="Demo user"></select></label>
+    <form id="signin-form" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0">
+      <input id="signin-username" aria-label="Username" autocomplete="username" placeholder="Username" required style="width:130px">
+      <input id="signin-password" type="password" aria-label="Password" autocomplete="current-password" placeholder="Password" required style="width:130px">
+      <button type="submit">Sign in</button>
+    </form>
+    <span id="signed-in" hidden><span id="signed-in-label"></span> <button id="signout" type="button">Sign out</button></span>
   </header>
   <div class="demo">Prototype · Demo identity and PR verification · Gold is application credit</div>
   <main>

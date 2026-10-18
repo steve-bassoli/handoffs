@@ -1,5 +1,48 @@
 const $ = id => document.getElementById(id);
-let user = localStorage.getItem('handoffs-user') || 'steve';
+const SESSION_KEY = 'handoffs-session';
+let session = null;
+if (typeof sessionStorage !== 'undefined') try {
+  const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+  if (saved && typeof saved.access_token === 'string' && saved.access_token &&
+      typeof saved.user_id === 'string' && saved.user_id) session = saved;
+  else sessionStorage.removeItem(SESSION_KEY);
+} catch { sessionStorage.removeItem(SESSION_KEY); }
+let user = session ? session.user_id : localStorage.getItem('handoffs-user') || 'steve';
+function identityHeaders() {
+  return session ? {Authorization: 'Bearer ' + session.access_token} : {'X-Demo-User': user};
+}
+function renderAuth() {
+  $('signin-form').hidden = !!session;
+  $('signin-form').style.display = session ? 'none' : 'flex';
+  $('signed-in').hidden = !session;
+  $('signed-in-label').textContent = session ? 'Signed in as ' + session.user_id : '';
+  if (session) {
+    user = session.user_id;
+    if (![...$('user').options].some(option => option.value === user)) $('user').append(new Option(user, user));
+  }
+  $('user').value = user;
+  $('user').disabled = !!session;
+}
+function clearSession() {
+  session = null;
+  sessionStorage.removeItem(SESSION_KEY);
+  renderAuth();
+}
+async function authenticatedFetch(url, options = {}) {
+  const target = new URL(url, location.href);
+  if (target.origin !== location.origin) throw new Error('Refusing to send identity to another origin.');
+  const token = session?.access_token;
+  const response = await fetch(target.href, {...options, redirect: 'error'});
+  if (response.status === 401 && token && session?.access_token === token) {
+    clearSession();
+    ++treeEpoch; ++boardRequest;
+    clearTimeout(aiPoll); clearTimeout(proofPoll); clearTimeout(acceptPoll);
+    for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents']) $(id).hidden = true;
+    message('Session ended. Sign in again or choose a demo user.', true);
+    throw new Error('Session ended. Sign in again or choose a demo user.');
+  }
+  return response;
+}
 let view = 'open', offset = 0, txOffset = 0, selected = null;
 let treeEpoch = 0;
 let aiPoll, proofPoll, acceptPoll;
@@ -24,7 +67,7 @@ function requestCacheKey(value) {
   return `handoffs-request:${value.length}:${a >>> 0}:${b >>> 0}`;
 }
 async function api(path, body) {
-  const headers = {'X-Demo-User': user};
+  const headers = identityHeaders();
   const options = {headers};
   let operation;
   if (body !== undefined) {
@@ -36,7 +79,7 @@ async function api(path, body) {
     headers['Content-Type'] = 'application/json';
     options.method = 'POST'; options.body = JSON.stringify(body);
   }
-  const response = await fetch('/api/v1' + path, options);
+  const response = await authenticatedFetch('/api/v1' + path, options);
   const data = await response.json();
   if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
   if (operation) sessionStorage.removeItem(operation);
@@ -174,7 +217,7 @@ async function mutate(path, body = {}, created = '') {
     }
     return result;
   } finally {
-    $('user').disabled = false;
+    if (typeof renderAuth === 'function') renderAuth(); else $('user').disabled = false;
     for (const button of document.querySelectorAll('button[data-busy]')) { button.disabled = false; delete button.dataset.busy; }
   }
 }
@@ -491,7 +534,7 @@ async function encodeSourceZip(file) {
 }
 
 async function downloadArtifact(url, filename) {
-  const response = await fetch(url, {headers: {'X-Demo-User': user}});
+  const response = await authenticatedFetch(url, {headers: identityHeaders()});
   if (!response.ok) throw new Error('Could not download this artifact.');
   const objectUrl = URL.createObjectURL(await response.blob());
   const link = element('a'); link.href = objectUrl; link.download = filename; link.click();
@@ -641,7 +684,7 @@ function proofSection(data, detail) {
     box.append(element('strong', `${proof.accepted ? (proof.verification_method === 'human-only' ? 'Human verified · no passing AI review' : 'Accepted') : proof.fresh ? 'Current · awaiting verification' : 'Stale · context changed'} · ${proof.filename}`), element('p', proof.description), element('code', `SHA-256 ${proof.sha256}`));
     const controls = element('div', undefined, 'actions'); const preview = element('div');
     const view = element('button', 'View proof'); view.onclick = () => run(async () => {
-      const response = await fetch(proof.download_url, {headers: {'X-Demo-User': user}}); if (!response.ok) throw new Error('Could not open proof.');
+      const response = await authenticatedFetch(proof.download_url, {headers: identityHeaders()}); if (!response.ok) throw new Error('Could not open proof.');
       const blob = await response.blob(); preview.replaceChildren();
       if (['text/plain', 'application/json'].includes(proof.media_type)) preview.append(element('pre', await blob.text(), 'proof-text'));
       else { const media = element(proof.media_type.startsWith('image/') ? 'img' : 'video'); const url = URL.createObjectURL(blob); media.src = url; media.className = 'proof-media'; if (media.tagName === 'IMG') { media.alt = proof.description; media.onload = () => URL.revokeObjectURL(url); } else { media.controls = true; media.onloadeddata = () => URL.revokeObjectURL(url); } preview.append(media); }
@@ -764,7 +807,7 @@ async function aiSection(data, detail) {
     if (ai.download_url) {
       const button = element('button', ai.result.action === 'evidence' ? 'Download evidence ZIP' : 'Download fix ZIP', 'primary');
       button.onclick = () => run(async () => {
-        const response = await fetch(ai.download_url, {headers: {'X-Demo-User': user}});
+        const response = await authenticatedFetch(ai.download_url, {headers: identityHeaders()});
         if (!response.ok) throw new Error('Could not download the fix ZIP.');
         const url = URL.createObjectURL(await response.blob());
         const link = element('a'); link.href = url; link.download = `task-${id}.zip`; link.click();
@@ -846,7 +889,50 @@ $('gremlins-form').onsubmit = event => { event.preventDefault(); run(async () =>
 }); };
 $('agents-refresh').onclick = () => run(agentRoster);
 for (const button of document.querySelectorAll(WORKSPACE_BUTTONS + ', [data-task-view]')) button.onclick = () => run(async () => { offset = 0; message(''); await navigate(button.dataset.view || button.dataset.taskView); });
-$('user').onchange = () => run(async () => { user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });
+$('user').onchange = () => run(async () => { if (session) { renderAuth(); return; } user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });
+$('signin-form').onsubmit = event => {
+  event.preventDefault();
+  run(async () => {
+    const button = $('signin-form').querySelector('button');
+    button.disabled = true;
+    let issued;
+    try {
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST', redirect: 'error', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username: $('signin-username').value, password: $('signin-password').value})
+      });
+      if (response.status === 401) clearSession();
+      if (!response.ok) throw new Error('Sign-in failed. Check your credentials.');
+      issued = await response.json();
+      if (!issued.access_token || !issued.user_id) throw new Error('Invalid sign-in response.');
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({access_token: issued.access_token, user_id: issued.user_id}));
+      session = {access_token: issued.access_token, user_id: issued.user_id};
+      renderAuth();
+      location.reload();
+    } finally {
+      $('signin-password').value = '';
+      button.disabled = false;
+    }
+  });
+};
+$('signout').onclick = () => run(async () => {
+  const token = session?.access_token;
+  clearSession();
+  let revoked = !token;
+  try {
+    if (token) {
+      const response = await fetch('/api/v1/auth/logout', {
+        method: 'POST', redirect: 'error', headers: {Authorization: 'Bearer ' + token}
+      });
+      revoked = response.ok || response.status === 401;
+    }
+  } catch { /* Local sign-out still succeeds; never automatically retry. */ }
+  if (!revoked) sessionStorage.setItem('handoffs-signout-warning', 'Signed out locally; server revocation is unconfirmed.');
+  location.reload();
+});
+renderAuth();
+const signoutWarning = sessionStorage.getItem('handoffs-signout-warning');
+if (signoutWarning) { sessionStorage.removeItem('handoffs-signout-warning'); message(signoutWarning, true); }
 $('search').oninput = () => run(async () => { offset = 0; await board(); });
 for (const id of ['show-closed', 'assigned-by']) if ($(id)) $(id).onchange = () => run(async () => { offset = 0; await board(); });
 $('previous').onclick = () => run(async () => { offset = Math.max(0, offset - pageSize); await board(); });
@@ -875,13 +961,14 @@ run(async () => {
   const linkedAgents = location.hash === '#agents';
   const users = await api('/users');
   const navigation = typeof window !== 'undefined' && window.commonsNavigation;
-  if (navigation && navigation.initialUser) user = navigation.initialUser;
-  if (!users.some(item => item.id === user)) user = 'steve';
+  const signedIn = typeof session !== 'undefined' && !!session;
+  if (!signedIn && navigation && navigation.initialUser) user = navigation.initialUser;
+  if (!signedIn && !users.some(item => item.id === user)) user = 'steve';
   for (const item of users) {
     const option = element('option', item.name); option.value = item.id; $('user').append(option);
     const targetOption = option.cloneNode(true); document.querySelector('[name=target]').append(targetOption);
   }
-  $('user').value = user;
+  if (typeof renderAuth === 'function') renderAuth(); else $('user').value = user;
   await navigate(navigation ? navigation.initialView : linkedAgents ? 'agents' : 'open');
   if (linkedTree) await showTree(linkedTree);
   else if (linkedTask) await show(linkedTask);
