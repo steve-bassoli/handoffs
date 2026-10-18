@@ -72,7 +72,7 @@ def constellation(nodes):
 def validate_dependencies(nodes, source, targets):
     ids = {node['id'] for node in nodes}
     if source not in ids or len(targets) != len(set(targets)) or any(target not in ids for target in targets):
-        raise ValueError('Use distinct existing prerequisite bounty IDs')
+        raise ValueError('Use distinct existing prerequisite task IDs')
     updated = [{**node, 'depends_on': targets if node['id'] == source else node.get('depends_on', [])} for node in nodes]
     graph = {identifier: [] for identifier in ids}
     for edge in constellation(updated)['edges']:

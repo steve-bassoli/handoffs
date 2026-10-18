@@ -53,7 +53,7 @@ def test_api_prefix_profile_still_rejected_without_state_change(client):
     rejected = write(client, f'/bounties/{bounty}/profile',
                      {**profile, 'environment': 'sk-proj-not-a-real-secret'})
     assert rejected.status_code == 422
-    assert 'Keep secrets out of bounty context' in rejected.text
+    assert 'Keep secrets out of task context' in rejected.text
     assert client.get(f'/api/v1/bounties/{bounty}').json() == task
     assert task['profile']['environment'] == 'isolated fixture'
     assert task['phase'] != 'Closed' and task['ai_run'] is None

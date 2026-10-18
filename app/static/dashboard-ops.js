@@ -25,11 +25,11 @@
       const status = ['ok', 'stale', 'unavailable'].includes(source.status) ? source.status : 'unavailable';
       const card = make('article', undefined, `dashboard-ops-card ${status}`);
       card.append(make('h3', title));
-      row(card, 'Source status', status === 'stale' ? 'STALE — retained historical evidence; refresh failed' : status);
+      row(card, 'Source status', status === 'stale' ? 'STALE — retained historical evidence; ' + (source.stale_reason || 'refresh failed') : status);
       row(card, 'Source', text(source.source_id));
       row(card, 'Observed at', text(source.observed_at));
       row(card, 'Last attempt', text(source.last_attempt_at));
-      if (status !== 'ok') row(card, 'Failure category', text(source.error_code));
+      if (status !== 'ok' && source.error_code) row(card, 'Failure category', text(source.error_code));
       root.append(card);
       return {card, status, data: status === 'unavailable' ? {} : object(source.data)};
     };
@@ -41,6 +41,9 @@
     row(ledger.card, 'Guarded allocatable headroom' + (ledger.status === 'stale' ? ' (historical; not current authority)' : ''), money(ledger.data.guarded_headroom_cents, true));
     if (ledger.status !== 'ok') row(ledger.card, 'Current allocatable authority', 'Unknown');
     row(ledger.card, 'Provenance', text(ledger.data.provenance));
+    if (Array.isArray(ledger.data.holds) && ledger.data.holds.some(hold => ['unknown', 'overrun'].includes(hold.state))) {
+      row(ledger.card, 'Paid work', 'Blocked pending API usage reconciliation; retained reservations are not a spendable balance');
+    }
     ledger.card.append(make('p', 'Policy: $1.00 protected separately; sponsor allocation cap $1998.00. Headroom is evidence, not permission to spend. Unknown usage retains its reservation; no automatic retry.'));
     const usage = cardFor('session_usage', 'Session usage');
     row(usage.card, 'Reported usage — upper bound, not billed cost', money(usage.data.reported_upper_cents));
@@ -59,7 +62,8 @@
     row(leases.card, 'Verified live agents' + (leases.status === 'stale' ? ' (historical)' : ''), count(leases.data.verified_live_count));
     row(leases.card, 'Interrupted occupied leases' + (leases.status === 'stale' ? ' (historical)' : ''), count(leases.data.interrupted_occupied_count));
     if (Array.isArray(leases.data.records)) {
-      leases.data.records.forEach(value => {
+      row(leases.card, 'Registered observations shown', Math.min(10, leases.data.records.length) + ' of ' + leases.data.records.length + '; includes historical leases');
+      leases.data.records.slice(0, 10).forEach(value => {
         const record = object(value);
         row(leases.card, `Lease ${text(record.id)}`, `${text(record.state)}; evidence: ${text(record.evidence)}`);
       });
@@ -68,6 +72,7 @@
     const git = cardFor('git', 'Delivery evidence');
     const commit = object(git.data.commit);
     row(git.card, 'Latest commit hash', text(commit.hash));
+    git.card.append(make('p', 'Git HEAD metadata only; the working tree is not attested by this observation.'));
     row(git.card, 'Commit time', text(commit.committed_at));
     row(git.card, 'Tests', 'not recorded');
     git.card.append(make('p', 'Policy: tests gated before commit. This policy is not test-run evidence; commit metadata does not prove tests passed or human acceptance.'));

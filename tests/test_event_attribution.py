@@ -51,12 +51,14 @@ def test_automation_header_attributes_only_new_events_and_resets(tmp_path, monke
         bounty_id = bounty['id']
         assert 'via' not in bounty['events'][-1]['data']
         assert write(client, f'/bounties/{bounty_id}/take', user='nate').status_code == 200
+        original_events = client.get('/api/v1/bounties/' + bounty_id).json()['events']
 
         tagged_status = automated_write(client, f'/bounties/{bounty_id}/status', {
             'status': 'working', 'note': 'automated progress',
         }, 'nate', 'tagged-status', 'astra/bob-3')
         assert tagged_status.status_code == 200
         events = tagged_status.json()['events']
+        assert events[:-1] == original_events
         assert all('via' not in event['data'] for event in events[:-1])
         assert events[-1]['data']['via'] == 'astra/bob-3'
 

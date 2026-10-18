@@ -13,7 +13,7 @@ and development workflow. It does not certify that the prototype already meets i
 The goal is seamless AI integration of Watson maintenance and usability through
 three cooperating systems: Watson services, Gremlins, and The Commons. AI performs
 investigation, decomposition, implementation and evidence preparation. Humans use
-the Watson application to verify LOW bounties, rather than to drive routine work.
+the Watson application to verify LOW tasks, rather than to drive routine work.
 Human authority over policy, access, task creation and deployment remains intact.
 
 ## Human purpose and resource commitments
@@ -36,9 +36,9 @@ adaptable and experimental approaches remain equally welcome within consent,
 privacy and safety boundaries. Rewards never authorize harm or remove the need
 for evidence. Disputes require explanation and a review path.
 
-Use Opportunities, Volunteer and Verified contribution as the product-language
-direction. Existing bounty/Gold technical names remain until an explicit migration;
-their use below describes current contracts, not a punitive philosophy. The rule
+Use Tasks, Volunteer and Verified contribution as the product-language
+direction. Call work items tasks throughout the UI, rules and agent instructions.
+Existing API routes, stored identifiers and Gold names remain compatible. The rule
 of three is a design discipline, not an incorruptibility guarantee. Unsafe changes
 must reject the affected operation rather than crash the system. The daily
 allocation, positive reserve and resource model are adopted targets, not currently
@@ -49,7 +49,7 @@ implemented wallet behavior. Legacy technical identifiers remain compatible.
 ### Highest priority interaction guardrail
 
 Context before questions. Before asking for human guidance, inspect the selected
-opportunity, its criteria, prior answers and failure evidence. Restore the concrete
+task, its criteria, prior answers and failure evidence. Restore the concrete
 title, owner, intended outcome and actual blocker in plain language. Ask only for
 a genuinely unresolved human decision; never ask people to reconstruct information
 already available or act as the bridge between the system's agents. Carry context
@@ -74,7 +74,7 @@ Optimize verified usefulness and reduced human effort, not tokens spent. Shared
 enterprise allocation and fair scheduling are targets, not implemented guarantees.
 
 AI capability must spread, not become an early-adopter monopoly. Help people catch
-up through accessible compute, understandable opportunities, reusable artifacts
+up through accessible compute, understandable tasks, reusable artifacts
 and voluntary mentoring. Success means more people can act independently, not
 that a few experts accumulate irreplaceable control. Do not hold capable people
 back, seize their resources or require their labor; widen others' opportunity to
@@ -82,9 +82,9 @@ participate. Token wealth and AI fluency do not purchase authority over people.
 This commitment has no required numerical shape. Its motivating observation is
 retained in [AI research](PLAN/AI_RESEARCH.md#sharing-capability-without-concentrating-power).
 
-The Commons improves itself through ordinary opportunities: a bounded outcome,
+The Commons improves itself through ordinary tasks: a bounded outcome,
 pinned source, an inspectable patch and recorded checks. AI may prepare the work;
-it must not approve its own proof, publish unconfirmed child opportunities, or
+it must not approve its own proof, publish unconfirmed child tasks, or
 deploy untested generated code. Human LOW verification remains explicit. Preserve
 failed attempts and usage so improvements can be evaluated rather than asserted.
 
@@ -109,7 +109,7 @@ human effort saved, wider participation and resources retained.
 Source access and disclosure, proposed code, executed verification and explicit
 human acceptance remain distinct. Recursive repository authority does not grant
 live database access, public disclosure or authority to publish unconfirmed child
-opportunities. RO3 supports grounded decomposition; never force three or use it
+tasks. RO3 supports grounded decomposition; never force three or use it
 to replace facts, consent or evidence. This is a conduct commitment, not a claim
 that a conduit is implemented, universally safe or incorruptible.
 
@@ -130,7 +130,7 @@ it cannot recursively transfer work to evade the stop rule. A refusal, exhausted
 reserve or unknown usage leaves work safely checkpointed, not automatically retried.
 
 For people, reporting is voluntary and private. Rest is available before 3 and
-never costs resources, access, dignity or a future opportunity. Do not infer a
+never costs resources, access, dignity or a future task. Do not infer a
 diagnosis or worker score, demand a health explanation, publish a health rating
 or force reassignment. Share only authorized work context in a voluntary handoff,
 not personal health information. Appreciation cannot become an obligation to work.
@@ -288,7 +288,7 @@ one verified boundary at a time. Both interfaces use the same business behavior
 and authorization rules; MCP is not an alternate permission bypass. Retain a
 versioned legacy baseline and a rollback path during replacement.
 
-The compatibility target includes legacy behavior, bugs and all. A bounty may
+The compatibility target includes legacy behavior, bugs and all. A task may
 explicitly authorize correcting a legacy defect; its acceptance criteria then
 define that intentional difference. Preserve unrelated behavior. Compatibility
 does not authorize reproducing a security weakness in a new access boundary.
@@ -302,7 +302,7 @@ and access boundaries; this charter does not prescribe a test framework or stack
 Gremlins compares the pinned legacy baseline and candidate against a versioned
 behavior catalog covering relevant inputs, outputs, errors, permissions and state
 changes. The target is 100% legacy functionality for that declared catalog,
-including documented quirks unless an approved bounty changes them. Unknown or
+including documented quirks unless an approved task changes them. Unknown or
 untested behavior remains unverified, not implicitly compatible.
 
 Keep Gremlins acceptance expectations independent of the implementing model's
@@ -337,31 +337,44 @@ tasks to meet a count. Reconsider a boundary without a defensible split.
 
 Only LOW work is executable. An implementation LOW owns one minimal managed commit
 for its immutable plan/leaf receipt. A verification LOW produces evidence without
-a forced commit. New child bounties require explicit human confirmation of the
+a forced commit. New child tasks require explicit human confirmation of the
 complete proposed set. Child completion alone does not prove integrated parent
 acceptance.
 
 ### One Proof Before Completion
 
-One sufficient primary proof artifact is required before completing a LOW bounty:
+One sufficient primary proof artifact is required before completing a LOW task:
 a video, an image, or a text artifact. There is no two-factor requirement, no
 mandatory pair of videos, and no requirement to manufacture three proofs. The
 rule of three can inform design; it never prescribes a proof count. Supporting
 material is optional; one artifact must be sufficient for the claimed outcome.
 
-Bind the proof to the bounty, relevant acceptance criteria, baseline and candidate
+Bind the proof to the task, relevant acceptance criteria, baseline and candidate
 revisions, environment and verification run where applicable. Show the defect and
 corrected result, or the relevant observed outcome for verification-only work.
 Label proposed or unexecuted checks separately. Do not expose credentials or
 unnecessary private data. A filename, PR link, AI assertion or empty approval note
 alone is not proof.
 
-The proof must be viewable by the human and inspectable by AI. AI reviews whether
+The proof must be viewable by the human and inspectable by AI. When requested, AI reviews whether
 it supports the criteria, recording pass, fail or inconclusive with reasons; the
 human explicitly verifies the LOW outcome before completion. These are review
 steps on one proof, not demands for additional proof forms. Missing, unreadable,
-contradictory or insufficient proof leaves the bounty unresolved. Being AI
+contradictory or insufficient proof leaves the task unresolved. A LOW may instead
+use explicit human-only verification when AI review is absent or inconclusive,
+recording that no passing AI review occurred. Failed or running AI review is not
+overridden by this path. Being AI
 inspectable does not guarantee the AI judgment is correct.
+
+Creators may claim and complete their own tasks. The same proof and verification
+requirements apply, and an offer targeted to another person remains reserved for
+that person. Completing one's own funded task returns its reserved Gold without
+creating additional Gold.
+
+Manual mode responds to explicit user actions, including actions carried out by
+tools on a person's behalf. Light and Heavy permit autonomous campaigns. Tool
+attribution and action intent are recorded separately; autonomous work must never
+be labeled user-directed. Campaign mode does not block authorized task resolution.
 
 Gremlins supplies compatibility evidence as its relevant capabilities become
 available. The closure rule must not label Gremlins checks as executed before
@@ -375,15 +388,16 @@ commit receipts, shared prerequisite cycle checks and separate parent acceptance
 Posted, Claimed and Closed are lifecycle projections; cancellation and supersession
 are Closed dispositions, not successful verification.
 
-Bounties can declare SIM, ORA or LIVE validation targets and WRAP, REPLACE or RETIRE
+Tasks can declare SIM, ORA or LIVE validation targets and WRAP, REPLACE or RETIRE
 migration intent. These are metadata, not execution receipts. Known facts require
 a source; assumptions and unknowns occupy separate shelves. Mapper, Maker and
 Breaker describe responsibilities, not three agents claimed to have run. Shared
 prerequisites are linked once in a connected constellation.
 
 One immutable primary proof is bound to criteria, revisions, environment, source
-and prerequisite receipts. Current passing AI review and explicit human LOW
-verification gate completion and payment. Replacement proof preserves history;
+and prerequisite receipts. Current accepted proof and explicit human LOW
+verification gate completion and payment, with the review basis recorded.
+Human-only LOW acceptance does not claim a passing AI review. Replacement proof preserves history;
 changed context invalidates acceptance. Historical closures are not retroactively
 verified. Composite acceptance needs all approved children verified and its own reviewed
 integration proof. Funded verified completion releases existing escrow once;

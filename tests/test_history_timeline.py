@@ -32,14 +32,18 @@ const context = {window: {}};
 vm.runInNewContext(source.drilldown, context);
 vm.runInNewContext(source.timeline, context);
 const labels = {
-  dependencies_set: 'Dependencies changed', posted: 'Ticket posted',
+  dependencies_set: 'Dependencies changed', posted: 'Task posted',
   package_attached: 'Package attached', ai_followups: 'AI follow-up',
   ai_usage: 'AI usage recorded', ai_source: 'AI source recorded',
   ai_started: 'AI run started', taken: 'Work taken', ai_failed: 'AI run failed',
   ai_model_changed: 'AI model changed', ai_retried: 'AI run retried',
   ai_answers: 'AI answers recorded', ai_ask: 'AI asked a question',
-  opportunity_updated: 'Ticket updated', reopened: 'Ticket reopened',
-  'legacy:assigned': 'Legacy work assigned', 'legacy:completed': 'Legacy work completed'
+  opportunity_updated: 'Task updated', reopened: 'Task reopened',
+  'legacy:assigned': 'Legacy work assigned', 'legacy:completed': 'Legacy work completed',
+  working: 'Work resumed', blocked: 'Work blocked', cancelled: 'Task cancelled', edited: 'Task edited',
+  followup_confirmed: 'Child task confirmed', followups_confirmed: 'Child tasks confirmed',
+  profile_recorded: 'Context recorded', proof_attached: 'Proof attached',
+  proof_human_reviewed: 'Human proof decision recorded', proof_completed: 'Verified task completed'
 };
 const events = Object.keys(labels).map((kind, index) => ({
   kind, actor: 'steve', created_at: `2026-01-${String(index + 1).padStart(2, '0')}T00:00:00Z`,
@@ -68,10 +72,27 @@ assert.equal(rows.children[0].children[0].textContent, 'AI run started');
 assert.equal(rows.children[1].children[0].textContent, 'Work taken');
 assert.equal(rows.children[3].children[0].textContent, 'future_kind');
 assert.equal(rows.children[3].children[2].textContent, 'nate via ');
+assert(rows.children[3].children[2].className.includes('history-via'));
 assert.equal(rows.children[1].children[2].textContent, 'human');
+assert(!rows.children[1].children[2].className.includes('history-via'));
 assert.deepEqual(events.map(event => event.kind), originalKinds);
 const renderedLabels = rows.children.map(row => row.children[0].textContent);
 Object.values(labels).forEach(label => assert.ok(renderedLabels.includes(label)));
+assert(rows.children.every(row=>row.children[1].textContent.length>0));
+const usageRow=rows.children.find(row=>row.children[0].textContent==='AI usage recorded');
+assert(usageRow.children[1].textContent.includes('7 input / unknown output tokens'));
+const packageRow=rows.children.find(row=>row.children[0].textContent==='Package attached');
+assert(packageRow.children[1].textContent.includes('manifest.json'));
+assert(packageRow.children[1].textContent.includes('SHA-256'));
+const evidenceRoot=context.window.renderHistory([
+ {kind:'proof_attached',created_at:'2026-06-01',seq:1,data:{filename:'proof.png',sha256:'abc123'}},
+ {kind:'package_attached',created_at:'2026-06-01',seq:2,data:{files:{'RESPONSE.md':'untrusted contents'},sha256:'def456'}},
+],{element});
+const evidenceRows=descendants(evidenceRoot).find(node=>node.className==='history-events').children;
+assert.equal(evidenceRows[0].children[0].textContent,'Package attached');
+assert(evidenceRows[0].children[1].textContent.includes('RESPONSE.md'));
+assert(!evidenceRows[0].children[1].textContent.includes('untrusted contents'));
+assert(evidenceRows[1].children[1].textContent.includes('proof.png · SHA-256 abc123'));
 const january = detailCalls.find(([event]) => event.created_at === '2026-01-01T00:00:00Z')[1];
 const march = detailCalls.find(([event]) => event.created_at === '2026-03-01T00:00:00Z')[1];
 assert.equal(january.baselineAvailable, false);

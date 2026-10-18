@@ -13,7 +13,7 @@ proof artifact before LOW completion. It distinguishes the target from current
 prototype enforcement.
 
 The [empowerment constitution](PLAN/EMPOWERMENT_CONSTITUTION.md) establishes the
-human purpose: voluntary Opportunities, unconditional daily Credits with a
+human purpose: voluntary Tasks, unconditional daily Credits with a
 protected reserve, reusable Knowledge and nonspendable Growth. No punitive resource
 loss or work requirement for basic allocation. This is adopted design policy;
 the current Gold/monthly-grant behavior and legacy technical identifiers remain
@@ -40,9 +40,9 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 
 Open <http://127.0.0.1:8000> for the web app or <http://127.0.0.1:8000/docs> for the API. Health returns `{"status":"ok","mode":"demo"}`.
 
-The app provides Opportunities, My Work, Post Opportunity, Gremlins, and Wallet/Stats. Choose Steve, Nate, or Will as a demo user. Volunteer for an opportunity, pin context, submit one sufficient proof and request AI review. Explicit human LOW verification is required before completion releases reserved demo Gold. A PR link cannot bypass this gate. Requester PR review remains separate.
+The app provides Tasks, My Tasks, Post Task, Gremlins, and Wallet/Stats. Choose Steve, Nate, or Will as a demo user. Creators may volunteer for and complete their own open tasks, including unfunded child work. An offer targeted to another person remains reserved for that person. Pin context, submit one sufficient proof and request AI review. Explicit human LOW verification is required before completion releases reserved demo Gold. Self-completion returns the reserved Gold to its owner; it does not create additional Gold. A PR link cannot bypass this gate. Requester PR review remains separate.
 
-Defaults: 1,000 Gold per month, Eastern calendar, rollover, and current-month-only grants on wallet access/action. Cancellation refunds only an unclaimed bounty. `HANDOFFS_MONTHLY_GOLD` overrides the grant; `HANDOFFS_DB` overrides the database path (default `.data/handoffs.sqlite` relative to the working directory). Identity and PR checks are explicitly simulated. The server binds to loopback by default; a team host is a later deployment choice.
+Defaults: 1,000 Gold per month, Eastern calendar, rollover, and current-month-only grants on wallet access/action. Cancellation refunds only an unclaimed task. `HANDOFFS_MONTHLY_GOLD` overrides the grant; `HANDOFFS_DB` overrides the database path (default `.data/handoffs.sqlite` relative to the working directory). Identity and PR checks are explicitly simulated. The server binds to loopback by default; a team host is a later deployment choice.
 
 For a temporary private-network team demo, use the [scoped launcher and participant setup](PLAN/TEAM_DEMO.md). It requires an explicit host address and either named clients or the owner's opt-in to all reachable network clients, plus a remote connection check; it does not make localhost accessible automatically.
 
@@ -63,9 +63,20 @@ $env:HANDOFFS_DEMO_USER = 'steve'
 
 Supply and retain `-OperationId <guid>` for writes; reuse it with identical inputs after an uncertain response. No implicit retries or local packet fallback occur.
 
-## AI opportunity preparation
+## Mission control
 
-Every bounty detail has an **Artifacts** section before acceptance, with individual
+Choose **Dashboard** in the main navigation or **Open dashboard for this task** on
+a task's detail page. The connected `/dashboard` page carries the selected demo
+user/task and reads `/api/dashboard/live` at the shared polling cadence. Select a
+registered session for its confined plan, board and summary metadata. Live shows
+reported agent/mode/source evidence; Flow shows task hierarchy and activity; Ops
+shows read-only sponsor, wallet, usage, lease and Git observations. Unknown Codex
+allowance and confirmed liveness stay unknown. No dashboard read grants Gold,
+starts an agent or calls a paid provider. See [integration details](docs/dashboard_integration.md).
+
+## AI task preparation
+
+Every task detail has an **Artifacts** section before acceptance, with individual
 downloads and **Download all artifacts (ZIP)**. These read-only downloads include
 stored requirements, history, imported packet files, posted source attachments,
 and existing AI inputs/results when present. They never claim work or call a model.
@@ -77,19 +88,19 @@ Every export includes a checksummed `handoff.json`, visible missing-input warnin
 and a response template. Supplied source is not a claim of complete or live-tested
 readiness. ZIP bytes are stable while the stored inputs are unchanged.
 Attach a focused source ZIP while posting to make those files available for review
-before anyone accepts; the AI can reuse that source when the bounty is later started.
+before anyone accepts; the AI can reuse that source when the task is later started.
 
 Participants can attach **Source / supporting evidence** or a **Response from a
-fresh session** on the bounty page, including on completed historical bounties.
+fresh session** on the task page, including on completed historical tasks.
 The ZIP must contain UTF-8 files and root `manifest.json` with `schema_version: 1`,
 the matching `task_id`, and `files` listing every other file's relative `path` and
 lowercase `sha256`. Limits: 200 files / 2 MB unpacked; no secrets or nested ZIPs.
-Attach the original bounty ZIP with a response to verify its `input_sha256` and
-bounty ID; without it, linkage is explicitly unverified. Uploads preserve status,
+Attach the original task ZIP with a response to verify its `input_sha256` and
+task ID; without it, linkage is explicitly unverified. Uploads preserve status,
 are auditable/idempotent, and never run code, pay Gold, start AI, or create tasks.
 Support files under `source/` can be reused by a later AI run; response contents
 are evidence, not automatically applied source. Downloads include both packages.
-Use `/#opp=<id>` to link directly to an opportunity page. Existing `/#bounty=<id>` links still work.
+Use `/#task=<id>` to link directly to a task page. Existing `/#opp=<id>` and `/#bounty=<id>` links still work.
 
 To package selected committed source without copying a dirty working tree or
 fetching a repository:
@@ -107,12 +118,12 @@ Set `OPENAI_API_KEY` in the server environment and restart the server. The defau
 workbench model is `gpt-5.6-terra`; `HANDOFFS_AI_MODEL` can select another explicitly chosen
 model. The key is used only in the server's Authorization header.
 
-New bounties default to HIGH; select HIGH/MEDIUM/LOW explicitly when posting.
+New tasks default to HIGH; select HIGH/MEDIUM/LOW explicitly when posting.
 Participants can reopen a completed record without an existing AI run as HIGH
 for decomposition. This appends an audited event and preserves previous completion,
 assignment, attachments and Gold; it never erases or repays the earlier work.
 
-Open an opportunity and choose **Propose child opportunities with AI** for HIGH/MEDIUM,
+Open a task and choose **Propose child tasks with AI** for HIGH/MEDIUM,
 or **Start with AI** for LOW. Attach a focused ZIP of UTF-8 source
 files (up to 200 files / 2 MB unpacked), excluding secrets, Git data, and dependency
 trees. The AI can list/read the supplied files and ask necessary questions without
@@ -153,7 +164,7 @@ no global Git hook is installed. Each implementation leaf/immutable plan fingerp
 can produce one managed commit; existing receipts are checked across local refs,
 and managed commits are serialized. Verification leaves cannot commit. Rewriting
 history or changing the approved plan to evade receipts is not permitted; this
-guard is not enforcement over arbitrary Git clients. Decomposition alone never publishes new bounties.
+guard is not enforcement over arbitrary Git clients. Decomposition alone never publishes new tasks.
 
 Three is useful only when it fits, never a quota. Every proposal set must
 explain its split in the compatible `why_three` field (regardless of count), give each child a `work_type` (`implementation` or `verification`)
@@ -171,10 +182,10 @@ outcomes remain ready for explicit human verification; no reward is issued by AI
 Existing history and drafts are not rewritten. Older proposal sets lacking the
 current rationale/type/coverage contract remain inspectable but fail approval.
 
-HIGH/MEDIUM bounties cannot deliver implementations. The AI processes the original
+HIGH/MEDIUM tasks cannot deliver implementations. The AI processes the original
 requirements, attached fresh-session responses, provenance, and current support
-evidence into typed child-bounty proposals, not merely plan nodes. The same strict
-split rules apply to those proposals. A LOW bounty cannot create child bounties.
+evidence into typed child-task proposals, not merely plan nodes. The same strict
+split rules apply to those proposals. A LOW task cannot create child tasks.
 Proposals leave the parent `awaiting_approval`, with no child tickets created.
 Approve the entire valid set; partial approval is rejected. Child
 tasks retain the parent link and inherit source/context when started without a new
@@ -190,7 +201,7 @@ selector is still simulated; the model key stays on the server.
 
 ## Context and proof
 
-The bounty page projects **Posted → Claimed → Closed**, retaining detailed status
+The task page projects **Posted → Claimed → Closed**, retaining detailed status
 and disposition. Cancellation is not successful verification. Context declares
 SIM/ORA/LIVE targets and WRAP/REPLACE/RETIRE migration intent, baseline/candidate
 revisions, environment and Known (with source), Assumed and Unknown shelves.
@@ -198,7 +209,7 @@ Declarations do not prove execution. Mapper/Maker/Breaker are responsibilities,
 not an automatically launched agent fleet. Link shared prerequisites rather than
 copying tasks; the constellation rejects ancestry/dependency cycles.
 
-One immutable primary proof is directly viewable/downloadable on a closed bounty
+One immutable primary proof is directly viewable/downloadable on a closed task
 and in its artifact ZIP. Text/JSON is limited to 200 KB; PNG/JPEG/MP4 to 8 MB.
 Replacements preserve history. Changed intent, source, profile or prerequisite
 receipts make proof stale. Pin revisions and environment before attaching proof.
@@ -213,6 +224,16 @@ The separate LOW human decision is not another artifact. HIGH/MEDIUM acceptance
 needs all approved children verified, shared prerequisites and separate integration proof.
 Historical closures without proof remain historical.
 
+Manual mode permits explicit user-directed task actions, including tool-mediated
+actions. Tools retain `X-Automation` attribution and send
+`X-Action-Intent: user-directed` only for a concrete human request. Untagged tool
+intent defaults to autonomous; Light and Heavy permit autonomous campaign writes.
+These headers are demo intent metadata, not production authentication.
+An authorized person may explicitly choose `review_basis: human-only` for current
+LOW proof when AI review is absent or inconclusive. This records human verification
+without an AI pass; failed or running review cannot be overridden. Provider access
+and campaign activity are not prerequisites for this task-resolution path.
+
 Routes under `/api/v1/bounties/{id}`: `POST profile`, `POST dependencies`,
 `GET constellation`, `POST proofs`, `GET proofs/{proof_id}`, `POST proof-review`,
 `POST proof-human`, `POST complete`. Writes require operation IDs. `ai/complete`,
@@ -224,7 +245,7 @@ The **Gremlins** tab compares supplied Legacy/REST/MCP results, state and effect
 against explicit expectations. Mimic detects mismatches; Saboteur injects a private
 in-memory defect to check detection; Witness packages the comparison and a named
 quirk's reproducer, preservation rule and source in one hashed report. Discrepancies
-can draft a question, never create a bounty automatically.
+can draft a question, never create a task automatically.
 `POST /api/v1/gremlins/{mimic|saboteur|witness}` performs the same computation.
 
 Results are SIM-only with `watson_executed: false`. This checks supplied claims,
@@ -240,6 +261,18 @@ in a desktop host is a separate explicit step.
 
 The MCP bridge exposes `list_bounties`, `get_bounty`, `post_bounty`, `get_my_stats`, `take_bounty`, `deliver_pr`, and `get_bounty_context`. It calls the existing service; it does not open a database or call OpenAI models. Demo identity is fixed per connection. `get_my_stats` is annotated as a write because it can issue the due monthly grant; posting, taking and delivering are also marked as writes. Retain a unique `operation_id` for each intended write and reuse it for an identical retry.
 
+An explicit chat claim continues into processing in the active coding session.
+`take_bounty` downloads and verifies the artifact package, returns context
+previews and a local `input.zip`, and tells the caller to continue immediately.
+The cache defaults to the OS temporary directory under `handoffs-work` (override
+with `HANDOFFS_WORK_ROOT`); files are not extracted or executed. A stable
+execution ID per service/user/task/claim allows retries to resume without new
+claims or background workers. A failed download/validation returns an explicit
+blocked processing result while preserving the claim. Manual reports its Sol
+mapping; this does not change the host's model or make a provider call. The
+coding client must follow the continuation instruction. The browser's separate
+AI-preparation Accept flow retains its existing provider requirements.
+
 Keep the HTTP service running, then register the local server with the desktop/Codex host:
 
 ```powershell
@@ -249,13 +282,13 @@ codex mcp get handoffs --json
 
 For a different checkout, substitute its virtual environment path. Alternatively, in the desktop app open **Settings → MCP servers → Add server**, choose **STDIO**, and use that Python command with arguments `-m app.mcp_server` and the two environment variables. Reconnect/restart the MCP server after configuration changes. The current conversation may need a fresh session to discover newly registered tools.
 
-Try: “Show my HANDOFFS stats”, “List open HANDOFFS bounties”, or “Post a 150-Gold bounty to …”. Taking work or delivering requires an explicit user request. Delivery requires the service proof gate as well as simulated PR verification and does not create or merge a real PR. The OpenAI API key is not used by the MCP bridge.
+Try: “Show my HANDOFFS stats”, “List open HANDOFFS tasks”, or “Post a 150-Gold task to …”. Taking work or delivering requires an explicit user request. Delivery requires the service proof gate as well as simulated PR verification and does not create or merge a real PR. The OpenAI API key is not used by the MCP bridge.
 
 This configures the local desktop host. Hosted ChatGPT plugin/tunnel deployment is a separate step; localhost alone is not proof of cloud connectivity. See [official MCP setup](https://learn.chatgpt.com/docs/extend/mcp).
 
 ## JIRA to review PR
 
-The migrated [JIRA-to-PR skill](skills/jira-to-pr/SKILL.md) prepares a source-pinned disposable checkout using the packaged [iterative implementation contract](skills/iterative-implementation/SKILL.md). Its PR creation command, `python -m app.jira_pr`, removes the issue key from the title and rejects remaining JIRA-shaped keys before calling GitHub. Issue linkage stays in branch/body. This is a local execution workflow, not a new web-app button or permission to create a PR from a bounty preview. Legacy Git-packet and local XP/reward paths are retired, not copied into the service.
+The migrated [JIRA-to-PR skill](skills/jira-to-pr/SKILL.md) prepares a source-pinned disposable checkout using the packaged [iterative implementation contract](skills/iterative-implementation/SKILL.md). Its PR creation command, `python -m app.jira_pr`, removes the issue key from the title and rejects remaining JIRA-shaped keys before calling GitHub. Issue linkage stays in branch/body. This is a local execution workflow, not a new web-app button or permission to create a PR from a task preview. Legacy Git-packet and local XP/reward paths are retired, not copied into the service.
 
 Import legacy Git packets and an optional consistent SQLite snapshot without editing either source:
 

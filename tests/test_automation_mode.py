@@ -66,13 +66,13 @@ def test_light_and_heavy_modes_are_four_agents_and_reject_more(tmp_path):
         Tree(thirteen(tmp_path), tmp_path, 30, mode='light')
 
 
-def test_manual_mode_is_one_terra_agent_that_answers_once(tmp_path):
+def test_manual_mode_is_one_sol_agent_that_answers_once(tmp_path):
     plan = {'goal': 'g', 'authority': 'a', 'coordinator': {'shelf': shelf(tmp_path)}}
     seen = []
     session = tmp_path / 'session'
     session.mkdir()
     summary = Tree(plan, session, 30, transport=recorder(seen, done=False), mode='manual').run()
-    assert seen == [('coordinator', 'gpt-5.6-terra', 'low', 12000)] and summary['requests'] == 1
+    assert seen == [('coordinator', 'gpt-6.1-sol', 'low', 12000)] and summary['requests'] == 1
     with pytest.raises(ValueError):
         Tree({**plan, 'children': [{'name': 'w', 'role': 'x', 'shelf': shelf(tmp_path)}]}, tmp_path, 30, mode='manual')
     assert MODES['manual']['agents'] == 1 and MODES['light']['agents'] == 4 and MODES['max']['agents'] == 13
@@ -91,6 +91,32 @@ def test_manual_mode_refuses_automated_writes_but_not_humans(tmp_path, monkeypat
         allowed = client.post('/api/v1/bounties', json={'title': 't', 'goal': 'g', 'criteria': ['c'], 'gold': 5},
                               headers={'X-Demo-User': 'steve', 'Idempotency-Key': 'auto-2', AUTOMATION_HEADER: 'astra'})
         assert allowed.status_code == 200
+
+
+def test_manual_mode_accepts_attributed_user_direction_without_enabling_autonomy(client):
+    headers = {'X-Demo-User': 'steve', 'Idempotency-Key': 'directed',
+               AUTOMATION_HEADER: 'codex', 'X-Action-Intent': 'user-directed'}
+    payload = {'title': 'Requested task', 'goal': 'Finish', 'criteria': ['Works'], 'gold': 5}
+    response = client.post('/api/v1/bounties', json=payload, headers=headers)
+    assert response.status_code == 200
+    event = response.json()['events'][-1]
+    assert event['actor'] == 'steve'
+    assert event['data']['via'] == 'codex'
+    assert event['data']['action_intent'] == 'user-directed'
+    assert client.get('/api/v1/automation-mode').json()['mode'] == 'manual'
+    for intent in ('autonomous', None):
+        changed = {**headers, 'Idempotency-Key': 'blocked-' + str(intent)}
+        if intent is None:
+            changed.pop('X-Action-Intent')
+        else:
+            changed['X-Action-Intent'] = intent
+        assert client.post('/api/v1/bounties', json=payload, headers=changed).status_code == 403
+    invalid = {**headers, 'X-Action-Intent': 'guess', 'Idempotency-Key': 'invalid'}
+    assert client.post('/api/v1/bounties', json=payload, headers=invalid).status_code == 422
+    task_id = response.json()['id']
+    # User direction does not grant another participant's permissions.
+    wrong = {**headers, 'X-Demo-User': 'will', 'Idempotency-Key': 'wrong-user'}
+    assert client.post(f'/api/v1/bounties/{task_id}/cancel', json={}, headers=wrong).status_code == 403
 
 
 def test_bob_naming_for_light_and_heavy_trees(tmp_path):

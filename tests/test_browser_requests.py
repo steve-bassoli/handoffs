@@ -23,7 +23,7 @@ assert.notEqual(requestCacheKey('steve:/packages'), requestCacheKey('nate:/packa
     subprocess.run([node, '-e', "const localStorage = {getItem: () => null};\n" + source + checks], check=True, capture_output=True, text=True)
 
 
-def test_opportunity_links_accept_legacy_hashes_and_write_opp_hashes():
+def test_task_links_accept_legacy_hashes_and_write_task_hashes():
     node = shutil.which('node')
     if not node:
         pytest.skip('Node is needed for the pure JavaScript opportunity-link check')
@@ -36,6 +36,8 @@ const show = source.slice(source.indexOf('async function show(id) {'), source.in
 const startup = source.slice(source.lastIndexOf('run(async () => {'));
 (async () => {
   for (const [hash, id] of [
+    ['#task=current', 'current'],
+    ['#task=current&opp=previous&bounty=old', 'current'],
     ['#opp=nates-offer', 'nates-offer'],
     ['#bounty=nates-offer', 'nates-offer'],
     ['#opp=new&bounty=old', 'new'],
@@ -57,7 +59,7 @@ const startup = source.slice(source.lastIndexOf('run(async () => {'));
     vm.runInNewContext(show + '\n' + startup, context);
     await context.finished;
     assert.deepEqual(requests, id ? ['/users', '/bounties/' + encodeURIComponent(id)] : ['/users']);
-    assert.equal(context.location.hash, id ? '#opp=' + encodeURIComponent(id) : '');
+    assert.equal(context.location.hash, id ? '#task=' + encodeURIComponent(id) : '');
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });
 '''

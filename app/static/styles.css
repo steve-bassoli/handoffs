@@ -40,6 +40,9 @@ button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 nav button { background: transparent; color: var(--muted); border: 0; border-radius: 0; border-bottom: 3px solid transparent; padding: 12px 20px; margin-bottom: -1px; }
 nav button.selected { color: var(--accent); border-bottom-color: var(--accent); background: transparent; }
+nav a { display: inline-block; color: var(--muted); padding: 12px 20px; text-decoration: none; }
+nav a:hover { color: var(--accent); }
+nav a.selected { color: var(--accent); border-bottom: 3px solid var(--accent); margin-bottom: -1px; }
 .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .primary:hover { background: var(--accent-hover); color: #fff; border-color: var(--accent-hover); }
 .section-title { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
@@ -86,6 +89,14 @@ button.loading:disabled { opacity: 1; cursor: progress; }
 .tx small { display: block; color: var(--muted); margin-top: 4px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
 .content { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
+.history-timeline { margin: 28px 0; }
+.history-event { display: grid; gap: 6px; padding: 18px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.history-event > strong { font-weight: 500; }
+.history-detail, .history-actor, .history-time { color: var(--muted); }
+.history-actor, .history-time { font-size: 12px; }
+.history-via { justify-self: start; padding: 4px 8px; border-radius: 3px; color: var(--accent); background: var(--accent-tint); }
+.history-event details { padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 3px; }
+.history-event summary { cursor: pointer; }
 .detail-head { margin-top: 24px; }
 code { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .evidence { padding: 24px; background: #fff; border: 1px solid var(--line); border-radius: 3px; margin: 12px 0; }

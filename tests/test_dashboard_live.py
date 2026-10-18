@@ -116,23 +116,27 @@ def test_malformed_status_and_unknowns(modules, canonical):
 NODE = r'''
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const good=JSON.parse(fs.readFileSync(process.argv[2],'utf8')),code=fs.readFileSync(process.argv[1],'utf8');
-function harness(endpoint){
- const calls=[],pending=[],timers=new Map();let seq=0;
+function harness(endpoint,boot=false){
+ const calls=[],pending=[],timers=new Map(),listeners=new Map();let seq=0;
  function element(){let text='',children=[];return {dataset:{},addEventListener(){},removeEventListener(){},setAttribute(){},
   querySelector(){return null},querySelectorAll(){return []},appendChild(c){children.push(c);return c},
   get textContent(){return text+children.map(c=>c.textContent).join('')},set textContent(v){text=String(v);children=[]},
   set innerHTML(v){throw Error('unsafe innerHTML write')},get innerHTML(){throw Error('unexpected innerHTML read')}}}
- const slots={live:element(),flow:element(),ops:element()},status=element(),root=element();
- root.querySelector=s=>s.includes('data-dashboard-status')?status:Object.keys(slots).map(k=>s.includes('"'+k+'"')?slots[k]:null).find(Boolean)||null;
+ const slots={live:element(),flow:element(),ops:element()},status=element(),root=element(),pause=element(),resume=element();
+ root.querySelector=s=>s.includes('data-dashboard-status')?status:s.includes('data-dashboard-pause')?pause:
+  s.includes('data-dashboard-resume')?resume:Object.keys(slots).map(k=>s.includes('"'+k+'"')?slots[k]:null).find(Boolean)||null;
  const document={hidden:false,location:{href:'https://example.test/',origin:'https://example.test'},
-  addEventListener(){},removeEventListener(){},createElement:element};
- const context={window:{},document,URL,console};vm.createContext(context);vm.runInContext(code,context);
+  addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:(name,fn)=>{if(listeners.get(name)===fn)listeners.delete(name)},
+  createElement:element,getElementById:()=>boot?root:null,activeElement:pause};
+ const context={window:{},document,URL,console};vm.createContext(context);
  const options={document,headers:{'X-Test-Identity':'authorized'},now:()=>123,
   fetch:(url,opts)=>{calls.push({url,opts});return new Promise(resolve=>pending.push(resolve))},
   setTimeout:(fn,delay)=>{const id=++seq;timers.set(id,{fn,delay});return id},clearTimeout:id=>timers.delete(id)};
  if(endpoint!==undefined)options.endpoint=endpoint;
- const api=context.window.createDashboard(root,options);
- return {api,calls,timers,slots,status,document,reply(value=good,status=200){assert(pending.length);pending.shift()({ok:status===200,status,json:async()=>value})},
+ if(boot)context.window.dashboardConfig=options;
+ vm.runInContext(code,context);
+ const api=boot?context.window.dashboard:context.window.createDashboard(root,options);
+ return {api,calls,timers,slots,status,document,listeners,pause,reply(value=good,status=200){assert(pending.length);pending.shift()({ok:status===200,status,json:async()=>value})},
   tick(){assert.equal(timers.size,1);const [id,t]=timers.entries().next().value;timers.delete(id);t.fn();return t.delay}};
 }
 (async()=>{
@@ -150,6 +154,26 @@ function harness(endpoint){
  assert([...h.timers.values()].every(t=>t.delay>=2500&&t.delay<=60000));
  h.document.hidden=true;h.tick();h.reply();await settle();assert([...h.timers.values()].every(t=>t.delay>=10000));
  h.api.pause();assert.equal(h.timers.size,0);assert.equal(seen.at(-1).state.paused,true);h.api.destroy();
+ // The actual deferred page script initializes the same controller and never guesses configuration.
+ for(const endpoint of [undefined,'/api/dashboard/live']){const b=harness(endpoint,true);
+  assert(b.api);assert.equal(b.calls.length,endpoint?1:0);b.api.destroy()}
+ const v=harness('/api/dashboard/live');v.reply();await settle();
+ assert.equal(v.document.activeElement,v.pause);
+ v.document.hidden=true;v.listeners.get('visibilitychange')();
+ assert.equal([...v.timers.values()][0].delay,10000);assert.equal(v.calls.length,1);
+ v.document.hidden=false;v.listeners.get('visibilitychange')();
+ assert.equal([...v.timers.values()][0].delay,2500);
+ v.tick();v.document.hidden=true;v.listeners.get('visibilitychange')();
+ assert.equal(v.timers.size,0);assert.equal(v.calls.length,2);
+ v.api.pause();v.reply();await settle();assert.equal(v.timers.size,0);
+ assert(v.status.textContent.includes('Paused'));assert.equal(v.document.activeElement,v.pause);
+ v.api.resume();v.api.destroy();const retained=v.status.textContent;v.reply();await settle();
+ assert.equal(v.status.textContent,retained);assert.equal(v.timers.size,0);assert.equal(v.listeners.size,0);
+ const f=harness('/api/dashboard/live');
+ for(const delay of [5000,10000,20000,40000,60000,60000]){
+  f.reply(null,500);await settle();assert.equal(f.tick(),delay);
+ }
+ f.reply();await settle();assert.equal(f.tick(),2500);f.api.destroy();
  for(const status of [401,403]){const a=harness('/api/dashboard/live');const states=[];a.api.register('live',(_,d,s)=>states.push(s));
   a.reply(null,status);await settle();assert.equal(states.at(-1).authentication,true);assert.equal(a.timers.size,0);
   a.api.resume();await settle();assert.equal(a.calls.length,1);a.api.destroy()}

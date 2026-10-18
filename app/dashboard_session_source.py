@@ -26,6 +26,11 @@ def metadata(kind, raw):
         raise ValueError('metadata object required')
     if kind == 'plan':
         rows = raw.get('agents')
+        if rows is None and isinstance(raw.get('tree'), dict):
+            if any(not isinstance(node, dict) for node in raw['tree'].values()):
+                raise ValueError('invalid tree node')
+            rows = [{'name': name, 'level': node.get('level'), 'parent': node.get('parent')}
+                    for name, node in raw['tree'].items()]
         if not isinstance(rows, list) or len(rows) > 1000:
             raise ValueError('agents required')
         result = []

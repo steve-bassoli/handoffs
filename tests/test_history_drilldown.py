@@ -52,8 +52,8 @@ assert.equal(rows().length, 6, 'all events initially render as articles');
 assert.match(text(root), /Change baseline unavailable/);
 assert.match(text(root), /Added prerequisites/);
 assert.match(text(root), /Removed prerequisites/);
-assert.ok(hrefs().includes('#opp=new'), 'rendered added prerequisite links to new opportunity');
-assert.ok(hrefs().includes('#opp=old'), 'rendered removed prerequisite links to old opportunity');
+assert.ok(hrefs().includes('#task=new'), 'rendered added prerequisite links to new opportunity');
+assert.ok(hrefs().includes('#task=old'), 'rendered removed prerequisite links to old opportunity');
 assert.match(text(root), /Ready for human verification/);
 const buttons = Object.fromEntries(nav.children.map(button => [button.textContent, button]));
 for (const name of ['All', 'Human', 'Automation', 'Evidence', 'AI']) assert.equal(typeof buttons[name].click, 'function');
@@ -65,6 +65,11 @@ buttons.All.click(); assert.equal(rows().length, 6, 'All restores all rows');
 assert.deepEqual(events[0].data.depends_on, ['old'], 'rendering does not mutate input');
 assert.ok(context.window.historyDetail({kind: 'dependencies_set'}, {element}));
 assert.equal(context.window.historyDetail({kind: 'posted', data: {}}, {element}), null);
+const fileMap=context.window.historyDetail({kind:'package_attached',data:{files:{'RESPONSE.md':'do not render file contents'},sha256:'def456',note:'Recorded note'}},{element});
+assert.match(text(fileMap),/RESPONSE.md/);
+assert.match(text(fileMap),/def456/);
+assert.match(text(fileMap),/Recorded note/);
+assert(!text(fileMap).includes('do not render file contents'));
 '''
     subprocess.run([node, '-e', checks], input=json.dumps(sources), check=True,
                    capture_output=True, text=True)

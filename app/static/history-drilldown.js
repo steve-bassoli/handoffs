@@ -7,8 +7,8 @@
     const list = helpers.element('ul', undefined, 'history-dependencies');
     values(ids).forEach(id => {
       const item = helpers.element('li');
-      const link = helpers.element('a', `#opp=${id}`);
-      link.href = `#opp=${encodeURIComponent(id)}`;
+      const link = helpers.element('a', `#task=${id}`);
+      link.href = `#task=${encodeURIComponent(id)}`;
       item.append(link);
       list.append(item);
     });
@@ -30,8 +30,11 @@
       detail.append(helpers.element('p', 'Ready for human verification.'));
       detail.append(helpers.element('p', `SHA-256: ${data.sha256 || 'Not provided'}`));
       const files = helpers.element('ul', undefined, 'history-package-files');
-      values(data.files).forEach(file => files.append(helpers.element('li', file)));
+      const paths = Array.isArray(data.files) ? data.files.map(file => typeof file === 'string' ? file : file.path)
+        : data.files && typeof data.files === 'object' ? Object.keys(data.files) : [];
+      paths.filter(path => typeof path === 'string').forEach(file => files.append(helpers.element('li', file)));
       detail.append(files);
+      if (data.note) detail.append(helpers.element('p', data.note));
       return detail;
     }
     if (event.kind !== 'dependencies_set') return null;

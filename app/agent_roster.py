@@ -41,7 +41,7 @@ def _pressure(run):
 
 
 def _work(run):
-    """What a tree agent is working on: its plan role, latest parent directive and linked opportunity."""
+    """What a tree agent is working on: its plan role, latest parent directive and linked task."""
     run = Path(run)
     session = run.parent
     tree = (_json(session / 'plan.json', 4194304) or {}).get('tree')

@@ -26,7 +26,8 @@ def live_api(tmp_path):
         port = socket_.getsockname()[1]
     url = f'http://127.0.0.1:{port}'
     environment = {**os.environ, 'HANDOFFS_DB': str(tmp_path / 'isolated.sqlite'),
-                   'PYTHONPATH': str(Path(__file__).parent.resolve()) + os.pathsep + os.environ.get('PYTHONPATH', '')}
+                   'PYTHONPATH': os.pathsep.join((str(Path(__file__).resolve().parents[1]),
+                       str(Path(__file__).parent.resolve()), os.environ.get('PYTHONPATH', '')))}
     process = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'test_mcp:fixture_app', '--factory', '--host', '127.0.0.1', '--port', str(port)],
                                cwd=tmp_path, env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -50,7 +51,8 @@ def live_api(tmp_path):
 @asynccontextmanager
 async def session(url, user, cwd):
     parameters = StdioServerParameters(command=sys.executable, args=['-m', 'app.mcp_server'], cwd=str(cwd),
-                                       env={**os.environ, 'HANDOFFS_URL': url, 'HANDOFFS_DEMO_USER': user})
+                                       env={**os.environ, 'HANDOFFS_URL': url, 'HANDOFFS_DEMO_USER': user,
+                                            'PYTHONPATH': str(Path(__file__).resolve().parents[1]) + os.pathsep + os.environ.get('PYTHONPATH', '')})
     async with stdio_client(parameters) as (read, write):
         async with ClientSession(read, write) as client:
             await client.initialize()
@@ -81,8 +83,6 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             assert (await call(requester, 'post_bounty', arguments))['id'] == bounty['id']
             assert len((await call(worker, 'list_bounties'))['items']) == 1
             assert (await call(worker, 'get_bounty', {'bounty_id': bounty['id']}))['criteria'] == arguments['criteria']
-            wrong_actor = await requester.call_tool('take_bounty', {'bounty_id': bounty['id'], 'operation_id': 'self-claim'})
-            assert wrong_actor.isError and '403' in wrong_actor.content[0].text
             assert (await call(worker, 'take_bounty', {'bounty_id': bounty['id'], 'operation_id': 'take-once'}))['claimant'] == 'nate'
             with httpx.Client(base_url=live_api) as fixture_client:
                 verified_proof(fixture_client, bounty['id'], 'nate')
@@ -96,11 +96,62 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
             await call(worker, 'post_bounty', arguments)
             stats = await call(worker, 'get_my_stats')
             assert (stats['available_gold'], stats['reserved_gold']) == (50, 1100)
+            own = await call(requester, 'post_bounty', {**arguments, 'gold': 10, 'operation_id': 'own-work'})
+            claimed = await call(requester, 'take_bounty', {'bounty_id': own['id'], 'operation_id': 'self-claim'})
+            assert claimed['claimant'] == 'steve' and claimed['status'] == 'working'
+            processing = claimed['processing']
+            assert processing['state'] == 'context-ready'
+            assert Path(processing['package_path']).is_file()
+            assert processing['mode'] == 'manual' and processing['model'] == 'gpt-6.1-sol'
+            assert 'no provider request' in processing['executor']
+            assert 'context.md' in processing['documents']
+            for operation in ['self-claim', 'another-accept-same-task']:
+                replay = await call(requester, 'take_bounty', {'bounty_id': own['id'], 'operation_id': operation})
+                assert replay['processing']['execution_id'] == processing['execution_id']
+                assert replay['processing']['reused'] is True
+                assert sum(event['kind'] == 'taken' for event in replay['events']) == 1
+                assert replay['ai_run'] is None
             invalid = await worker.call_tool('list_bounties', {'limit': 0})
             assert invalid.isError
             missing = await worker.call_tool('get_bounty', {'bounty_id': 'missing'})
             assert missing.isError and '404' in missing.content[0].text
     asyncio.run(scenario())
+
+
+def test_claim_reports_package_failure_and_resumes_same_claim(client, monkeypatch, tmp_path):
+    from app import mcp_server
+    from conftest import post_bounty
+    monkeypatch.setenv('HANDOFFS_WORK_ROOT', str(tmp_path / 'work'))
+    monkeypatch.setattr(mcp_server, 'DEMO_USER', 'steve')
+    bounty = post_bounty(client).json()['id']
+    def request(method, path, **kwargs):
+        response = client.request(method, '/api/v1' + path, json=kwargs.get('body'),
+            headers={'X-Demo-User': 'steve', 'Idempotency-Key': kwargs.get('operation_id', '')})
+        if not response.is_success:
+            raise RuntimeError(f'HANDOFFS {response.status_code}: {response.json()["detail"]}')
+        return response.json()
+    monkeypatch.setattr(mcp_server, 'request', request)
+    class FailedDownload:
+        def __enter__(self):
+            raise httpx.ConnectError('offline')
+        def __exit__(self, *args):
+            pass
+    monkeypatch.setattr(mcp_server.httpx, 'stream', lambda *a, **k: FailedDownload())
+    result = mcp_server.take_bounty(bounty, 'claim-without-package')
+    assert result['claimant'] == 'steve' and result['processing']['state'] == 'blocked'
+    assert 'download failed' in result['processing']['error']
+    assert 'same operation_id' in result['processing']['next_action']
+    assert not list(tmp_path.rglob('input.zip'))
+    from contextlib import contextmanager
+    raw = client.get(f'/api/v1/bounties/{bounty}/artifacts/download', headers={'X-Demo-User': 'steve'}).content
+    @contextmanager
+    def recovered(*args, **kwargs):
+        yield httpx.Response(200, request=httpx.Request('GET', 'http://fixture'), content=raw)
+    monkeypatch.setattr(mcp_server.httpx, 'stream', recovered)
+    resumed = mcp_server.take_bounty(bounty, 'claim-without-package')
+    assert resumed['processing']['state'] == 'context-ready'
+    assert sum(event['kind'] == 'taken' for event in resumed['events']) == 1
+    assert resumed['ai_run'] is None
 
 
 def test_stdio_unavailable_service_returns_tool_error(tmp_path):

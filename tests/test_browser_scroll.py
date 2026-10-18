@@ -32,6 +32,13 @@ function disclosure(open) {
   node.append(new Element('summary', 'Context & constellation')); return node;
 }
 (async () => {
+ for (const task of [
+   {status: 'working', user: 'nate', claimant: 'nate'},
+   {status: 'open', user: 'steve', funded: true},
+   {status: 'open', user: 'steve', funded: false, parent_id: 'parent'},
+   {status: 'open', user: 'steve', funded: true, target: 'nate'},
+   {status: 'open', user: 'steve', funded: false}
+ ]) {
   for (const same of [true, false]) {
     for (const panelVisible of [true, false]) {
       const current = new Element('section');
@@ -42,11 +49,11 @@ function disclosure(open) {
       current.replaceChildren = (...nodes) => { swaps++; oldContent = false; current.childNodes = nodes; };
       const scrolls = [];
       const context = {
-        aiPoll: null, proofPoll: null, selected: 'offer', user: 'nate', clearTimeout() {},
+        aiPoll: null, proofPoll: null, selected: 'offer', user: task.user, clearTimeout() {},
         history: {replaceState() {}}, encodeURIComponent,
         window: {scrollX: 0, scrollY: 1000, innerHeight: 800, scrollTo: (x, y) => scrolls.push([x, y])},
         api: async () => ({id: 'offer', phase: 'Claimed', status: 'working', complexity: 'LOW', criteria: ['Works'],
-          context_links: [], creator: 'steve', claimant: 'nate', deliveries: [], events: []}),
+          context_links: [], creator: 'steve', deliveries: [], events: [], ...task}),
         $: id => id === 'detail' ? current : new Element('section'),
         element: (tag, text) => new Element(tag, text),
         workflowSection: async (_data, target) => {
@@ -66,8 +73,13 @@ function disclosure(open) {
       assert.equal(current.hidden, false);
       assert.equal(newDetails.open, same);
       assert.deepEqual(scrolls, same ? [[0, panelVisible ? 1240 : 1200]] : []);
+      const canClaim = task.status === 'open' && (task.funded || task.parent_id) && !task.target;
+      const labels = current.querySelectorAll('button').map(node => node.textContent);
+      assert.equal(labels.includes('Accept'), Boolean(canClaim));
+      assert.equal(labels.includes('Volunteer manually'), Boolean(canClaim));
     }
   }
+ }
 })().catch(error => { console.error(error); process.exitCode = 1; });
 '''
     subprocess.run([node, '-e', checks], check=True, capture_output=True, text=True)
