@@ -14,7 +14,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync('app/static/app.js', 'utf8');
-const show = source.slice(source.indexOf('async function show(id) {'), source.indexOf('async function encodeSourceZip('));
+const show = source.slice(source.indexOf('function checkpointSection(data) {'), source.indexOf('async function encodeSourceZip('));
 class Element {
   constructor(tag, text) { this.tag = tag; this.textContent = text; this.childNodes = []; this.hidden = false; }
   append(...nodes) { this.childNodes.push(...nodes); }

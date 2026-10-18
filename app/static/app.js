@@ -181,6 +181,51 @@ async function accept(data, button) {
   }
   await trackAccept(data.id, data.title);
 }
+function checkpointSection(data) {
+  const section = element('section', undefined, 'evidence');
+  const link = (label, id) => {
+    const anchor = element('a', label);
+    anchor.href = '#task=' + encodeURIComponent(id);
+    anchor.onclick = event => { event.preventDefault(); run(() => show(id)); };
+    return anchor;
+  };
+  if (data.continuation_id) {
+    section.append(element('h3', 'Progress saved'),
+      element('p', 'This task was closed into a continuation. It was not marked complete.'),
+      link('Open continuation', data.continuation_id));
+  }
+  if (data.checkpoint) {
+    section.append(element('h3', 'Saved progress'), element('pre', data.checkpoint.notes, 'content'),
+      link('Previous task and evidence', data.checkpoint.previous_task_id));
+  }
+  if (['open', 'working', 'blocked', 'decomposed', 'awaiting_approval', 'delivered'].includes(data.status)
+      && [data.creator, data.claimant].includes(user)) {
+    const button = element('button', 'Save checkpoint');
+    button.type = 'button';
+    button.onclick = () => {
+      if (section.querySelector('form')) return;
+      const form = element('form');
+      const label = element('label', 'Progress, remaining work, evidence and next action');
+      const notes = element('textarea'); notes.required = true; notes.maxLength = 30000;
+      notes.placeholder = 'Done:\nRemaining:\nEvidence / commits:\nBlockers:\nNext action:';
+      label.append(notes);
+      const cancel = element('button', 'Keep working'); cancel.type = 'button'; cancel.onclick = () => form.remove();
+      form.append(label, element('p', 'Closes this task and opens a linked task with the same scope. Work stays unaccepted and Gold stays reserved.'),
+        element('button', 'Save and open continuation', 'primary'), cancel);
+      form.onsubmit = event => {
+        event.preventDefault();
+        run(async () => {
+          await mutate(`/tasks/${data.id}/checkpoint`, {notes: notes.value});
+          message('Checkpoint saved. The continuation is open for later.');
+        });
+      };
+      section.append(form); notes.focus();
+    };
+    section.append(button);
+  }
+  return section;
+}
+
 async function show(id) {
   if (typeof treeEpoch !== 'undefined') treeEpoch++;
   clearTimeout(aiPoll);
@@ -246,6 +291,7 @@ async function show(id) {
     actions.append(reopen);
   }
   detail.append(actions);
+  detail.append(checkpointSection(data));
   await aiSection(data, detail);
   if (data.funded && !data.ai_run && data.claimant === user && ['working', 'blocked'].includes(data.status)) {
     const progress = element('form');

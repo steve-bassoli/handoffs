@@ -3,11 +3,11 @@
     "id": "checkpoint-continuation", "title": "Save progress by closing a task into a linked continuation",
     "complexity": "MEDIUM", "files": [], "children": [
       {"id": "checkpoint-storage", "title": "Atomic checkpoint, funding and workflow preservation", "complexity": "LOW", "work_type": "implementation", "children": [],
-       "files": ["PLAN/checkpoint-continuation.json", "app/checkpoints.py", "app/services.py", "app/artifacts.py", "tests/test_checkpoints.py"]},
+       "files": ["app/checkpoints.py", "app/services.py", "app/artifacts.py", "tests/test_checkpoints.py"]},
       {"id": "checkpoint-entrypoints", "title": "Expose explicit checkpoint actions through API and MCP", "complexity": "LOW", "work_type": "implementation", "children": [],
        "files": ["app/main.py", "app/mcp_server.py", "skills/handoffs/SKILL.md", "tests/test_checkpoint_api.py"]},
-      {"id": "checkpoint-interface", "title": "Show checkpoint notes and linked continuation in the UI", "complexity": "LOW", "work_type": "implementation", "children": [],
-       "files": ["app/static/app.js", "app/static/history.js", "tests/test_checkpoint_ui.py"]}
+      {"id": "checkpoint-interface", "title": "Show continuation UI and verify cross-boundary integration", "complexity": "LOW", "work_type": "implementation", "children": [],
+       "files": ["PLAN/checkpoint-continuation.json", "app/static/app.js", "app/static/history.js", "tests/test_checkpoint_ui.py", "tests/test_browser_scroll.py", "tests/test_decomposition_boundaries.py", "tests/test_mcp.py"]}
     ]
   }]
 }

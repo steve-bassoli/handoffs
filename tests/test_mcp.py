@@ -73,14 +73,15 @@ def test_stdio_discovery_and_two_user_economy(live_api, tmp_path):
     async def scenario():
         async with session(live_api, 'steve', tmp_path) as requester, session(live_api, 'nate', tmp_path) as worker:
             tools = {tool.name: tool for tool in (await requester.list_tools()).tools}
-            assert set(tools) == {'list_tasks', 'task_summary', 'get_task', 'get_task_context', 'get_my_stats', 'post_task', 'edit_task', 'take_task', 'deliver_pr'} | LEGACY_TOOLS
+            assert set(tools) == {'list_tasks', 'task_summary', 'get_task', 'get_task_context', 'get_my_stats', 'post_task', 'edit_task', 'checkpoint_task', 'take_task', 'deliver_pr'} | LEGACY_TOOLS
             assert tools['list_tasks'].annotations.readOnlyHint is True
             assert tools['task_summary'].annotations.readOnlyHint is True
             assert (await call(requester, 'task_summary'))['total'] == 0
             assert tools['get_task'].annotations.readOnlyHint is True
-            for name in ('get_my_stats', 'post_task', 'take_task', 'deliver_pr'):
+            for name in ('get_my_stats', 'post_task', 'checkpoint_task', 'take_task', 'deliver_pr'):
                 assert tools[name].annotations.readOnlyHint is False
             assert 'operation_id' in tools['post_task'].inputSchema['required']
+            assert {'task_id', 'notes', 'operation_id'} <= set(tools['checkpoint_task'].inputSchema['required'])
             assert (await call(requester, 'get_my_stats'))['available_gold'] == 1000
             arguments = {'title': 'MCP-only fixture task', 'goal': 'Prove the bridge',
                          'criteria': ['Return PR evidence'], 'gold': 150, 'operation_id': 'fund-once', 'complexity': 'LOW'}

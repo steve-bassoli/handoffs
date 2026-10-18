@@ -7,6 +7,8 @@
     ai_model_changed: 'AI model changed', ai_retried: 'AI run retried',
     ai_answers: 'AI answers recorded', ai_ask: 'AI asked a question',
     task_updated: 'Task updated', edited: 'Task edited', reopened: 'Task reopened',
+    checkpointed: 'Progress checkpoint saved', child_continued: 'Child continued in a new task',
+    parent_continued: 'Parent continued in a new task',
     working: 'Work resumed', blocked: 'Work blocked', cancelled: 'Task cancelled',
     followup_confirmed: 'Child task confirmed', followups_confirmed: 'Child tasks confirmed',
     profile_recorded: 'Context recorded', proof_attached: 'Proof attached',
@@ -36,6 +38,8 @@
     switch (event.kind) {
       case 'dependencies_set': return `Prerequisites: ${list(data.depends_on) || 'none'}`;
       case 'posted': return `${data.work_type || 'Work'} · ${data.complexity || 'unspecified complexity'}`;
+      case 'checkpointed': return `Continuation: ${data.continuation_id}\n${data.notes || ''}`;
+      case 'child_continued': case 'parent_continued': return `${data.previous_task_id} → ${data.continuation_id}`;
       case 'package_attached': return `${data.kind || 'Package'} · ${files(data.files) || 'no files listed'} · SHA-256 ${data.sha256 || 'not recorded'}`;
       case 'ai_followups': return `${data.model || 'AI'} · ${data.outcome || 'follow-ups'}`;
       case 'ai_usage': case 'proof_review_usage': return usage(data);

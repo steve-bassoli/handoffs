@@ -18,7 +18,7 @@ from app.complexity import validate_task_split
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REVIEWED = {'app/services.py', 'app/spawn.py', 'app/ai.py', 'app/importer.py'}
+REVIEWED = {'app/services.py', 'app/spawn.py', 'app/ai.py', 'app/importer.py', 'app/checkpoints.py'}
 VALIDATORS = {'validate_task_split', 'validate_proposals'}
 INSERT = re.compile(r'^\s*INSERT\s+INTO\s+tasks\b', re.I)
 COLUMNS = re.compile(r'^\s*INSERT\s+INTO\s+tasks\s*\(([^)]*)\)', re.I)
@@ -270,6 +270,10 @@ def violations(module, sites):
             allowed = 'parent_id' not in site['columns']
         elif module == 'app/spawn.py':
             allowed = site['owner'] == 'spawn_children' and site['guarded']
+        elif module == 'app/checkpoints.py':
+            # A guarded same-level node replacement, never an additional child.
+            # Runtime count/level preservation is exercised by test_checkpoints.py.
+            allowed = site['owner'] == 'checkpoint' and site['guarded']
         else:
             allowed = site['owner'] == 'confirm' and site['guarded']
         if not allowed:
