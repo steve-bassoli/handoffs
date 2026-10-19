@@ -339,3 +339,9 @@ def test_watson_page_says_how_to_start():
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
     start = html.index('<p id="gremlins-start">')
     assert start < html.index('<button id="gremlins-example">') and 'Then choose Run offline comparison.' in html[start:start + 200]
+
+
+def test_task_search_has_a_visible_label():
+    # Bob team free play #15 (f2b87f1e): the placeholder was the only visible label and vanished while typing.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert '<label class="task-search" for="search">Find a task<input id="search"' in html

@@ -58,6 +58,7 @@ nav a.selected { color: var(--accent); border-bottom: 3px solid var(--accent); m
 .section-title { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
 .section-title h2 { flex: 1; }
 .section-title input { max-width: 240px; }
+#board .task-search { flex: 0 1 240px; width: 240px; min-width: 0; max-width: 100%; margin: 0; } /* Visible search label (bob free play #15, f2b87f1e). */
 .agent-table-wrap { overflow-x: auto; }
 #agents .agent-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; } /* Keyboard handle on the wide roster (bob free play #9, 50c8cbbf). */
 .agent-table { width: 100%; border-collapse: collapse; font-family: Consolas, monospace; white-space: nowrap; }
@@ -196,6 +197,7 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
     .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .section-title { align-items: stretch; flex-direction: column; gap: 0; }
     .section-title input { max-width: none; margin-bottom: 18px; }
+    #board .task-search { flex: none; width: 100%; }
     #board #search { font-size: 16px; } /* No focus zoom on phones (bob free play #3, ac5f481e). */
     nav button { padding: 12px; }
     .event { flex-direction: column; gap: 6px; }
