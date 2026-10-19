@@ -451,7 +451,17 @@ function renderSignoffs(items) {
       if (!note.value.trim()) { note.reportValidity(); note.focus(); return; }
       await submitDigest('/digest/decide-batch', {items: selected.map(entry => digestReference(entry.item)), note: note.value.trim()}, auth, actor);
     });
-    bar.append(label, digestBatchButton); list.append(bar);
+    // Steve, 2026-10-18: "add accept all, it's a lot". Selecting stays explicit; Accept selected still needs a note.
+    const choices = digestEntries.filter(entry => entry.choice);
+    const advised = choices.filter(entry => entry.item.recommendation?.disposition === 'yes');
+    const pick = element('div', undefined, 'actions');
+    pick.style.display = 'flex'; pick.style.flexWrap = 'wrap'; pick.style.gap = '8px';
+    for (const [text, chosen] of [[`Select recommended (${advised.length})`, advised], [`Select all (${choices.length})`, choices], ['Clear', []]]) {
+      const button = element('button', text); button.type = 'button'; button.dataset.digestControl = 'true';
+      button.onclick = () => { for (const entry of choices) entry.choice.checked = chosen.includes(entry); syncSignoffAuth(); };
+      pick.append(button);
+    }
+    bar.append(pick, label, digestBatchButton); list.prepend(bar);
   }
   syncSignoffAuth();
 }
