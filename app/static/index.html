@@ -61,6 +61,25 @@
       <input id="digest-search" type="search" placeholder="Search decisions" aria-label="Search decisions" autocomplete="off" style="width:100%;box-sizing:border-box">
       <div id="signoff-cards"></div>
     </section>
+    <template id="before-verify-template">
+  <aside class="before-verify" aria-label="Proof verification preview">
+    <p class="before-verify-note">Read-only preview · opening runs no check</p>
+    <details>
+      <summary>Before you verify</summary>
+      <p>Review information below is recorded information already loaded for this task, not a new check.</p>
+      <dl>
+        <dt>Task</dt><dd data-preview="task">Unknown — not available in loaded data.</dd>
+        <dt>Proof</dt><dd data-preview="proof">Unknown — no selected proof identified.</dd>
+        <dt>AI review</dt><dd data-preview="review">Unknown — not available in loaded data.</dd>
+        <dt>Recorded human review basis</dt><dd data-preview="basis">Unknown — not available in loaded data.</dd>
+        <dt>Proof currency</dt><dd data-preview="currency">Unknown — not established by loaded data.</dd>
+      </dl>
+      <p data-preview="state">This preview cannot establish whether verification is allowed.</p>
+      <p>The existing verification action requests a human verification record for the selected LOW proof, subject to the server gate. Verification is separate from task completion; this preview does not complete the task or release Gold.</p>
+      <p>Opening this preview grants no authority and changes no eligibility.</p>
+    </details>
+  </aside>
+</template>
     <section id="detail" hidden></section>
     <template id="task-orientation-template">
       <section class="task-orientation" aria-labelledby="task-orientation-title">

@@ -423,3 +423,17 @@ def test_task_orientation_brief_shows_only_declared_data():
     script = (STATIC / 'app.js').read_text(encoding='utf-8')
     assert "fill('goal', text(data.goal));" in script and 'data.context_links' in script
     assert "const brief = orientationBrief(data); if (brief) detail.append(brief);" in script
+
+
+def test_before_you_verify_preview_is_read_only_and_mounts_only_with_the_action():
+    # BSA build (bob's team, 1b32e4e7): a preview of what the existing human verification records; no new control or request.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    template = re.search(r'<template id="before-verify-template">(.*?)</template>', html, re.S).group(1)
+    assert 'Read-only preview · opening runs no check' in template and '<button' not in template and '<form' not in template
+    assert 'does not complete the task or release Gold' in template
+    script = (STATIC / 'app.js').read_text(encoding='utf-8')
+    assert script.count('= beforeVerify(data, proof, review, humanOnly)') == 1  # one call site
+    branch = script.index("const preview = beforeVerify(data, proof, review, humanOnly); if (preview) box.append(preview);")
+    gate = script.index("if (editable && (data.complexity === 'LOW' || mediumHumanOnly) && proof.fresh")
+    form = script.index("const human = element('form'); const decision = labeled(human, 'Human verification decision'")
+    assert gate < branch < form  # inside the existing verification branch, before its form

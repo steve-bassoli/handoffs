@@ -123,6 +123,14 @@ button.loading:disabled { opacity: 1; cursor: progress; }
 .history-event details > summary { cursor: pointer; padding: 12px 16px; min-height: 44px; }
 .history-event details > :not(summary) { margin-left: 16px; margin-right: 16px; }
 .detail-head { margin-top: 24px; }
+/* Before you verify: read-only LOW proof preview. */
+#detail .before-verify { width: 100%; min-width: 0; margin: 12px 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); overflow-wrap: anywhere; }
+#detail .before-verify p { margin: 8px 0; }
+#detail .before-verify .before-verify-note { font-size: 12px; margin-top: 0; }
+#detail .before-verify summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-weight: 500; }
+#detail .before-verify dl { margin: 12px 0; }
+#detail .before-verify dt { margin-top: 10px; color: var(--muted); font-size: 12px; }
+#detail .before-verify dd { margin: 4px 0 0; white-space: pre-wrap; }
 /* Task orientation: read-only excerpts, not a readiness verdict. */
 #detail .task-orientation { min-width: 0; max-width: 100%; margin: 16px 0 24px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 3px; overflow-wrap: anywhere; }
 #detail .task-orientation h3 { margin: 0 0 8px; }

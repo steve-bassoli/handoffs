@@ -854,6 +854,25 @@ function intakeSection(data, detail) {
   }
   detail.append(box);
 }
+const STATE_PASS = "Recorded AI review: pass. This preview does not determine whether the human verification gate will accept the action.";
+const STATE_HUMAN_ONLY = "An authorized person may explicitly choose human-only review for current LOW proof when AI review is absent or inconclusive. This preview makes no such choice.";
+const STATE_UNKNOWN = "Loaded data does not establish review eligibility. No permission is inferred.";
+// Before you verify (BSA build, bob's team, 1b32e4e7): a read-only preview of exactly what the existing human
+// verification records, from data this page already loaded. It mounts only where that action already renders.
+function beforeVerify(data, proof, review, humanOnly) {
+  const template = typeof document !== 'undefined' && typeof document.getElementById === 'function' ? document.getElementById('before-verify-template') : null;
+  if (!template || !template.content) return null;
+  const preview = template.content.cloneNode(true);
+  const fill = (key, value) => { const cell = preview.querySelector(`[data-preview="${key}"]`); if (cell && value) cell.textContent = value; };
+  fill('task', `${data.id} · ${data.title}`);
+  fill('proof', [proof.proof_id, proof.filename, proof.sha256 && `SHA-256 ${proof.sha256}`].filter(Boolean).join(' · '));
+  const verdict = review?.verdict;
+  fill('review', verdict ? `Recorded: ${verdict}` : 'No AI review recorded for this proof.');
+  fill('basis', humanOnly ? 'This action would record human-only review (no passing AI review) — not submitted.' : 'This action would record an AI-reviewed decision — not submitted.');
+  fill('currency', proof.fresh ? 'Recorded as current — not rechecked here.' : 'Recorded as stale. This preview does not resolve staleness.');
+  fill('state', verdict === 'pass' ? STATE_PASS : humanOnly ? STATE_HUMAN_ONLY : STATE_UNKNOWN);
+  return preview;
+}
 // Task orientation brief (BSA build, ada's team, 5e798738): five read-only excerpts from data the task already has.
 // Only goal and materials (repository, context links) exist in ASE task data; the other entries keep their honest fallback.
 function orientationBrief(data) {
@@ -1282,6 +1301,7 @@ function proofSection(data, detail) {
     const humanOnly = !review || (review.verdict === 'inconclusive' && !review.criteria?.some(item => item.verdict === 'fail'));
     const mediumHumanOnly = data.complexity === 'MEDIUM' && !data.required_children?.length && humanOnly;
     if (editable && (data.complexity === 'LOW' || mediumHumanOnly) && proof.fresh && (review?.verdict === 'pass' || humanOnly)) {
+      const preview = beforeVerify(data, proof, review, humanOnly); if (preview) box.append(preview);
       const human = element('form'); const decision = labeled(human, 'Human verification decision', 'Choose…', 'select', ['Choose…', 'Accept', 'Reject']);
       if (humanOnly) human.append(element('p', 'Human-only verification: review the evidence and record your decision. This does not record an AI pass.'));
       const note = labeled(human, 'What did you personally verify?', '', 'textarea'); note.required = true;
