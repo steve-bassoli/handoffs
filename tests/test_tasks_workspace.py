@@ -9,7 +9,7 @@ def test_one_tasks_entry_and_local_row_replace_three_tabs():
     for page in ('index.html', 'dashboard.html'):
         nav = re.search(r'<nav aria-label="Workspace"[^>]*>(.*?)</nav>', (STATIC / page).read_text(encoding='utf-8'), re.S).group(1)
         # Focused navigation (task 5b86fe29): Decisions first, Tasks second, Gremlins > Watson, then More.
-        assert re.findall(r'data-view="(\w+)"', nav) == ['signoffs', 'open', 'gremlins', 'agents', 'wallet'], page
+        assert re.findall(r'data-view="(\w+)"', nav) == ['signoffs', 'bobsue', 'gallery', 'open', 'gremlins', 'agents', 'wallet'], page
         more = re.search(r'<details class="workspace-disclosure workspace-more">(.*?)</details>', nav, re.S).group(1)
         assert 'id="dashboard-link"' in more and 'data-view="agents"' in more and 'data-view="wallet"' in more, page
         assert 'Watson · simulation' in re.search(r'workspace-gremlins">(.*?)</details>', nav, re.S).group(1), page

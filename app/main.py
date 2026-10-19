@@ -355,6 +355,18 @@ this page does not query the live Codex quota meter.</p>
     def agents(user=Depends(actor)):
         return JSONResponse(roster(), headers={'Cache-Control': 'no-store'})
 
+    @app.get('/api/v1/architect-runs')
+    def architect_run_list(user=Depends(actor)):
+        # Bob and Sue tab (task a6eb660f): read-only metadata about architect-team runs, found through the lease ledger.
+        from app.architect_runs import architect_runs
+        return JSONResponse(architect_runs(), headers={'Cache-Control': 'no-store'})
+
+    @app.get('/api/v1/gallery')
+    def gallery_list(request: Request, user=Depends(actor)):
+        # Gallery tab: image proofs the agents attached to tasks; lists only, the images load through the proof route.
+        from app.gallery import gallery
+        return JSONResponse(gallery(request.app.state.service), headers={'Cache-Control': 'no-store'})
+
     @app.get('/api/dashboard/live')
     def dashboard_snapshot(request: Request, task: str | None = Query(default=None, max_length=200),
                            session: str | None = Query(default=None, max_length=200),

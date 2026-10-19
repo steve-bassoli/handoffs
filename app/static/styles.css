@@ -203,6 +203,22 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
     #board .task-search { flex: none; width: 100%; }
     #board #search { font-size: 16px; } /* No focus zoom on phones (bob free play #3, ac5f481e). */
     #gremlins-input { font-size: 16px; } /* Same safeguard for the Watson JSON editor (bob free play #17, 409326d7). */
+    .bobsue-run dl { grid-template-columns: 1fr; } .bobsue-run dd { margin-bottom: 6px; }
     nav button { padding: 12px; }
     .event { flex-direction: column; gap: 6px; }
 }
+/* Bob and Sue tab (task a6eb660f): stacked run cards with visible field labels, wrapping at phone width. */
+.bobsue-architect { margin: 24px 0; }
+.bobsue-run { background: #fff; border: 1px solid var(--line); border-radius: 3px; padding: 16px; margin: 12px 0; overflow-wrap: anywhere; }
+.bobsue-run-head { margin: 0 0 8px; color: #222; }
+.bobsue-run dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
+.bobsue-run dt { color: var(--muted); font-size: 12px; }
+.bobsue-run dd { margin: 0; }
+.bobsue-run details summary { cursor: pointer; padding: 10px 0; min-height: 44px; box-sizing: border-box; }
+details.bobsue-architect > summary { cursor: pointer; padding: 12px 0; min-height: 44px; box-sizing: border-box; color: var(--muted); }
+/* Gallery: pictures the agents made, one column on phones. */
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+.gallery-item { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.gallery-item img { display: block; width: 100%; height: auto; background: var(--surface); }
+.gallery-item figcaption { padding: 12px 16px; overflow-wrap: anywhere; }
+.gallery-item figcaption p { font-size: 13px; margin: 6px 0; }

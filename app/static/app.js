@@ -93,7 +93,7 @@ async function authenticatedFetch(url, options = {}) {
     clearSession();
     ++treeEpoch; ++boardRequest;
     clearTimeout(aiPoll); clearTimeout(proofPoll); clearTimeout(acceptPoll);
-    for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents', 'signoffs']) $(id).hidden = true;
+    for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents', 'signoffs', 'bobsue', 'gallery']) if ($(id)) $(id).hidden = true;
     message('Session ended. Sign in again or choose a demo user.', true);
     throw new Error('Session ended. Sign in again or choose a demo user.');
   }
@@ -282,6 +282,87 @@ async function agentRoster() {
       $('agent-rows').append(row);
     }
   } finally { $('agents-refresh').disabled = false; }
+}
+// Gallery (Steve, 2026-10-19: "I want to see bot creativity in our house"): image proofs attached to tasks.
+// Images load through the authenticated proof route, one object URL each, released when the view is redrawn.
+let galleryUrls = [];
+async function galleryView() {
+  $('gallery-refresh').disabled = true;
+  $('gallery-status').textContent = 'Loading pictures…';
+  for (const url of galleryUrls) URL.revokeObjectURL(url);
+  galleryUrls = [];
+  $('gallery-items').replaceChildren();
+  try {
+    let data;
+    try { data = await api('/gallery'); }
+    catch (error) { if (view === 'gallery') $('gallery-status').textContent = 'Could not load the gallery: ' + error.message + '. Refresh to retry.'; return; }
+    if (view !== 'gallery') return;
+    $('gallery-status').textContent = data.items.length ? `${data.items.length} pictures · newest first` : 'No pictures attached to tasks yet.';
+    for (const item of data.items) {
+      const figure = element('figure', undefined, 'gallery-item');
+      const image = element('img'); image.alt = item.description || item.filename;
+      const caption = element('figcaption');
+      const link = element('a', item.task_title); link.href = '#task=' + encodeURIComponent(item.task_id);
+      link.onclick = event => { event.preventDefault(); run(() => show(item.task_id)); };
+      caption.append(element('strong', item.filename.replace(/\.(png|jpe?g)$/i, '')), element('p', item.description), link);
+      figure.append(image, caption); $('gallery-items').append(figure);
+      authenticatedFetch(item.download_url, {headers: identityHeaders()}).then(async response => {
+        if (!response.ok) throw new Error();
+        const url = URL.createObjectURL(await response.blob()); galleryUrls.push(url); image.src = url;
+      }).catch(() => { image.replaceWith(element('p', 'Picture unavailable.', 'meta')); });
+    }
+  } finally { $('gallery-refresh').disabled = false; }
+}
+// Bob and Sue (task a6eb660f, designed by bob-the-architect and sue-the-architect): read-only metadata about
+// architect-team runs. Recorded outcome and activity are separate; an active lease is not proof of live work.
+async function bobSue() {
+  $('bobsue-refresh').disabled = true;
+  $('bobsue-status').textContent = 'Loading architect runs…';
+  $('bobsue-runs').replaceChildren();
+  try {
+    let data;
+    try { data = await api('/architect-runs'); }
+    catch (error) { if (view === 'bobsue') $('bobsue-status').textContent = 'Could not load architect runs: ' + error.message + '. Refresh to retry.'; return; }
+    if (view !== 'bobsue') return;
+    if (!data.available) { $('bobsue-status').textContent = 'Run records unavailable. Unknown is not zero.'; return; }
+    const shown = data.architects.reduce((n, group) => n + group.runs.length, 0);
+    $('bobsue-status').textContent = shown ? `${shown} recent runs by ${data.architects.length} architects · refresh to check for changes` : 'No architect runs recorded yet.';
+    const field = (list, label, value) => { list.append(element('dt', label), element('dd', value === null || value === undefined ? 'unknown' : String(value))); };
+    const groups = data.architects.map(group => ({...group, earlier: false}));
+    if ((data.earlier || []).length) groups.push({name: 'Earlier runs, before the architects', runs: data.earlier, earlier: true});
+    for (const group of groups) {
+      const box = element(group.earlier ? 'details' : 'section', undefined, 'bobsue-architect');
+      box.append(element(group.earlier ? 'summary' : 'h3', `${group.name} · ${group.runs.length} recent ${group.runs.length === 1 ? 'run' : 'runs'}`));
+      for (const item of group.runs) {
+        const card = element('article', undefined, 'bobsue-run');
+        const head = element('p', undefined, 'bobsue-run-head');
+        head.append(element('strong', item.session || 'run'), element('span', item.finished ? ' · finished' : ' · no summary yet', 'meta'));
+        card.append(head);
+        const list = element('dl');
+        if (item.ticket) {
+          list.append(element('dt', 'Ticket'));
+          const dd = element('dd'); const link = element('a', item.ticket.slice(0, 8)); link.href = '#task=' + encodeURIComponent(item.ticket);
+          link.onclick = event => { event.preventDefault(); run(() => show(item.ticket)); }; dd.append(link); list.append(dd);
+        } else field(list, 'Ticket', null);
+        field(list, 'Lease', item.lease + (item.lease === 'active lease' ? ' (not proof of live activity)' : ''));
+        field(list, 'Rounds', item.rounds);
+        field(list, 'Stamp', item.stamp ? (item.stamp.approved ? 'approved' : 'withheld') + (item.stamp.round ? ` in round ${item.stamp.round}` : '') : 'none recorded');
+        field(list, 'Rest stops', item.rest_stops);
+        field(list, 'Minutes', item.elapsed_minutes === null ? null : `${item.elapsed_minutes} of ${item.minutes_allowed ?? 'unknown'} allowed`);
+        field(list, 'Reported-usage upper bound', item.upper_bound_cents === null ? null :
+          `$${(item.upper_bound_cents / 100).toFixed(2)}${item.cost_bound_complete === false ? ' (some usage unknown)' : item.cost_bound_complete === null ? ' (completeness unknown)' : ''}`);
+        card.append(list);
+        if (item.team.length) {
+          const team = element('details'); team.append(element('summary', `Team · ${item.team.length}`));
+          const names = element('ul');
+          for (const member of item.team) names.append(element('li', `${member.name} · ${member.level}${member.card ? ' · card set' : ''}`));
+          team.append(names); card.append(team);
+        }
+        box.append(card);
+      }
+      $('bobsue-runs').append(box);
+    }
+  } finally { $('bobsue-refresh').disabled = false; }
 }
 let digestCountRequest = 0;
 let signoffRequest = 0;
@@ -588,7 +669,7 @@ async function navigate(nextView) {
     if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user);
     history.replaceState(null, '', location.pathname + location.search + (view === 'agents' ? '#agents' : ''));
   }
-  for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents', 'signoffs']) $(id).hidden = true;
+  for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents', 'signoffs', 'bobsue', 'gallery']) if ($(id)) $(id).hidden = true;
   // One Tasks entry covers browse, my work and posting; the local row says which one is current.
   for (const button of document.querySelectorAll(WORKSPACE_BUTTONS)) button.classList.toggle('selected', button.dataset.view === (TASK_VIEWS.has(view) ? 'open' : view));
   if ($('tasks-toolbar')) $('tasks-toolbar').hidden = !TASK_VIEWS.has(view);
@@ -599,6 +680,8 @@ async function navigate(nextView) {
   else if (view === 'gremlins') $('gremlins').hidden = false;
   else if (view === 'agents') { $('agents').hidden = false; await agentRoster(); }
   else if (view === 'signoffs') { $('signoffs').hidden = false; await signoffs(); }
+  else if (view === 'bobsue') { $('bobsue').hidden = false; await bobSue(); }
+  else if (view === 'gallery') { $('gallery').hidden = false; await galleryView(); }
   else if (view === 'wallet') { $('wallet').hidden = false; await transactions(); }
   else { $('board').hidden = false; $('board-title').textContent = view === 'mine' ? 'My tasks' : 'Open tasks'; await board(); }
 }
@@ -744,6 +827,8 @@ async function show(id) {
   for (const section of ['board', 'post', 'wallet', 'gremlins', 'agents']) $(section).hidden = true;
   const current = $('detail');
   $('signoffs').hidden = true;
+  if ($('bobsue')) $('bobsue').hidden = true;
+  if ($('gallery')) $('gallery').hidden = true;
   const refreshing = !current.hidden && current.querySelector('.detail-head code')?.textContent === id;
   const detail = element('div');
   const listView = typeof view !== 'undefined' && view === 'mine' ? 'mine' : 'open';
@@ -915,6 +1000,8 @@ async function showTree(id) {
   const current = $('detail');
   current.hidden = false;
   $('signoffs').hidden = true;
+  if ($('bobsue')) $('bobsue').hidden = true;
+  if ($('gallery')) $('gallery').hidden = true;
   current.replaceChildren(element('h2', 'Task tree'), element('p', 'Loading hierarchy…'));
   try {
     const assembly = assembleTicketTree(await api('/tasks/' + encodeURIComponent(id) + '/lineage'), id);
@@ -1313,6 +1400,8 @@ $('gremlins-form').onsubmit = event => { event.preventDefault(); run(async () =>
   $('gremlins-download').hidden = false; $('gremlins-download').onclick = () => { const url = URL.createObjectURL(new Blob([text], {type: 'application/json'})); const link = element('a'); link.href = url; link.download = 'gremlins-sim-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
 }); };
 $('agents-refresh').onclick = () => run(agentRoster);
+if ($('bobsue-refresh')) $('bobsue-refresh').onclick = () => run(bobSue);
+if ($('gallery-refresh')) $('gallery-refresh').onclick = () => run(galleryView);
 $('signoffs-refresh').onclick = () => run(signoffs);
 for (const button of document.querySelectorAll(WORKSPACE_BUTTONS + ', [data-task-view]')) button.onclick = () => run(async () => { button.closest('details')?.removeAttribute('open'); offset = 0; message(''); await navigate(button.dataset.view || button.dataset.taskView); });
 $('user').onchange = () => run(async () => { if (session) { renderAuth(); return; } user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });

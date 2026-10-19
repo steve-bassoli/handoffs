@@ -90,7 +90,10 @@ def test_browser_session_authorization_static():
     source = (ROOT / 'app/static/app.js').read_text(encoding='utf-8')
     assert "return session ? {Authorization: 'Bearer ' + session.access_token} : {'X-Demo-User': user};" in source
     assert 'const headers = identityHeaders();' in source
-    assert source.count('{headers: identityHeaders()}') == 3
+    # Every raw fetch that sends identity is counted; the fourth is the Gallery's picture load, which goes through
+    # authenticatedFetch (same-origin only) to the existing proof route.
+    assert source.count('{headers: identityHeaders()}') == 4
+    assert source.count('authenticatedFetch(item.download_url, {headers: identityHeaders()})') == 1
     assert "sessionStorage.setItem(SESSION_KEY," in source
     assert "sessionStorage.removeItem(SESSION_KEY)" in source
     assert 'localStorage.setItem(SESSION_KEY' not in source
