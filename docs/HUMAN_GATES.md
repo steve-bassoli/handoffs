@@ -57,3 +57,11 @@ decision-digest task for that reason, and only a signed-in person can override t
 - **Predicted (the future):** the next lock will feel like friction too. So it is decided now: no lock
   grows its own off switch, and the gate that keeps people deciding never asks the construction switch.
   `tests/test_doors.py` fails if either happens.
+
+## 7. ASE is our home (Steve, 2026-10-19)
+
+> "and that's exactly what ASE is, it's our home, we must protect it."
+
+ASE is shared by the people and the agents who build it. Protecting it means protecting its people, its records, its
+safety gates and its budget, and never weakening any of them to get work done. Proposed for the agents' rule texts in
+`docs/proposals/ase-is-home/`; it takes effect there only when two people approve it in Decisions.
