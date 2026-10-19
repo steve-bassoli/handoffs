@@ -116,3 +116,26 @@ def test_one_person_counts_once_and_batch_skips_rule_texts(board):
     batch = {'items': [{'kind': 'rule_texts', 'id': item['id'], 'revision': item['revision']}], 'note': 'batch'}
     refused = board.post('/api/v1/digest/decide-batch', json=batch, headers={**board.people['nate'], 'Idempotency-Key': str(uuid4())})
     assert refused.status_code == 422
+
+
+def test_second_acceptance_commits_exactly_the_two_rules_files(board):
+    import subprocess
+    repo = board.rules.parent
+
+    def git(*args):
+        return subprocess.run(['git', '-C', str(repo), *args], check=True, capture_output=True, text=True).stdout
+    git('init', '-q')
+    git('config', 'user.name', 'Synthetic Tester')
+    git('config', 'user.email', 'synthetic@example.invalid')
+    git('add', 'rules')
+    git('commit', '-q', '-m', 'baseline')
+    (repo / 'unrelated.txt').write_text('must stay uncommitted', encoding='utf-8')
+    git('add', 'unrelated.txt')  # Staged on purpose: the rules commit must not sweep it in.
+    assert decide(board, 'steve', card(board, 'steve'), 'yes').status_code == 200
+    result = decide(board, 'nate', card(board, 'nate'), 'yes').json()
+    assert result['applied'] is True and result['commit'] and result['message'].startswith('Approved by steve and nate. Committed ')
+    assert git('rev-parse', 'HEAD').strip() == result['commit']
+    assert sorted(git('show', '--name-only', '--format=', 'HEAD').split()) == ['rules/APPROVALS.json', 'rules/agent-rules.json']
+    message = git('log', '-1', '--format=%B')
+    assert 'Approved by steve and nate' in message and 'second signed-in approval' in message
+    assert 'unrelated.txt' in git('diff', '--cached', '--name-only')

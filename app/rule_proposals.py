@@ -3,11 +3,14 @@
 A proposal is docs/proposals/<name>/agent-rules.json: a full replacement for rules/agent-rules.json. Each signed-in
 person decides once per digest. When two different people have accepted the same digest and nobody has declined it,
 the server writes the APPROVALS.json entry from those recorded decisions and then the rules file, byte for byte, after
-checking that the result loads under the existing two-human rule. A human commits the files; they take effect at restart.
+checking that the result loads under the existing two-human rule, and commits exactly those two files citing both
+decisions (Steve, 2026-10-18: the two recorded clicks are the authority, not who types git commit; on this machine every
+commit shows the same git identity). The relay publishes the commit; the texts take effect at restart.
 """
 import hashlib
 import json
 import os
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -111,6 +114,25 @@ def apply(proposal, accepted):
     return entry
 
 
+def commit(proposal, entry):
+    """Commit only the two rules files when the rules folder lives in a git checkout; never fails the decision."""
+    repo = rules_dir().parent
+    if not (repo / '.git').exists():
+        return None, 'not a git checkout'
+    paths = [f'{rules_dir().name}/agent-rules.json', f'{rules_dir().name}/APPROVALS.json']
+    message = '\n'.join([f"Rule texts approved in Decisions: {proposal['title']}", '',
+                         f"Approved by {' and '.join(entry['approved_by'])} ({entry['note']})",
+                         f"Digest {proposal['sha256']}. Committed by the ASE server on the second signed-in approval (task 2c56ad7a).", ''])
+    try:
+        subprocess.run(['git', '-C', str(repo), 'add', '--', *paths], check=True, capture_output=True, timeout=60)
+        subprocess.run(['git', '-C', str(repo), 'commit', '--only', '-m', message, '--', *paths], check=True, capture_output=True, timeout=60)
+        head = subprocess.run(['git', '-C', str(repo), 'rev-parse', 'HEAD'], check=True, capture_output=True, text=True, timeout=60)
+        return head.stdout.strip(), None
+    except (OSError, subprocess.SubprocessError) as error:
+        detail = getattr(error, 'stderr', b'') or b''
+        return None, (detail.decode('utf-8', 'replace') if isinstance(detail, bytes) else str(detail)).strip()[:300] or type(error).__name__
+
+
 def decide(c, actor, payload, current):
     """Record one person's decision on a proposal; apply it on the second distinct acceptance with no decline."""
     proposal = next((p for p in pending(c) if p['id'] == payload['id'] and p['sha256'] == payload['revision']), None)
@@ -129,9 +151,11 @@ def decide(c, actor, payload, current):
               'applied': False, 'restart_required': False}
     if payload['decision'] == 'yes' and len(accepted) >= NEEDED and not declined:
         entry = apply(proposal, accepted)
-        result.update(applied=True, restart_required=True, approved_by=entry['approved_by'],
-                      message=(f"Approved by {' and '.join(entry['approved_by'])}. The server wrote rules/agent-rules.json and "
-                               'rules/APPROVALS.json; a person must commit them, and the new texts take effect at restart.'))
+        sha, problem = commit(proposal, entry)
+        result.update(applied=True, restart_required=True, approved_by=entry['approved_by'], commit=sha,
+                      message=(f"Approved by {' and '.join(entry['approved_by'])}. "
+                               + (f'Committed {sha[:7]}; the relay publishes it, and the new texts take effect at restart.' if sha else
+                                  f'The rules files are written but not committed ({problem}); commit them, then restart.')))
     elif payload['decision'] == 'yes':
         result['message'] = f'Your approval is recorded ({len(accepted)} of {NEEDED}); the change applies when a second person accepts.'
     elif payload['decision'] == 'no':
