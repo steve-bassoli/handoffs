@@ -307,6 +307,7 @@ async function hubView() {
         figure.append(image, element('figcaption', post.art.title)); article.append(figure);
         authenticatedFetch(post.art.url, {headers: identityHeaders()}).then(async response => {
           if (!response.ok) throw new Error(); const url = URL.createObjectURL(await response.blob()); image.src = url; image.onload = () => URL.revokeObjectURL(url);
+          image.onerror = () => { URL.revokeObjectURL(url); image.replaceWith(element('p', 'Picture unavailable.', 'meta')); };
         }).catch(() => image.replaceWith(element('p', 'Picture unavailable.', 'meta')));
       }
       if (post.question) article.append(element('p', post.question, 'hub-question'));
@@ -348,6 +349,8 @@ async function galleryView() {
     for (const item of data.items) {
       const figure = element('figure', undefined, 'gallery-item');
       const image = element('img'); image.alt = item.description || item.filename;
+      // Competition round 21 (ada's team, d15786b7): a 200 response the browser cannot decode showed a broken image, not the fallback.
+      image.onerror = () => image.replaceWith(element('p', 'Picture unavailable.', 'meta'));
       const caption = element('figcaption');
       const link = element('a', item.task_title); link.href = '#task=' + encodeURIComponent(item.task_id);
       link.onclick = event => { event.preventDefault(); run(() => show(item.task_id)); };

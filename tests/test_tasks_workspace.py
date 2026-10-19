@@ -375,6 +375,16 @@ def test_watson_mode_selector_says_what_it_controls():
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
 
 
+def test_undecodable_pictures_show_the_fallback():
+    # Competition round 21, ada's team (d15786b7): a 200 response with bytes the browser cannot decode showed a broken image;
+    # the relay extended the gallery fix to Community hub art, which loads the same way.
+    js = (STATIC / 'app.js').read_text(encoding='utf-8')
+    gallery = js[js.index('async function galleryView()'):]
+    hub = js[js.index('async function hubView()'):js.index('async function galleryView()')]
+    assert "image.onerror = () => image.replaceWith(element('p', 'Picture unavailable.', 'meta'));" in gallery
+    assert "image.onerror = () => { URL.revokeObjectURL(url); image.replaceWith(element('p', 'Picture unavailable.', 'meta')); };" in hub
+
+
 def test_agent_roster_survives_a_failed_mode_read():
     # Competition round 20, sue's team (905a24e0): a failed /automation-mode read threw away the fetched roster and left "Loading…" up.
     js = (STATIC / 'app.js').read_text(encoding='utf-8')
