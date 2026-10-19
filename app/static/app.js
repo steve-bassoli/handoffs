@@ -261,7 +261,6 @@ async function agentRoster() {
       if (agent.directive) work.append(element('small', agent.directive));
       row.append(work);
       row.append(element('td', agent.resting === true ? 'Resting' : agent.resting === false ? '—' : '?'));
-      for (const stat of ['credits', 'admiration', 'growth']) row.append(element('td', agent[stat] ?? '?'));
       $('agent-rows').append(row);
     }
   } finally { $('agents-refresh').disabled = false; }

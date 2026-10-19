@@ -32,7 +32,7 @@ const stats = async () => {};
   assert.deepEqual(calls, [['/agents'], ['/automation-mode']], 'Roster must only GET, with no paid start');
   const row = $('agent-rows').children[0];
   assert.equal(row.children[0].title, 'abc12345extra');
-  assert.deepEqual(row.children.slice(1).map(cell => cell.textContent), ['Working?', '—', '—', '?', '?', '?']);
+  assert.deepEqual(row.children.slice(1).map(cell => cell.textContent), ['Working?', '—', '—']);
   result = {available: true, items: [{id: 'def67890', role: 'worker', level: 3, state: 'active', resting: true, credits: null,
     admiration: null, growth: null, name: 'fe_study', session: 'it1', task: 'LOW · crawler', directive: 'Crawl forms', task_id: 'task-123456789'}]};
   await agentRoster();

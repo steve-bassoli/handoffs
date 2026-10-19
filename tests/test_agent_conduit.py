@@ -64,7 +64,7 @@ def test_real_tool_loop_pins_source_and_keeps_reasoning_only_in_memory(manifest,
     assert summary['reported_output_tokens'] == summary['reported_input_tokens'] == 10
     assert summary['candidate_applied'] is summary['human_accepted'] is False
     authority = json.loads((run / 'authority.json').read_text())
-    assert type(authority['pressure_level']) is int and authority['pressure_level'] == 1
+    assert 'pressure_level' not in authority
     assert authority['mission'] == calls[0]['instructions']
     assert len(calls) == 2
     assert all('opaque-reasoning-fixture' not in path.read_text() for path in run.iterdir())

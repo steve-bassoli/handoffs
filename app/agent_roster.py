@@ -64,7 +64,7 @@ def roster(path=None):
         items = []
         for row in rows:
             item = {key: row[key] for key in ('id', 'role', 'level', 'state', 'started', 'ended')}
-            item.update(resting=_resting(row['run']), credits=None, admiration=None, growth=None, **_work(row['run']))
+            item.update(resting=_resting(row['run']), **_work(row['run']))
             items.append(item)
         return {'available': True, 'items': items}
     except (sqlite3.Error, OSError, ValueError):

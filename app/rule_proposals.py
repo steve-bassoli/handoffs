@@ -104,7 +104,7 @@ def apply(proposal, accepted):
     entry = {'sha256': proposal['sha256'], 'approved_by': names, 'approved_at': accepted[-1]['decided_at'],
              'note': ('Approved in Decisions: ' + ', '.join(f"{row['decided_by']} at {row['decided_at']}" for row in accepted) +
                       f". Proposal docs/proposals/{proposal['id']}. Written by the server from signed-in decisions (task 2c56ad7a); "
-                      'a person commits the files.')}
+                      'committed by the server on the second approval.')}
     approvals_path, rules_path = rules_dir() / 'APPROVALS.json', rules_dir() / 'agent-rules.json'
     ledger = json.loads(approvals_path.read_bytes())
     ledger_raw = (json.dumps(ledger + [entry], indent=2) + '\n').encode('utf-8')

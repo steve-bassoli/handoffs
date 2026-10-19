@@ -52,7 +52,7 @@ def test_selected_registered_tree_is_allowlisted_and_confined(client, registered
     assert result.status_code == 200
     data = result.json()
     assert data['session']['plan'] == {'agents': [{'name': 'bob', 'level': 1, 'parent': None}]}
-    assert data['session']['board']['pressure_stop_count'] == 1
+    assert data['session']['board']['rest_stop_count'] == 1
     assert data['sources']['board']['event_at'] == '2026-10-17T20:00:00Z'
     assert data['session']['summary']['requests'] == 3
     assert 'PRIVATE' not in result.text

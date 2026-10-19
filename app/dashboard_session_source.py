@@ -42,10 +42,10 @@ def metadata(kind, raw):
                            'parent': text(row.get('parent'))})
         return {'agents': result}
     if kind == 'board':
-        count, stops = integer(raw.get('event_count')), integer(raw.get('pressure_stop_count'))
+        count, stops = integer(raw.get('event_count')), integer(raw.get('rest_stop_count'))
         if count is None or stops is None:
             raise ValueError('invalid board counts')
-        return {'event_count': count, 'last_event_at': text(raw.get('last_event_at')), 'pressure_stop_count': stops}
+        return {'event_count': count, 'last_event_at': text(raw.get('last_event_at')), 'rest_stop_count': stops}
     stopped = raw.get('stopped_agents', [])
     if not isinstance(stopped, list) or len(stopped) > 1000 or any(not text(x) for x in stopped):
         raise ValueError('invalid stopped identifiers')
@@ -76,8 +76,8 @@ def _decode(data, kind):
         raise ValueError('invalid event')
     stamp = text(rows[-1].get('at_utc')) if rows else None
     return metadata(kind, {'event_count': len(rows), 'last_event_at': stamp,
-                          # Older sessions logged pressure_stop; task 9e5678ac logs rest_stop.
-                          'pressure_stop_count': sum(row['event'] in ('pressure_stop', 'rest_stop') for row in rows)}), stamp
+                          # Older sessions logged pressure_stop; rest_stop since task 9e5678ac. Both are stops.
+                          'rest_stop_count': sum(row['event'] in ('pressure_stop', 'rest_stop') for row in rows)}), stamp
 
 
 @contextmanager

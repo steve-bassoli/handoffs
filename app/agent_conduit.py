@@ -14,7 +14,6 @@ from app.api_budget import BudgetError, RULES, reserve
 from app.astra_agents import TREE_RULES, agent_lease, require_agent
 
 ASTRA_MAX_OUTPUT = 128000  # Documented provider capacity, not a local generation target.
-PRESSURE_LEVEL = 1  # Versioned instruction setting; no budget or permission effect.
 
 from app.rules import COMMONS_RULES, PRESSURE_RULES, CONDUIT_MISSION as MISSION
 
@@ -249,7 +248,6 @@ def _execute(manifest, run, transport=None, agent=None):
     save(run / 'manifest.json', manifest)
     save(run / 'authority.json', {'at_utc': stamp(), 'model': 'gpt-6-astra', 'effort': 'max',
         'conduit_sha256': digest(Path(__file__).read_bytes()),
-        'pressure_level': PRESSURE_LEVEL,
         'mission': MISSION, 'max_requests': max_requests, 'total_output_tokens': total_budget,
         'per_request_output_tokens': per_request, 'store': False,
         'scope': 'Pinned source reads and proposed JSON only; no code execution, acceptance, disclosure or publication.'})

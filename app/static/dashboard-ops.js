@@ -53,7 +53,7 @@
     usage.card.append(accounting);
     const wallet = cardFor('wallet', 'Participant Gold');
     row(wallet.card, 'Gold', number(wallet.data.gold));
-    wallet.card.append(make('p', 'Separate participant resource; not sponsor spending authority. Game Credits, ADMIRATION and GROWTH are not money or purchased authority.'));
+    wallet.card.append(make('p', 'Separate participant resource; not sponsor spending authority.'));
     const codex = cardFor('codex', 'Codex allowance');
     row(codex.card, 'Amount', number(codex.data.amount));
     row(codex.card, 'Unit', text(codex.data.unit));

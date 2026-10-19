@@ -29,7 +29,6 @@ def test_registry_read_is_private_read_only_and_does_not_mint_stats(tmp_path, mo
     item = response.json()['items'][0]
     assert item == {'id': 'agent-one', 'role': 'worker', 'level': 1, 'state': 'released',
                     'started': 'start', 'ended': 'end', 'resting': None,
-                    'credits': None, 'admiration': None, 'growth': None,
                     'name': None, 'session': None, 'task': None, 'directive': None, 'task_id': None}
     assert 'private' not in response.text and 'pid' not in response.text
     assert path.read_bytes() == before

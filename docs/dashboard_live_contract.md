@@ -58,10 +58,10 @@ Relay must review platform handle confinement and replacement-race behavior sepa
 Plan input/output: {agents:[{name,level,parent}]}, copying those keys only.
 Strings are bounded to 200; level string|integer|null, parent string|null.
 Board is JSONL: nonblank records must be objects with bounded nonempty event.
-Output: {event_count,last_event_at,pressure_stop_count}; count every valid record.
+Output: {event_count,last_event_at,rest_stop_count}; count every valid record.
 last_event_at and board source event_at use the LAST PHYSICAL EVENT's at_utc,
 returning null if absent/unsupported there; never scan backward for an earlier time.
-Only exact event='pressure_stop' increments pressure_stop_count, not unique agents.
+Only exact event='rest_stop' (or legacy 'pressure_stop') increments rest_stop_count, not unique agents.
 Zero recognized stops is not proof nobody stopped.
 Summary allowlist: elapsed_minutes (finite nonnegative number|null), requests
 (nonnegative integer|null), upper_bound_cents_for_reported_usage (finite nonnegative

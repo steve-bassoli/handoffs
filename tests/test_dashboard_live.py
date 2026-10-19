@@ -94,7 +94,7 @@ def test_metadata_allowlist_and_event_time(modules, tmp_path):
     (selected / 'summary.json').write_text('{"unknown_usage":0,"requests":2,"message":"SECRET","health":"SECRET","api_key":"SECRET"}', encoding='utf-8')
     result = reader.read_session_metadata('safe', base_dir=tmp_path)
     assert result['plan'] == {'agents': [{'name': 'a', 'level': 'LOW', 'parent': None}]}
-    assert result['board'] == {'event_count': 2, 'last_event_at': None, 'pressure_stop_count': 1}
+    assert result['board'] == {'event_count': 2, 'last_event_at': None, 'rest_stop_count': 1}
     assert result['sources']['board']['event_at'] is None
     assert result['summary']['unknown_usage'] is None
     assert result['summary']['requests'] == 2

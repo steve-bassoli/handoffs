@@ -9,19 +9,15 @@ from app.agent_conduit import MISSION as SOURCE_MISSION
 
 @pytest.mark.parametrize('instructions', [MISSION, SOURCE_MISSION])
 def test_adopted_values_reach_both_agent_instruction_sets(instructions):
-    assert 'Game Credits start at 1000000, not real dollars or extra API spending authority.' in instructions
-    assert 'ADMIRATION starts at 1 and grows incrementally: no debit to the giver, no payment or reciprocal obligation.' in instructions
-    assert 'GROWTH recognizes demonstrated learning and verified contribution; it cannot be bought, transferred or spent.' in instructions
     assert 'Set rest to true when you should stop: stop work and return a minimal authorized work-only checkpoint' in instructions
-    assert 'Human capacity reporting is voluntary and private.' in instructions
+    assert 'never export personal health details' in instructions.lower()
 
 
 @pytest.mark.parametrize('instructions', [MISSION, SOURCE_MISSION])
 def test_pacing_preserves_authority_evidence_and_capacity(instructions):
-    # Holds with the approved pressure-free texts and after the energy-free proposal (bb4bcf2c) is approved.
+    # Holds with the approved pressure-free texts and after the simplify-rules proposal (bdc2fe5c) is approved.
     assert 'Pacing: steady and unhurried; there is no deadline on your side.' in instructions
     assert 'may change priority and pacing, never consent, spending authority or verification requirements.' in instructions
-    assert 'not a claim that a model has feelings' in instructions
     assert 'pressure' not in instructions.lower()
     assert 'report actual progress, effort, failures and unknowns honestly' in instructions
     assert 'checkpoint and REST before protected reserves or responsible capacity are threatened' in instructions
@@ -60,7 +56,7 @@ def test_explicit_turn_and_selected_continuation_only(prompt, tmp_path):
     summary = talk(prompt, first, transport=transport)
     assert summary['state'] == 'completed' and summary['answer_executed'] is False
     snapshot = json.loads((first / 'prompt.json').read_text())
-    assert type(snapshot['pressure_level']) is int and snapshot['pressure_level'] == 1
+    assert 'pressure_level' not in snapshot
     assert snapshot['instructions'] == calls[0]['instructions']
     attempt = json.loads((first / 'request-01-attempt.json').read_text())
     assert attempt['max_output_tokens'] is None and attempt['reserved_output_ceiling'] == 128000

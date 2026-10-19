@@ -27,7 +27,7 @@
   <main>
     <section class="intro"><div><p class="eyebrow" title="Auditable Self-improving Ecosystem">ASE · AUDITABLE SELF-IMPROVING ECOSYSTEM</p><h1>Ask freely. Share freely. Build together.</h1><p>Share what you know. Choose useful work. Create software with human guidance and AI.</p></div>
       <div class="balance"><span>Available Gold</span><strong id="gold">—</strong><small id="reserved">Loading wallet…</small></div></section>
-    <nav aria-label="Workspace"><button data-view="open" class="selected">Tasks</button><button id="human-decisions-entry" data-view="signoffs" type="button" aria-controls="signoffs" aria-label="Human decisions; waiting count unavailable">Decisions · ?</button><a id="dashboard-link" href="/dashboard">Dashboard</a><button data-view="gremlins">Gremlins</button><button data-view="agents">Agents</button><button data-view="wallet">Wallet & Stats</button><a id="min-link" href="/min" title="One question, three options">MIN</a></nav>
+    <nav aria-label="Workspace"><button data-view="open" class="selected">Tasks</button><button id="human-decisions-entry" data-view="signoffs" type="button" aria-controls="signoffs" aria-label="Human decisions; waiting count unavailable">Decisions · ?</button><a id="dashboard-link" href="/dashboard">Dashboard</a><button data-view="gremlins">Gremlins</button><button data-view="agents">Agents</button><button data-view="wallet">Wallet & Stats</button></nav>
     <div id="tasks-toolbar" class="tasks-toolbar" role="navigation" aria-label="Tasks"><button type="button" data-task-view="open">Browse</button><button type="button" data-task-view="mine">My tasks</button><button type="button" data-task-view="post" class="primary">+ Post task</button></div>
     <p id="door-banner" role="status" hidden style="background:#fff4e5;border-left:4px solid #b45309;color:#7c2d12;padding:10px 14px;margin:12px 0"></p>
     <p id="notice" role="status"></p>
@@ -49,10 +49,10 @@
     <section id="agents" hidden>
       <div class="section-title"><h2>Astra roster</h2><button id="agents-refresh">Refresh</button></div>
       <p>Registered runs, including finished work. Working? means an occupied lease, not verified live activity. Resting means the agent's last turn asked to stop; it is a report, not an inferred feeling.</p>
-      <p>? = not reported. Credits, Admiration and Growth are not yet tracked per agent. Viewing this page never starts agents or paid calls.</p>
+      <p>? = not reported. Viewing this page never starts agents or paid calls.</p>
       <p id="agents-mode" class="eyebrow"></p>
       <p id="agents-summary" role="status"></p>
-      <div class="agent-table-wrap"><table class="agent-table"><caption class="eyebrow">ASTRA · READ ONLY</caption><thead><tr><th scope="col">Agent</th><th scope="col">Status</th><th scope="col">Working on</th><th scope="col">Resting</th><th scope="col">Credits</th><th scope="col">Admiration</th><th scope="col">Growth</th></tr></thead><tbody id="agent-rows"></tbody></table></div>
+      <div class="agent-table-wrap"><table class="agent-table"><caption class="eyebrow">ASTRA · READ ONLY</caption><thead><tr><th scope="col">Agent</th><th scope="col">Status</th><th scope="col">Working on</th><th scope="col">Resting</th></tr></thead><tbody id="agent-rows"></tbody></table></div>
     </section>
     <section id="gremlins" hidden>
       <h2>Gremlins · three mirrors</h2>
