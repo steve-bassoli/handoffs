@@ -391,3 +391,8 @@ def test_bob_and_sue_cards_stack_on_phones():
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
     assert '.bobsue-run dl { grid-template-columns: 1fr; }' in phone_css(css)
     assert css.rindex('.bobsue-run dl { grid-template-columns: 1fr; }') > css.index('.bobsue-run dl { display: grid;')
+
+
+def test_watson_mode_select_is_16px_on_phones():
+    # Competition round 2 (sue's team, 1e649007): the Comparison mode select computed 14px at 375px.
+    assert '#gremlins-breed { font-size: 16px; }' in phone_css((STATIC / 'styles.css').read_text(encoding='utf-8'))
