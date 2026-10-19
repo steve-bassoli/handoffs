@@ -876,7 +876,7 @@ function beforeVerify(data, proof, review, humanOnly) {
 // Task orientation brief (BSA build, ada's team, 5e798738): five read-only excerpts from data the task already has.
 // Only goal and materials (repository, context links) exist in ASE task data; the other entries keep their honest fallback.
 function orientationBrief(data) {
-  const template = typeof document !== 'undefined' && typeof document.getElementById === 'function' ? document.getElementById('task-orientation-template') : null;
+  const template = typeof document !== 'undefined' && typeof document.getElementById === 'function' ? document.getElementById('orientation-brief-template') : null;
   if (!template || !template.content) return null;
   const brief = template.content.cloneNode(true);
   const fill = (key, value) => { const cell = brief.querySelector(`[data-orientation="${key}"]`); if (cell && value) cell.textContent = value; };
