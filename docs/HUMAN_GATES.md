@@ -36,3 +36,18 @@ practice and are exactly the 1% that should stay human.
 
 A change to when people block is itself a decision a person must own. The intake screen vetoed the
 decision-digest task for that reason, and only a signed-in person can override that veto.
+
+## 6. How a lock may come off (the three doors, 2026-10-19)
+
+> 1 door unhinged · 1 door pondered · 1 door predicted
+
+- **Unhinged (the past):** construction mode. A lock comes off only through that one existing switch,
+  only after it was proven for the people it protects, with a hard cutoff (2026-11-01 UTC or the release
+  marker) and every action labelled `door-off`.
+- **Pondered (the present):** the human decision gate (a real sign-in to decide; two real people for rule
+  texts). When friction makes taking a gate off sound reasonable, the system's judge decides, not the relay
+  that was asked. On 2026-10-19 the relay designed exactly that and the intake screen vetoed it. The gate
+  stays; friction is fixed with design (two people on one screen, Accept without typing a note).
+- **Predicted (the future):** the next lock will feel like friction too. So it is decided now: no lock
+  grows its own off switch, and the gate that keeps people deciding never asks the construction switch.
+  `tests/test_doors.py` fails if either happens.

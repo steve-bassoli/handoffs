@@ -41,6 +41,12 @@
       <div class="section-title"><h2>Human decisions</h2><button id="signoffs-refresh" type="button">Refresh</button></div>
       <p id="human-decisions-scope" role="status">Waiting count unavailable.</p>
       <p id="signoffs-hint" hidden>Sign in to decide; demo identities cannot decide.</p>
+      <div id="cosign" hidden><p id="cosign-list" class="meta"></p>
+        <form id="cosign-form" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <input id="cosign-username" placeholder="Second person" autocomplete="off" aria-label="Second person's username" required>
+          <input id="cosign-password" type="password" placeholder="Their password" autocomplete="off" aria-label="Second person's password" required>
+          <button type="submit">Add to this screen</button>
+        </form></div>
       <div id="digest-outcomes" role="status" aria-live="polite" style="overflow-wrap:anywhere"></div>
       <input id="digest-search" type="search" placeholder="Search decisions" aria-label="Search decisions" autocomplete="off" style="width:100%;box-sizing:border-box">
       <div id="signoff-cards"></div>

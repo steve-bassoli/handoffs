@@ -125,3 +125,17 @@ def test_decisions_search_and_ready_fold():
     assert "$('digest-search').oninput = applyDigestSearch" in script
     assert 'if (entry.choice && entry.card.hidden) entry.choice.checked = false' in script  # Never batch what you cannot see.
     assert "items.filter(item => item.ready === false)" in script and '`${waiting.length} waiting on others`' in script
+
+
+def test_two_people_one_screen_and_accept_without_a_note():
+    script = (STATIC / 'app.js').read_text(encoding='utf-8')
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert 'id="cosign-form"' in html and 'id="cosign-password" type="password"' in html
+    # Each person decides with their own token; rule-text cards gain a per-person Accept, nothing else does.
+    assert "personFetch(person, path, body) : await api(path, body)" in script
+    assert "theirs.items.filter(item => item.kind === 'rule_texts')" in script
+    assert 'if (person && !cosigners.includes(person)) return;' in script
+    # Accept needs no typed note; Decline and Change still ask why.
+    assert "if (decision !== 'yes' && !note.value.trim())" in script and "note.value.trim() || 'Accepted'" in script
+    assert 'document.title = people.length ?' in script
+    assert 'cosigners = []; sessionStorage.removeItem(COSIGN_KEY);' in script

@@ -9,6 +9,16 @@ if (typeof sessionStorage !== 'undefined') try {
   else sessionStorage.removeItem(SESSION_KEY);
 } catch { sessionStorage.removeItem(SESSION_KEY); }
 let user = session ? session.user_id : localStorage.getItem('handoffs-user') || 'steve';
+// Steve, 2026-10-19: two people at one screen. Each extra person signs in with their own password and decides as
+// themselves; nobody can decide for anyone else (docs/HUMAN_GATES.md section 6: the second door stays on).
+const COSIGN_KEY = 'ase-cosigners';
+let cosigners = [];
+if (typeof sessionStorage !== 'undefined') try {
+  const saved = JSON.parse(sessionStorage.getItem(COSIGN_KEY) || '[]');
+  cosigners = Array.isArray(saved) ? saved.filter(person => person && typeof person.access_token === 'string' && person.access_token &&
+    typeof person.user_id === 'string' && person.user_id) : [];
+} catch { cosigners = []; }
+function saveCosigners() { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(COSIGN_KEY, JSON.stringify(cosigners)); }
 let postDraftOwner = null;
 function renderPostDraftOwner(note = '') {
   if (typeof document === 'undefined') return;
@@ -60,11 +70,18 @@ function renderAuth() {
   if (typeof syncPostDraftOwner === 'function') syncPostDraftOwner();
   $('user').value = user;
   $('user').disabled = !!session || (typeof postPending !== 'undefined' && postPending);
+  const people = session ? [session.user_id, ...(typeof cosigners !== 'undefined' ? cosigners.map(person => person.user_id) : [])] : [];
+  document.title = people.length ? `ASE · ${people.join(' + ')}` : 'ASE · Ask freely. Share freely. Build together.';
+  if ($('cosign')) {
+    $('cosign').hidden = !session;
+    $('cosign-list').textContent = cosigners.length ? 'Also signed in here: ' + cosigners.map(person => person.user_id).join(', ') : '';
+  }
   syncSignoffAuth();
 }
 function clearSession() {
   session = null;
   sessionStorage.removeItem(SESSION_KEY);
+  cosigners = []; sessionStorage.removeItem(COSIGN_KEY);  // Signing out clears everyone on this screen.
   renderAuth();
 }
 async function authenticatedFetch(url, options = {}) {
@@ -326,20 +343,37 @@ function digestEligible(item) {
 }
 function digestNote(labelText) {
   const label = element('label', labelText), note = element('textarea');
-  note.required = true; note.maxLength = 2000;
+  note.maxLength = 2000;
   note.dataset.digestControl = 'true';
   note.style.width = '100%'; note.style.boxSizing = 'border-box';
   label.append(note);
   return {label, note};
 }
-async function submitDigest(path, body, auth, actor) {
+async function personFetch(person, path, body) {
+  // A cosigner's own token; same origin only, like authenticatedFetch.
+  const headers = {Authorization: 'Bearer ' + person.access_token};
+  if (body !== undefined) Object.assign(headers, {'Content-Type': 'application/json', 'X-Action-Intent': 'user-directed',
+    'Idempotency-Key': Array.from(crypto.getRandomValues(new Uint32Array(4)), n => n.toString(16)).join('-')});
+  const response = await fetch('/api/v1' + path, {method: body === undefined ? 'GET' : 'POST', redirect: 'error', headers,
+    body: body === undefined ? undefined : JSON.stringify(body)});
+  const data = await response.json();
+  if (response.status === 401) { cosigners = cosigners.filter(other => other !== person); saveCosigners(); renderAuth(); }
+  if (!response.ok) {
+    const error = new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+    error.status = response.status; error.detail = data.detail;
+    throw error;
+  }
+  return data;
+}
+async function submitDigest(path, body, auth, actor, person = null) {
   if (!session || session !== auth || user !== actor || digestBusy || digestUncertain) return;
+  if (person && !cosigners.includes(person)) return;
   digestBusy = true; syncSignoffAuth();
   const outcomes = $('digest-outcomes');
   outcomes.replaceChildren(element('p', 'Recording decision…'));
   let confirmed = false;
   try {
-    const result = await api(path, body);
+    const result = person ? await personFetch(person, path, body) : await api(path, body);
     confirmed = true;
     outcomes.replaceChildren();
     if (path === '/digest/decide-batch') {
@@ -433,18 +467,24 @@ function renderSignoffs(items) {
         choice.onchange = syncSignoffAuth;
         selectLabel.prepend(choice); card.append(selectLabel); entry.choice = choice;
       }
-      const {label, note} = digestNote('Decision note (required)');
+      const {label, note} = digestNote('Note (needed for Decline or Change)');
       const controls = element('div', undefined, 'actions');
       controls.style.display = 'flex'; controls.style.flexWrap = 'wrap'; controls.style.gap = '8px';
+      // Who on this screen can still decide this item: the signed-in person and/or a cosigner, each as themselves.
+      const deciders = Array.isArray(item.deciders) && item.deciders.length ? item.deciders : [null];
       for (const [text, decision] of DIGEST_CHOICES) {
-        const button = element('button', text); button.type = 'button';
-        button.dataset.digestControl = 'true'; button.dataset.decision = decision;
-        button.onclick = () => run(async () => {
-          if (!session || session !== auth || actor !== user || digestBusy || digestUncertain) return;
-          if (!note.value.trim()) { note.reportValidity(); note.focus(); return; }
-          await submitDigest('/digest/decide', {...digestReference(item), decision, note: note.value.trim()}, auth, actor);
-        });
-        controls.append(button);
+        const people = decision === 'yes' ? deciders : [deciders.includes(null) ? null : deciders[0]];
+        for (const person of people) {
+          const name = person ? person.user_id : session?.user_id || user;
+          const button = element('button', decision === 'yes' && deciders.length > 1 || person ? `${text} as ${name}` : text); button.type = 'button';
+          button.dataset.digestControl = 'true'; button.dataset.decision = decision;
+          button.onclick = () => run(async () => {
+            if (!session || session !== auth || actor !== user || digestBusy || digestUncertain) return;
+            if (decision !== 'yes' && !note.value.trim()) { note.required = true; note.reportValidity(); note.focus(); note.required = false; return; }
+            await submitDigest('/digest/decide', {...digestReference(item), decision, note: note.value.trim() || 'Accepted'}, auth, actor, person);
+          });
+          controls.append(button);
+        }
       }
       card.append(element('p', DIGEST_MEANING[item.kind] || '', 'meta'), label, controls);
     } else card.append(element('p', 'Decision unavailable: missing or unsupported item version.', 'error'));
@@ -464,7 +504,7 @@ function renderSignoffs(items) {
   }
   if (digestEntries.some(entry => entry.choice)) {
     const bar = element('div', undefined, 'card');
-    const {label, note} = digestNote('Note for selected decisions (required)');
+    const {label, note} = digestNote('Note for selected decisions (optional)');
     digestBatchButton = element('button', 'Accept selected (0)', 'primary');
     digestBatchButton.type = 'button'; digestBatchButton.dataset.digestControl = 'true';
     digestBatchButton.onclick = () => run(async () => {
@@ -472,8 +512,7 @@ function renderSignoffs(items) {
       const selected = digestEntries.filter(entry => entry.choice?.checked);
       if (!selected.length) return;
       if (selected.length > 50) { message('Select at most 50 items for one batch.', true); return; }
-      if (!note.value.trim()) { note.reportValidity(); note.focus(); return; }
-      await submitDigest('/digest/decide-batch', {items: selected.map(entry => digestReference(entry.item)), note: note.value.trim()}, auth, actor);
+      await submitDigest('/digest/decide-batch', {items: selected.map(entry => digestReference(entry.item)), note: note.value.trim() || 'Accepted'}, auth, actor);
     });
     // Steve, 2026-10-18: "add accept all, it's a lot". Selecting stays explicit; Accept selected still needs a note.
     // Selection follows the search box: only cards that are showing can be selected.
@@ -516,10 +555,21 @@ async function signoffs() {
   }
   if (ticket !== signoffRequest || epoch !== treeEpoch || auth !== session || actor !== user || view !== 'signoffs') return;
   if (countTicket === digestCountRequest) digestCount(data);
-  const ready = Number.isInteger(data.counts.ready) ? data.counts.ready : data.counts.total;
-  $('human-decisions-scope').textContent = `${ready} ready for you · ${data.counts.total - ready} waiting on others`;
+  // Rule texts need two different people: a cosigner on this screen gets their own Accept on the cards still waiting on them.
+  const merged = new Map(data.items.map(item => [`${item.kind}:${item.id}`, {...item, deciders: [null]}]));
+  for (const person of (typeof cosigners !== 'undefined' ? [...cosigners] : [])) {
+    let theirs;
+    try { theirs = await personFetch(person, '/digest'); } catch { continue; }
+    for (const item of theirs.items.filter(item => item.kind === 'rule_texts')) {
+      const key = `${item.kind}:${item.id}`;
+      if (merged.has(key)) merged.get(key).deciders.push(person); else merged.set(key, {...item, deciders: [person]});
+    }
+  }
+  if (ticket !== signoffRequest || epoch !== treeEpoch || auth !== session || actor !== user || view !== 'signoffs') return;
+  const items = [...merged.values()], ready = items.filter(item => item.ready !== false).length;
+  $('human-decisions-scope').textContent = `${ready} ready for you · ${items.length - ready} waiting on others`;
   // An unknown write remains locked even after a read: reconcile its audit first.
-  renderSignoffs(data.items);
+  renderSignoffs(items);
 }
 const TASK_VIEWS = new Set(['open', 'mine', 'post']), WORKSPACE_BUTTONS = 'nav[aria-label="Workspace"] button[data-view]';
 async function navigate(nextView) {
@@ -1288,8 +1338,36 @@ $('signin-form').onsubmit = event => {
     }
   });
 };
+if ($('cosign-form')) $('cosign-form').onsubmit = event => {
+  event.preventDefault();
+  run(async () => {
+    // The second person types their own password here; the page keeps their sign-in beside the first person's.
+    const button = $('cosign-form').querySelector('button');
+    button.disabled = true;
+    try {
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST', redirect: 'error', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username: $('cosign-username').value, password: $('cosign-password').value})
+      });
+      if (!response.ok) throw new Error('Sign-in failed for the second person. Check their credentials.');
+      const issued = await response.json();
+      if (!issued.access_token || !issued.user_id) throw new Error('Invalid sign-in response.');
+      if (issued.user_id === session?.user_id || cosigners.some(person => person.user_id === issued.user_id)) {
+        message(`${issued.user_id} is already signed in on this screen.`); return;
+      }
+      cosigners.push({access_token: issued.access_token, user_id: issued.user_id});
+      saveCosigners(); renderAuth();
+      $('cosign-username').value = '';
+      message(`${issued.user_id} is signed in on this screen too and can now decide as themselves.`);
+      if (view === 'signoffs') await signoffs();
+    } finally {
+      $('cosign-password').value = '';
+      button.disabled = false;
+    }
+  });
+};
 $('signout').onclick = () => run(async () => {
-  const token = session?.access_token;
+  const token = session?.access_token, others = cosigners.map(person => person.access_token);
   clearSession();
   let revoked = !token;
   try {
@@ -1298,6 +1376,10 @@ $('signout').onclick = () => run(async () => {
         method: 'POST', redirect: 'error', headers: {Authorization: 'Bearer ' + token}
       });
       revoked = response.ok || response.status === 401;
+    }
+    for (const other of others) {  // Everyone signed in on this screen signs out together.
+      const response = await fetch('/api/v1/auth/logout', {method: 'POST', redirect: 'error', headers: {Authorization: 'Bearer ' + other}});
+      revoked = revoked && (response.ok || response.status === 401);
     }
   } catch { /* Local sign-out still succeeds; never automatically retry. */ }
   if (!revoked) sessionStorage.setItem('handoffs-signout-warning', 'Signed out locally; server revocation is unconfirmed.');
