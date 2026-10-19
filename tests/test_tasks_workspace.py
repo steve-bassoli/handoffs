@@ -357,3 +357,9 @@ def test_watson_json_editor_is_16px_on_phones():
     # Bob team free play #17 (409326d7): the Watson simulation JSON editor inherited 14px on phones.
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
     assert '#gremlins-input { font-size: 16px; }' in css.split('@media (max-width: 640px)')[-1]
+
+
+def test_watson_mode_selector_says_what_it_controls():
+    # Bob team free play #18 (9c339527): "Gremlin" did not say what the choice controls.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
