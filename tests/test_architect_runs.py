@@ -66,4 +66,4 @@ def test_bob_and_sue_tab_is_second_and_read_only():
     section = re.search(r'<section id="bobsue" hidden>(.*?)</section>', (STATIC / 'index.html').read_text(encoding='utf-8'), re.S).group(1)
     assert re.findall(r'<button[^>]*>([^<]*)</button>', section) == ['Refresh']  # no launch, stop, approve or spend controls
     script = (STATIC / 'app.js').read_text(encoding='utf-8')
-    assert "await api('/architect-runs')" in script and "'signoffs', 'bobsue', 'gallery']" in script
+    assert "await api('/architect-runs')" in script and "'signoffs', 'bobsue', 'gallery', 'hub']" in script

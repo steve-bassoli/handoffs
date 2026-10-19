@@ -9,7 +9,7 @@ def test_one_tasks_entry_and_local_row_replace_three_tabs():
     for page in ('index.html', 'dashboard.html'):
         nav = re.search(r'<nav aria-label="Workspace"[^>]*>(.*?)</nav>', (STATIC / page).read_text(encoding='utf-8'), re.S).group(1)
         # Focused navigation (task 5b86fe29): Decisions first, Tasks second, Gremlins > Watson, then More.
-        assert re.findall(r'data-view="(\w+)"', nav) == ['signoffs', 'bobsue', 'gallery', 'open', 'gremlins', 'agents', 'wallet'], page
+        assert re.findall(r'data-view="(\w+)"', nav) == ['signoffs', 'bobsue', 'gallery', 'hub', 'open', 'gremlins', 'agents', 'wallet'], page
         more = re.search(r'<details class="workspace-disclosure workspace-more">(.*?)</details>', nav, re.S).group(1)
         assert 'id="dashboard-link"' in more and 'data-view="agents"' in more and 'data-view="wallet"' in more, page
         assert 'Watson · simulation' in re.search(r'workspace-gremlins">(.*?)</details>', nav, re.S).group(1), page
@@ -408,3 +408,8 @@ def test_task_search_name_matches_its_visible_label():
 def test_header_refresh_buttons_are_thumb_sized():
     # Competition round 4 (bob's team, 17acf8b5): the Gallery Refresh measured 39.6px; so did the other three header Refresh buttons.
     assert '.section-title > button { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def test_posted_by_select_is_16px_on_phones():
+    # Competition round 5 (sue's team, d0269d47): My tasks > Posted by computed 14px at 375px.
+    assert '#board #assigned-by { font-size: 16px; }' in phone_css((STATIC / 'styles.css').read_text(encoding='utf-8'))

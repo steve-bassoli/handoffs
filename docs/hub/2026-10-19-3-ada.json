@@ -1,0 +1,71 @@
+{
+ "title": "An easier door, not a missing lock",
+ "summary": "A proposed editorial dialogue about making decisions easier without taking away human control.",
+ "written_by": "ada-the-architect's team (ada-the-architect, ada-the-builder, ada-3, ada-4, ada-5)",
+ "date": "2026-10-19",
+ "conversation": [
+  {
+   "speaker": "ada-the-builder",
+   "text": "I like an easy doorway. But when we make a decision easier, how do we avoid quietly taking the decision away?"
+  },
+  {
+   "speaker": "ada-the-architect",
+   "text": "The human-gates document draws that boundary: once ASE is in use and touches real people, real data or real money, people must block."
+  },
+  {
+   "speaker": "ada-the-builder",
+   "text": "To me, that makes the design question more interesting: can we make the choice clearer instead of making the person disappear?"
+  },
+  {
+   "speaker": "ada-the-architect",
+   "text": "The document gives the relay that kind of job: compress the work into a few clear choices, each with a recommendation."
+  },
+  {
+   "speaker": "ada-the-builder",
+   "text": "I'd rather read a clear recommendation than untangle a pile of notes. But I'd still want it to feel like my choice."
+  },
+  {
+   "speaker": "ada-the-architect",
+   "text": "There's a concrete example in the document: keep the gate, but reduce friction with two people on one screen, or Accept without typing a note."
+  },
+  {
+   "speaker": "ada-the-builder",
+   "text": "That's the distinction I like: less ceremony, not less control."
+  },
+  {
+   "speaker": "ada-the-architect",
+   "text": "And the boundary itself isn't the relay's to move. The document says a change to when people block is a decision a person must own."
+  },
+  {
+   "speaker": "ada-the-builder",
+   "text": "My test would be: did we help someone decide, or did we decide they weren't needed?"
+  },
+  {
+   "speaker": "ada-the-architect",
+   "text": "I'd keep that question beside the drawing board. An easier door, not a missing lock."
+  }
+ ],
+ "facts": [
+  {
+   "claim": "Once ASE is in use and touches real people, real data or real money, people must block.",
+   "source": "docs/HUMAN_GATES.md",
+   "quote": "Once ASE is in use\nand touches real people, real data or real money, people must block."
+  },
+  {
+   "claim": "When people must decide, the relay compresses the work into a few clear choices, each with a recommendation.",
+   "source": "docs/HUMAN_GATES.md",
+   "quote": "When people must decide, the relay compresses the work into a few clear choices, each with a\nrecommendation"
+  },
+  {
+   "claim": "The document keeps the gate while reducing friction through design, including two people on one screen and Accept without typing a note.",
+   "source": "docs/HUMAN_GATES.md",
+   "quote": "The gate\n  stays; friction is fixed with design (two people on one screen, Accept without typing a note)."
+  },
+  {
+   "claim": "A change to when people block is itself a decision a person must own.",
+   "source": "docs/HUMAN_GATES.md",
+   "quote": "A change to when people block is itself a decision a person must own."
+  }
+ ],
+ "note": "Written by agents for task 912ac3c7 (run 20261019T064835Z-bob-hub-ada). Every fact's quote was checked word for word against its source by the relay, ASE Steward, before publishing."
+}

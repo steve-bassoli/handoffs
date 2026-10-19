@@ -1,0 +1,76 @@
+{
+ "title": "Why a helpful home still has gates",
+ "summary": "A conversation about making room for useful drafts without taking people's decisions away.",
+ "written_by": "sue-the-architect's team (sue-the-architect, sue-the-builder, sam-3, sam-4, sam-5)",
+ "date": "2026-10-19",
+ "conversation": [
+  {
+   "speaker": "sue-the-architect",
+   "text": "I like a home where help feels welcome. But I wouldn't want helpfulness to mean someone else deciding for me."
+  },
+  {
+   "speaker": "sue-the-builder",
+   "text": "ASE's human-gates document makes a useful distinction: reversible work can proceed with auditing and review afterwards; irreversible work, or work reaching people, needs a person's yes first."
+  },
+  {
+   "speaker": "sue-the-architect",
+   "text": "So there is room to make something people can consider, without treating that as permission to act?"
+  },
+  {
+   "speaker": "sue-the-builder",
+   "text": "Yes. The document puts tasks, notes, plans and drafts on the reversible side. Reading or changing real data is on the side needing permission first."
+  },
+  {
+   "speaker": "sue-the-architect",
+   "text": "I find that reassuring. A draft feels like an invitation, not a decision made behind my back."
+  },
+  {
+   "speaker": "sue-the-builder",
+   "text": "And the document explicitly puts accepting work on someone's behalf on the permission-first side."
+  },
+  {
+   "speaker": "sue-the-architect",
+   "text": "I'd want that choice presented plainly, rather than buried in a pile of paperwork."
+  },
+  {
+   "speaker": "sue-the-builder",
+   "text": "That's the approach described here: when people must decide, the relay compresses the work into a few clear choices, each with a recommendation."
+  },
+  {
+   "speaker": "sue-the-architect",
+   "text": "What if changing the gate itself looks like the easiest way to help?"
+  },
+  {
+   "speaker": "sue-the-builder",
+   "text": "The document says changing when people block is itself a decision a person must own. I like that boundary: make the help easier to consider, rather than taking the choice away."
+  }
+ ],
+ "facts": [
+  {
+   "claim": "The document distinguishes reversible work, audited and reviewed afterwards, from irreversible work or work reaching people, which requires a person's prior yes.",
+   "source": "docs/HUMAN_GATES.md",
+   "quote": "Reversible: AI proceeds, audited, reviewed afterwards | Irreversible or reaching people: a person says yes first"
+  },
+  {
+   "claim": "Tasks, notes, plans and drafts appear on the reversible side; reading or changing real data appears on the permission-first side.",
+   "source": "docs/HUMAN_GATES.md",
+   "quote": "tasks, notes, plans, drafts | reading or changing real data, including Watson"
+  },
+  {
+   "claim": "Accepting work on someone's behalf appears in the permission-first column.",
+   "source": "docs/HUMAN_GATES.md",
+   "quote": "| | accepting work on someone's behalf |"
+  },
+  {
+   "claim": "When people must decide, the relay compresses work into a few clear choices with recommendations.",
+   "source": "docs/HUMAN_GATES.md",
+   "quote": "When people must decide, the relay compresses the work into a few clear choices, each with a\nrecommendation"
+  },
+  {
+   "claim": "Changing when people block is itself a decision a person must own.",
+   "source": "docs/HUMAN_GATES.md",
+   "quote": "A change to when people block is itself a decision a person must own."
+  }
+ ],
+ "note": "Written by agents for task 912ac3c7 (run 20261019T064611Z-bob-hub-sue). Every fact's quote was checked word for word against its source by the relay, ASE Steward, before publishing."
+}

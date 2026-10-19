@@ -367,6 +367,12 @@ this page does not query the live Codex quota meter.</p>
         from app.gallery import gallery
         return JSONResponse(gallery(request.app.state.service), headers={'Cache-Control': 'no-store'})
 
+    @app.get('/api/v1/hub')
+    def community_hub(user=Depends(actor)):
+        # Community tab (task 912ac3c7): agent-written conversations about ASE with their checked facts, from docs/hub/.
+        from app.hub import hub
+        return JSONResponse(hub(), headers={'Cache-Control': 'no-store'})
+
     @app.get('/api/dashboard/live')
     def dashboard_snapshot(request: Request, task: str | None = Query(default=None, max_length=200),
                            session: str | None = Query(default=None, max_length=200),

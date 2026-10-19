@@ -48,6 +48,6 @@ def test_gallery_lists_images_newest_first_and_skips_text(client):
 def test_gallery_tab_follows_bob_and_sue():
     for page in ('index.html', 'dashboard.html'):
         nav = re.search(r'<nav aria-label="Workspace"[^>]*>(.*?)</nav>', (STATIC / page).read_text(encoding='utf-8'), re.S).group(1)
-        assert re.findall(r'data-view="(\w+)"', nav)[:4] == ['signoffs', 'bobsue', 'gallery', 'open'], page
+        assert re.findall(r'data-view="(\w+)"', nav)[:4] == ['signoffs', 'bobsue', 'gallery', 'hub'], page
     script = (STATIC / 'app.js').read_text(encoding='utf-8')
     assert "await api('/gallery')" in script and "authenticatedFetch(item.download_url, {headers: identityHeaders()})" in script

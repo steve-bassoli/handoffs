@@ -93,7 +93,7 @@ async function authenticatedFetch(url, options = {}) {
     clearSession();
     ++treeEpoch; ++boardRequest;
     clearTimeout(aiPoll); clearTimeout(proofPoll); clearTimeout(acceptPoll);
-    for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents', 'signoffs', 'bobsue', 'gallery']) if ($(id)) $(id).hidden = true;
+    for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents', 'signoffs', 'bobsue', 'gallery', 'hub']) if ($(id)) $(id).hidden = true;
     message('Session ended. Sign in again or choose a demo user.', true);
     throw new Error('Session ended. Sign in again or choose a demo user.');
   }
@@ -282,6 +282,40 @@ async function agentRoster() {
       $('agent-rows').append(row);
     }
   } finally { $('agents-refresh').disabled = false; }
+}
+// Community (task 912ac3c7): agent-written conversations about ASE, each with the checked facts it rests on.
+async function hubView() {
+  $('hub-refresh').disabled = true;
+  $('hub-status').textContent = 'Loading conversations…';
+  $('hub-posts').replaceChildren();
+  try {
+    let data;
+    try { data = await api('/hub'); }
+    catch (error) { if (view === 'hub') $('hub-status').textContent = 'Could not load the hub: ' + error.message + '. Refresh to retry.'; return; }
+    if (view !== 'hub') return;
+    $('hub-status').textContent = data.posts.length ? `${data.posts.length} conversations · newest first` : 'No conversations yet.';
+    for (const post of data.posts) {
+      const article = element('article', undefined, 'hub-post');
+      article.append(element('h3', post.title));
+      if (post.summary) article.append(element('p', post.summary, 'hub-summary'));
+      article.append(element('p', [post.written_by && `Written by ${post.written_by}`, post.date].filter(Boolean).join(' · '), 'meta'));
+      const talk = element('div', undefined, 'hub-talk');
+      for (const turn of post.conversation) {
+        const line = element('p', undefined, 'hub-turn'); line.append(element('strong', turn.speaker), element('span', turn.text)); talk.append(line);
+      }
+      article.append(talk);
+      if (post.facts.length) {
+        const facts = element('details', undefined, 'hub-facts'); facts.append(element('summary', `What's real here · ${post.facts.length} checked facts`));
+        const list = element('ul');
+        for (const fact of post.facts) {
+          const item = element('li'); item.append(element('span', fact.claim), element('small', `Source: ${fact.source}${fact.quote ? ' · "' + fact.quote + '"' : ''}`)); list.append(item);
+        }
+        facts.append(list); article.append(facts);
+      }
+      if (post.note) article.append(element('p', post.note, 'meta'));
+      $('hub-posts').append(article);
+    }
+  } finally { $('hub-refresh').disabled = false; }
 }
 // Gallery (Steve, 2026-10-19: "I want to see bot creativity in our house"): image proofs attached to tasks.
 // Images load through the authenticated proof route, one object URL each, released when the view is redrawn.
@@ -669,7 +703,7 @@ async function navigate(nextView) {
     if ($('dashboard-link')) $('dashboard-link').href = '/dashboard?user=' + encodeURIComponent(user);
     history.replaceState(null, '', location.pathname + location.search + (view === 'agents' ? '#agents' : ''));
   }
-  for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents', 'signoffs', 'bobsue', 'gallery']) if ($(id)) $(id).hidden = true;
+  for (const id of ['board', 'post', 'wallet', 'detail', 'gremlins', 'agents', 'signoffs', 'bobsue', 'gallery', 'hub']) if ($(id)) $(id).hidden = true;
   // One Tasks entry covers browse, my work and posting; the local row says which one is current.
   for (const button of document.querySelectorAll(WORKSPACE_BUTTONS)) button.classList.toggle('selected', button.dataset.view === (TASK_VIEWS.has(view) ? 'open' : view));
   if ($('tasks-toolbar')) $('tasks-toolbar').hidden = !TASK_VIEWS.has(view);
@@ -682,6 +716,7 @@ async function navigate(nextView) {
   else if (view === 'signoffs') { $('signoffs').hidden = false; await signoffs(); }
   else if (view === 'bobsue') { $('bobsue').hidden = false; await bobSue(); }
   else if (view === 'gallery') { $('gallery').hidden = false; await galleryView(); }
+  else if (view === 'hub') { $('hub').hidden = false; await hubView(); }
   else if (view === 'wallet') { $('wallet').hidden = false; await transactions(); }
   else { $('board').hidden = false; $('board-title').textContent = view === 'mine' ? 'My tasks' : 'Open tasks'; await board(); }
 }
@@ -829,6 +864,7 @@ async function show(id) {
   $('signoffs').hidden = true;
   if ($('bobsue')) $('bobsue').hidden = true;
   if ($('gallery')) $('gallery').hidden = true;
+  if ($('hub')) $('hub').hidden = true;
   const refreshing = !current.hidden && current.querySelector('.detail-head code')?.textContent === id;
   const detail = element('div');
   const listView = typeof view !== 'undefined' && view === 'mine' ? 'mine' : 'open';
@@ -1002,6 +1038,7 @@ async function showTree(id) {
   $('signoffs').hidden = true;
   if ($('bobsue')) $('bobsue').hidden = true;
   if ($('gallery')) $('gallery').hidden = true;
+  if ($('hub')) $('hub').hidden = true;
   current.replaceChildren(element('h2', 'Task tree'), element('p', 'Loading hierarchy…'));
   try {
     const assembly = assembleTicketTree(await api('/tasks/' + encodeURIComponent(id) + '/lineage'), id);
@@ -1402,6 +1439,7 @@ $('gremlins-form').onsubmit = event => { event.preventDefault(); run(async () =>
 $('agents-refresh').onclick = () => run(agentRoster);
 if ($('bobsue-refresh')) $('bobsue-refresh').onclick = () => run(bobSue);
 if ($('gallery-refresh')) $('gallery-refresh').onclick = () => run(galleryView);
+if ($('hub-refresh')) $('hub-refresh').onclick = () => run(hubView);
 $('signoffs-refresh').onclick = () => run(signoffs);
 for (const button of document.querySelectorAll(WORKSPACE_BUTTONS + ', [data-task-view]')) button.onclick = () => run(async () => { button.closest('details')?.removeAttribute('open'); offset = 0; message(''); await navigate(button.dataset.view || button.dataset.taskView); });
 $('user').onchange = () => run(async () => { if (session) { renderAuth(); return; } user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });
