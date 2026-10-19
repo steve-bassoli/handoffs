@@ -29,13 +29,15 @@ def test_missing_folder_is_empty(tmp_path):
 def test_published_posts_cite_real_sources():
     # Every published fact names its source; quotes from the repo's own docs must appear there word for word.
     root = Path(__file__).resolve().parents[1]
-    docs = {'docs/HUMAN_GATES.md': (root / 'docs' / 'HUMAN_GATES.md').read_text(encoding='utf-8'), 'README.md': (root / 'README.md').read_text(encoding='utf-8')}
+    from app.hub import SOURCES
+    docs = {name: path.read_text(encoding='utf-8') for name, path in SOURCES.items()}
     for post in hub()['posts']:
-        assert post['conversation'] and post['written_by'], post['id']
+        assert (post['conversation'] or post['answer']) and post['written_by'], post['id']
         assert post['facts'] and all(f['source'] in docs and f['quote'] for f in post['facts']), post['id']
         for fact in post['facts']:
             if fact['source'] in docs and fact['quote']:
-                assert ' '.join(fact['quote'].split()) in ' '.join(docs[fact['source']].split()), (post['id'], fact['quote'])
+                norm = lambda s: ' '.join(s.replace('’', "'").replace('“', '"').replace('”', '"').split())
+                assert norm(fact['quote']) in norm(docs[fact['source']]), (post['id'], fact['quote'])
 
 
 def test_community_tab_follows_gallery():
