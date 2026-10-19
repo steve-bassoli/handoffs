@@ -17,5 +17,14 @@
     ],
     "approved_at": "2026-10-19T00:40:29+00:00",
     "note": "Approved in Decisions: steve at 2026-10-19T00:40:20+00:00, nate at 2026-10-19T00:40:29+00:00. Proposal docs/proposals/remove-pressure. Written by the server from signed-in decisions (task 2c56ad7a); a person commits the files."
+  },
+  {
+    "sha256": "ef47cfb2f3f70950d1a8c4aa34d3a46146a164bc6563d9ccbab3fcbb77c27df6",
+    "approved_by": [
+      "steve",
+      "nate"
+    ],
+    "approved_at": "2026-10-19T01:13:11+00:00",
+    "note": "Approved in Decisions: steve at 2026-10-19T01:13:05+00:00, nate at 2026-10-19T01:13:11+00:00. Proposal docs/proposals/simplify-rules. Written by the server from signed-in decisions (task 2c56ad7a); a person commits the files."
   }
 ]
