@@ -457,3 +457,8 @@ def test_gallery_columns_shrink_on_very_narrow_screens():
 def test_proof_box_paragraphs_wrap_long_ids():
     # Competition round 7 (bob's team, abd06e98): two proof-box paragraphs with unbroken ids made task detail 336px wide at 320px.
     assert '#detail section.evidence > p { overflow-wrap: anywhere; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def test_watson_page_controls_are_thumb_sized():
+    # Competition round 8 (sue's team, 3aa7889a): example, mode select, Run and Download measured 38-39.6px.
+    assert '#gremlins button, #gremlins select { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')

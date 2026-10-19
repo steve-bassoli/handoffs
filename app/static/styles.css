@@ -168,6 +168,7 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
 .proof-media { display: block; max-width: 100%; max-height: 600px; }
 #gremlins-output:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; } /* Keyboard handle on the long report (bob free play #5, 6e08fc7b). */
 #gremlins-input { min-height: 280px; font-family: monospace; }
+#gremlins button, #gremlins select { min-height: 44px; } /* Watson page controls (competition round 8, sue's team, 3aa7889a; all four measured under 44px). */
 .evidence summary { cursor: pointer; font-weight: 600; }
 .evidence small { display: block; margin-top: 10px; }
 /* Focused navigation (task 5b86fe29, bob team): Decisions, Tasks, Gremlins > Watson, More; Feather-style outline icons, labels kept. */
