@@ -396,3 +396,10 @@ def test_bob_and_sue_cards_stack_on_phones():
 def test_watson_mode_select_is_16px_on_phones():
     # Competition round 2 (sue's team, 1e649007): the Comparison mode select computed 14px at 375px.
     assert '#gremlins-breed { font-size: 16px; }' in phone_css((STATIC / 'styles.css').read_text(encoding='utf-8'))
+
+
+def test_task_search_name_matches_its_visible_label():
+    # Competition round 3 (ada's team, e0f73ed0): aria-label "Search tasks" overrode the visible label "Find a task".
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert '<label class="task-search" for="search">Find a task<input id="search" type="search" placeholder="Find a task">' in html
+    assert 'aria-label="Search tasks"' not in html
