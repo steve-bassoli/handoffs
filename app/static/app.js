@@ -261,8 +261,12 @@ async function agentRoster() {
     try { data = await api('/agents'); }
     catch (error) { if (view === 'agents') $('agents-summary').textContent = 'Could not load agents: ' + error.message + '. Refresh to retry.'; return; }
     if (view !== 'agents') return;
-    const mode = await api('/automation-mode');
-    $('agents-mode').textContent = mode.mode ? `Mode: ${mode.mode} · ${mode.summary}` : '';
+    // Competition round 20 (sue's team, 905a24e0): a failed mode read used to discard the fetched roster and leave "Loading…" up.
+    let mode;
+    try { mode = await api('/automation-mode'); } catch { mode = null; }
+    if (view !== 'agents') return;
+    $('agents-mode').textContent = mode === null ? 'Automation mode unavailable. Refresh to retry.' :
+      mode.mode ? `Mode: ${mode.mode} · ${mode.summary}` : '';
     $('agents-summary').textContent = !data.available ? 'Agent registry unavailable.' :
       data.items.length ? `${data.items.length} registered runs · refresh to check for changes` : 'No registered Astra runs yet.';
     for (const agent of data.items) {

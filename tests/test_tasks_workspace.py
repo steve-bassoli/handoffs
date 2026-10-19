@@ -375,6 +375,15 @@ def test_watson_mode_selector_says_what_it_controls():
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
 
 
+def test_agent_roster_survives_a_failed_mode_read():
+    # Competition round 20, sue's team (905a24e0): a failed /automation-mode read threw away the fetched roster and left "Loading…" up.
+    js = (STATIC / 'app.js').read_text(encoding='utf-8')
+    body = js[js.index('async function agentRoster()'):js.index('async function hubView()')]
+    assert "try { mode = await api('/automation-mode'); } catch { mode = null; }" in body
+    assert "'Automation mode unavailable. Refresh to retry.'" in body
+    assert "const mode = await api('/automation-mode');" not in body
+
+
 def test_form_field_borders_meet_non_text_contrast():
     # Competition round 18, ada's team (19ad4248): #ccc field borders on white were 1.6:1; the relay extended the search fix to every field.
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
