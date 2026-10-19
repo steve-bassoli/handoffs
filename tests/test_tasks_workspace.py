@@ -452,3 +452,8 @@ def test_shelf_files_pass_the_secret_check():
 def test_gallery_columns_shrink_on_very_narrow_screens():
     # Competition round 6 (ada's team, 2e5cb50f): at 300px each 280px card overflowed a 264px gallery by 16px.
     assert 'grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr))' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def test_proof_box_paragraphs_wrap_long_ids():
+    # Competition round 7 (bob's team, abd06e98): two proof-box paragraphs with unbroken ids made task detail 336px wide at 320px.
+    assert '#detail section.evidence > p { overflow-wrap: anywhere; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
