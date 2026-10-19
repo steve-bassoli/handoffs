@@ -351,3 +351,9 @@ def test_history_evidence_headers_toggle_from_the_whole_shaded_area():
     # Bob team free play #16 (4ffe2bc3): the summary was 16px tall inside a 42px shaded box, so taps on the padding did nothing.
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
     assert '.history-event details > summary { cursor: pointer; padding: 12px 16px; min-height: 44px; }' in css
+
+
+def test_watson_json_editor_is_16px_on_phones():
+    # Bob team free play #17 (409326d7): the Watson simulation JSON editor inherited 14px on phones.
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    assert '#gremlins-input { font-size: 16px; }' in css.split('@media (max-width: 640px)')[-1]

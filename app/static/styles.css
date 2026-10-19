@@ -202,6 +202,7 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
     .section-title input { max-width: none; margin-bottom: 18px; }
     #board .task-search { flex: none; width: 100%; }
     #board #search { font-size: 16px; } /* No focus zoom on phones (bob free play #3, ac5f481e). */
+    #gremlins-input { font-size: 16px; } /* Same safeguard for the Watson JSON editor (bob free play #17, 409326d7). */
     nav button { padding: 12px; }
     .event { flex-direction: column; gap: 6px; }
 }
