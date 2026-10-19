@@ -365,6 +365,11 @@ def test_watson_mode_selector_says_what_it_controls():
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
 
 
+def test_tasks_toolbar_buttons_are_thumb_sized():
+    # Competition round 12, ada's team (c136e377): Browse and My tasks measured 39.6px; the relay extended it to + Post task.
+    assert '.tasks-toolbar button { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
 def test_saboteur_option_says_it_injects_a_test_discrepancy():
     # Competition round 11, sue's team (b8eefda3): "Saboteur" alone sounded like an attack; the value the code sends stays "saboteur".
     html = (STATIC / 'index.html').read_text(encoding='utf-8')

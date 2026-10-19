@@ -51,6 +51,7 @@ nav a:hover { color: var(--accent); }
 .tasks-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 4px; }
 .tasks-toolbar button[aria-current] { color: #fff; background: var(--accent); border-color: var(--accent); }
 .tasks-toolbar .primary { margin-left: auto; }
+.tasks-toolbar button { min-height: 44px; } /* Browse, My tasks and Post task thumb-sized together (competition round 12, ada's team, c136e377; all three measured 39.6px). */
 .tasks-toolbar .primary[aria-current] { background: var(--accent-hover); }
 nav a.selected { color: var(--accent); border-bottom: 3px solid var(--accent); margin-bottom: -1px; }
 .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
