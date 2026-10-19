@@ -365,6 +365,12 @@ def test_watson_mode_selector_says_what_it_controls():
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
 
 
+def test_agent_runs_table_caption_names_its_purpose():
+    # Competition round 14, sue's team (78d531e1): table navigation announced only "ASTRA · READ ONLY"; the h2 sits ~1480px above.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert '<caption class="eyebrow">Registered agent runs · ASTRA · READ ONLY</caption>' in html
+
+
 def test_watson_json_editor_is_described_by_its_instructions():
     # Competition round 13, bob's team (343b52b3): screen readers heard the label but not the how-to line above the editor.
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
