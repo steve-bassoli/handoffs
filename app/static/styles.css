@@ -83,6 +83,7 @@ nav a.selected { color: var(--accent); border-bottom: 3px solid var(--accent); m
 /* Thumb-sized Previous and Next on the task board (bob free play #2, e0250fcb). */
 #board .paging button { min-height: 44px; }
 label { display: block; color: var(--muted); margin: 16px 0; }
+#mine-filters label:has(> #show-closed) { min-height: 44px; } /* Thumb-sized Show closed (bob free play #13, 275ce9c9). */
 input, textarea, select { display: block; width: 100%; font: inherit; color: #212529; background: #fff; border: 1px solid #ccc; border-radius: 3px; padding: 9px 12px; margin-top: 7px; }
 input:focus, textarea:focus, select:focus { border-color: var(--accent); outline: 1px solid var(--accent); }
 textarea { min-height: 100px; resize: vertical; }

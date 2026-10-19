@@ -327,3 +327,8 @@ def test_menus_show_an_open_closed_chevron():
     # Bob team free play #12 (d3760307): the native disclosure marker is hidden, so Gremlins and More had no open cue.
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
     assert '.workspace-nav .workspace-disclosure > summary::before' in css and '.workspace-nav .workspace-disclosure[open] > summary::before { transform: rotate(45deg); }' in css
+
+
+def test_show_closed_toggle_is_thumb_sized():
+    # Bob team free play #13 (275ce9c9): the Show closed label measured 16px tall at 375px.
+    assert '#mine-filters label:has(> #show-closed) { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
