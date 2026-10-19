@@ -24,7 +24,12 @@ People are auditors for the left column and gatekeepers for the right.
 ## 3. One decision, not twenty
 
 When people must decide, the relay compresses the work into a few clear choices, each with a
-recommendation, so the human 1% takes minutes. Example: one "yes to all 7" settled 30 of 60 Study Finder
+recommendation, so the human 1% takes minutes.
+
+During construction (2026-10-19, task 33a5d860, veto overridden by Nate): the relay closes proven work itself
+through the first door, labelled `door-off`, so task closes no longer reach the Decisions page. Decisions keeps
+what a person must own: rule texts (two people) and vetoes on relay-authored work. Rule changes are batched and
+wait for daylight; nobody is woken for one. One night of routing every close to a person cost 21 of 22 clicks. Example: one "yes to all 7" settled 30 of 60 Study Finder
 evidence cells.
 
 ## 4. Rules stay a two-person gate, even during construction

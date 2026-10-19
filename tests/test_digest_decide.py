@@ -212,3 +212,14 @@ def test_a_veto_on_claimed_work_waits_instead_of_offering_a_click(tmp_path, monk
         assert item(client, 'intake_veto', open_id)['ready'] is True
         waiting = item(client, 'intake_veto', taken_id)
         assert waiting['ready'] is False and 'already being worked on' in waiting['waiting_on']
+
+
+def test_construction_mode_folds_task_closes_but_keeps_vetoes_and_the_gate(board, monkeypatch):
+    task_id = proofed_task(board)
+    assert item(board, 'human_close', task_id)['ready'] is True
+    monkeypatch.setenv('ASE_DOOR', 'off')
+    folded = item(board, 'human_close', task_id)
+    assert folded['ready'] is False and 'relay closes proven work' in folded['waiting_on']
+    # Deciding is unchanged: a demo header still cannot decide, door or no door.
+    refused = decide(board, folded, 'yes', headers={'X-Demo-User': 'steve'})
+    assert refused.status_code == 403

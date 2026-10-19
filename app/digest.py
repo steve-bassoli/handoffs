@@ -70,16 +70,24 @@ def _receipts(history, histories):
     return receipts
 
 
-def _mark_ready(service, ordered):
-    """Steve, 2026-10-18: show only what a click can complete now; everything else says what it waits on."""
+CONSTRUCTION_CLOSE = 'construction mode: the relay closes proven work itself (labelled door-off)'
+
+
+def _mark_ready(service, ordered, construction=False):
+    """Steve, 2026-10-18: show only what a click can complete now; everything else says what it waits on.
+
+    Task 33a5d860 (veto overridden by Nate, 2026-10-19): while construction mode is on, task closes are the relay's to make
+    under the first door, so they fold away; rule texts, vetoes and sign-offs stay with people. Deciding is unchanged."""
     detail = getattr(service, 'detail', None)
     for item in ordered:
         item['ready'], item['waiting_on'] = True, None
+        if construction and item['kind'] == 'human_close':
+            item['ready'], item['waiting_on'] = False, CONSTRUCTION_CLOSE
     if detail is None:
         return
     with service.db.engine.connect() as c:
         for item in ordered:
-            if item['kind'] == 'human_close':
+            if item['kind'] == 'human_close' and item['ready']:
                 if not ((detail(c, item['id']).get('proof') or {}).get('fresh')):
                     item['ready'], item['waiting_on'] = False, 'needs proof first'
             elif item['kind'] == 'intake_veto':
@@ -174,7 +182,7 @@ def build_digest(service, user):
                 'Claimed work eligible for human closure; proof and claimant gates still apply.',
                 'close_human', revision, taken['actor'], taken['data'].get('principal'))
     ordered = [items[key] for key in sorted(items)]
-    _mark_ready(service, ordered)
+    _mark_ready(service, ordered, construction)
     coverage = {'signoff': 'complete', 'intake_veto': 'complete',
                 'human_close': 'complete', 'rule_texts': 'complete', 'policy_decision': 'unsupported'}
     counts = {kind: sum(item['kind'] == kind for item in ordered)
