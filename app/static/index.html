@@ -13,6 +13,7 @@
   <script src="/static/app.js" defer></script>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
   <header>
     <a class="brand" href="/" aria-label="Thermo Fisher Scientific ASE home"><img class="brand-logo" src="/static/thermo-fisher-logo.svg" alt="Thermo Fisher Scientific" width="160" height="35"><span class="brand-copy">ASE<small>Auditable Symbiotic Ecosystem</small></span></a>
     <label class="identity">Demo user <select id="user" aria-label="Demo user"></select></label>
@@ -24,7 +25,7 @@
     <span id="signed-in" hidden><span id="signed-in-label"></span> <button id="signout" type="button">Sign out</button></span>
   </header>
   <div class="demo">Prototype · Demo identity and PR verification · Gold is application credit</div>
-  <main>
+  <main id="main-content" tabindex="-1">
     <section class="intro"><div><p class="eyebrow" title="Auditable Symbiotic Ecosystem">ASE · AUDITABLE SYMBIOTIC ECOSYSTEM</p><h1>Ask freely. Share freely. Build together.</h1><p>Share what you know. Choose useful work. Create software with human guidance and AI.</p></div>
     </section>
     <nav aria-label="Workspace" class="workspace-nav">

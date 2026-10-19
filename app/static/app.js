@@ -1445,6 +1445,8 @@ if ($('post-cancel')) $('post-cancel').onclick = () => {
   $('post-form').reset();
   message('Draft cleared. Drafts are not saved across reloads.');
 };
+// The skip link moves focus without touching the hash: a #main-content fragment would trigger a reload and lose the view (task 7d37cc91).
+if (typeof document !== 'undefined' && document.querySelector('.skip-link')) document.querySelector('.skip-link').onclick = event => { event.preventDefault(); $('main-content').focus(); };
 if (typeof window !== 'undefined') window.addEventListener('hashchange', () => {
   run(() => openTicketHash(ticketHash(location.hash)));
 });

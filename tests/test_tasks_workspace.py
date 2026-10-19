@@ -314,3 +314,10 @@ def test_roster_working_on_column_wraps_with_a_readable_floor():
     # Bob team free play #10 (126b1cb5): Working on rendered 1947px wide at 375px; a first try without a floor collapsed it to 32px.
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
     assert '#agents .agent-table td:nth-child(3) { min-width: 20rem; width: 28rem; max-width: 28rem; white-space: normal; overflow-wrap: anywhere; }' in css
+
+
+def test_skip_link_moves_focus_without_changing_the_route():
+    # Bob team free play #11 (7d37cc91): six Tab presses reached Decisions; the skip link must not rewrite the #view hash.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert html.index('class="skip-link" href="#main-content"') < html.index('<header>') and '<main id="main-content" tabindex="-1">' in html
+    assert "event.preventDefault(); $('main-content').focus();" in (STATIC / 'app.js').read_text(encoding='utf-8')
