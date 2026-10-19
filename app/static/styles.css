@@ -177,7 +177,7 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
 .workspace-nav .workspace-disclosure:has(.selected) > summary { color: var(--accent); border-bottom-color: var(--accent); }
 .workspace-nav .workspace-gremlins:not([open]):has([data-view="gremlins"].selected) > summary::after { content: ' · Watson'; }
 .workspace-nav .workspace-more:not([open]):has(#dashboard-link.selected) > summary::after { content: ' · Dashboard'; }
-.workspace-nav .workspace-more:not([open]):has([data-view="agents"].selected) > summary::after { content: ' · Agents'; }
+.workspace-nav .workspace-more:not([open]):has([data-view="agents"].selected) > summary::after { content: ' · Agent runs'; }
 .workspace-nav .workspace-more:not([open]):has([data-view="wallet"].selected) > summary::after { content: ' · Wallet & Stats'; }
 @media (max-width: 640px) {
     .workspace-nav .workspace-disclosure[open] { flex-basis: 100%; }

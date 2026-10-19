@@ -306,7 +306,7 @@ def test_header_wraps_instead_of_overflowing():
 
 def test_agent_roster_is_a_named_keyboard_region():
     # Bob team free play #9 (50c8cbbf): the roster scrolls sideways on phones; give keyboard users a handle.
-    assert '<div class="agent-table-wrap" tabindex="0" role="region" aria-label="Astra roster">' in (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert '<div class="agent-table-wrap" tabindex="0" role="region" aria-label="Registered agent runs">' in (STATIC / 'index.html').read_text(encoding='utf-8')
     assert '#agents .agent-table-wrap:focus-visible' in (STATIC / 'styles.css').read_text(encoding='utf-8')
 
 
@@ -363,3 +363,12 @@ def test_watson_mode_selector_says_what_it_controls():
     # Bob team free play #18 (9c339527): "Gremlin" did not say what the choice controls.
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
+
+
+def test_agents_entry_says_runs_not_live_agents():
+    # Bob team free play #19 (b996e5f3): the page lists finished runs too, so "Agents" overstated what is running.
+    for page in ('index.html', 'dashboard.html'):
+        html = (STATIC / page).read_text(encoding='utf-8')
+        assert '<button data-view="agents" type="button">Agent runs</button>' in html and '>Agents</button>' not in html, page
+    assert '<h2>Registered agent runs</h2>' in (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert "content: ' · Agent runs';" in (STATIC / 'styles.css').read_text(encoding='utf-8')
