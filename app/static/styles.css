@@ -186,7 +186,7 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
 .workspace-nav summary .nav-icon { margin-right: 6px; }
 .workspace-nav .workspace-disclosure[open] { flex: 1 1 240px; }
 .workspace-nav .workspace-disclosure-content { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 8px; border: 1px solid var(--line); background: var(--surface); overflow-wrap: anywhere; }
-.workspace-nav .workspace-disclosure-content button, .workspace-nav .workspace-disclosure-content a { text-align: left; white-space: normal; padding: 10px 12px; margin: 0; }
+.workspace-nav .workspace-disclosure-content button, .workspace-nav .workspace-disclosure-content a { min-height: 44px; text-align: left; white-space: normal; padding: 10px 12px; margin: 0; } /* Menu items thumb-sized together (competition round 9, ada's team, 1bcdc368). */
 .workspace-nav .workspace-disclosure-content p { margin: 4px 12px; font-size: 12px; }
 .workspace-nav .balance { min-width: 0; max-width: 100%; padding: 12px; }
 .workspace-nav .balance strong { font-size: 20px; margin: 4px 0; }

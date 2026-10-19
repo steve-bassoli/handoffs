@@ -462,3 +462,9 @@ def test_proof_box_paragraphs_wrap_long_ids():
 def test_watson_page_controls_are_thumb_sized():
     # Competition round 8 (sue's team, 3aa7889a): example, mode select, Run and Download measured 38-39.6px.
     assert '#gremlins button, #gremlins select { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def test_menu_items_are_thumb_sized_together():
+    # Competition round 9 (ada's team, 1bcdc368): the Gremlins and More menu items measured 36-42.6px; one combined rule.
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    assert '.workspace-nav .workspace-disclosure-content button, .workspace-nav .workspace-disclosure-content a { min-height: 44px;' in css
