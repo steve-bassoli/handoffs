@@ -275,3 +275,10 @@ def test_task_search_is_16px_on_phones():
     # Bob team free play #3 (ac5f481e): phone browsers zoom into inputs under 16px on focus.
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
     assert '#board #search { font-size: 16px; }' in css.split('@media (max-width: 640px)')[-1]
+
+
+def test_watson_report_is_a_named_keyboard_region():
+    # Bob team free play #5 (6e08fc7b): the scrollable comparison report gets a tab stop, a name and a focus ring.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert '<pre id="gremlins-output" class="proof-text" tabindex="0" role="region" aria-label="Offline comparison report"' in html
+    assert '#gremlins-output:focus-visible' in (STATIC / 'styles.css').read_text(encoding='utf-8')
