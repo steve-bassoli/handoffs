@@ -385,6 +385,15 @@ def test_task_page_survives_a_failed_artifacts_or_constellation_read():
     assert "'Could not load the constellation. Reopen this task to try again.'" in js
 
 
+def test_wallet_transactions_latest_request_wins():
+    # Competition round 24, ada's team (f55f4540): two quick Next clicks let a slow older page render under the newer page label.
+    js = (STATIC / 'app.js').read_text(encoding='utf-8')
+    body = js[js.index('async function transactions()'):js.index('async function agentRoster()')]
+    assert 'const ticket = ++transactionsRequest, requestedOffset = txOffset, stale = () => ticket !== transactionsRequest;' in body
+    assert body.count('if (stale()) return;') == 2
+    assert 'txOffset' not in body.split('requestedOffset = txOffset', 1)[1]
+
+
 def test_task_page_survives_a_failed_lineage_read():
     # Competition round 23, sue's team (4c59a225): the last unguarded read in the task page's render chain (aiSection's lineage).
     js = (STATIC / 'app.js').read_text(encoding='utf-8')

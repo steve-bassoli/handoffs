@@ -231,26 +231,31 @@ async function board() {
   $('previous').disabled = offset === 0; $('next').disabled = result.items.length < pageSize;
   $('page-label').textContent = `Page ${offset / pageSize + 1}`;
 }
+let transactionsRequest = 0;
 async function transactions() {
+  // Competition round 24 (ada's team, f55f4540): latest request wins; rows are labelled with the offset actually requested.
+  const ticket = ++transactionsRequest, requestedOffset = txOffset, stale = () => ticket !== transactionsRequest;
   // Say what is shown; a failed load must not leave old rows posing as current (same rule as the task lists).
   $('transactions').replaceChildren(element('p', 'Loading transactions…'));
   let rows;
-  try { rows = await api(`/me/transactions?limit=${pageSize}&offset=${txOffset}`); }
+  try { rows = await api(`/me/transactions?limit=${pageSize}&offset=${requestedOffset}`); }
   catch (error) {
+    if (stale()) return;
     const retry = element('button', 'Retry'); retry.onclick = () => run(transactions);
     $('transactions').replaceChildren(element('p', 'Could not load transactions: ' + error.message, 'error'), retry);
     return;
   }
+  if (stale()) return;
   $('transactions').replaceChildren();
   for (const item of rows) {
     const row = element('div', undefined, 'tx'); const label = element('div', item.kind.replaceAll('_', ' '));
     label.append(element('small', `${item.account_kind} · ${new Date(item.created_at).toLocaleString()}`));
     row.append(label, element('strong', `${item.amount > 0 ? '+' : ''}${item.amount} Gold`)); $('transactions').append(row);
   }
-  if (!rows.length) $('transactions').append(element('p', txOffset ? 'No transactions on this page. Use Previous to go back.' : 'No transactions yet.'));
-  else $('transactions').prepend(element('p', `Page ${txOffset / pageSize + 1} · ${rows.length} transaction${rows.length === 1 ? '' : 's'} shown, newest first`, 'meta'));
-  $('tx-previous').disabled = txOffset === 0; $('tx-next').disabled = rows.length < pageSize;
-  $('tx-page').textContent = `Page ${txOffset / pageSize + 1}`;
+  if (!rows.length) $('transactions').append(element('p', requestedOffset ? 'No transactions on this page. Use Previous to go back.' : 'No transactions yet.'));
+  else $('transactions').prepend(element('p', `Page ${requestedOffset / pageSize + 1} · ${rows.length} transaction${rows.length === 1 ? '' : 's'} shown, newest first`, 'meta'));
+  $('tx-previous').disabled = requestedOffset === 0; $('tx-next').disabled = rows.length < pageSize;
+  $('tx-page').textContent = `Page ${requestedOffset / pageSize + 1}`;
 }
 async function agentRoster() {
   $('agents-refresh').disabled = true;
