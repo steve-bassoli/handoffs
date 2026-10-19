@@ -365,6 +365,13 @@ def test_watson_mode_selector_says_what_it_controls():
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
 
 
+def test_watson_json_editor_is_described_by_its_instructions():
+    # Competition round 13, bob's team (343b52b3): screen readers heard the label but not the how-to line above the editor.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert '<textarea id="gremlins-input" aria-describedby="gremlins-start"' in html
+    assert html.count('id="gremlins-start"') == 1
+
+
 def test_tasks_toolbar_buttons_are_thumb_sized():
     # Competition round 12, ada's team (c136e377): Browse and My tasks measured 39.6px; the relay extended it to + Post task.
     assert '.tasks-toolbar button { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
