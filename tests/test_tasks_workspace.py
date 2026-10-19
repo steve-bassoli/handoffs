@@ -258,3 +258,9 @@ vm.runInNewContext(show + '\nthis.show = show;', context);
 '''
     result = subprocess.run([node, '-e', checks], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_long_titles_wrap_inside_task_cards():
+    # Bob team free play (caaaa25b): one unbroken 160-character title widened a 375px page to 2148px.
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    assert '#board #cards > .card { min-width: 0; overflow-wrap: anywhere; }' in css
