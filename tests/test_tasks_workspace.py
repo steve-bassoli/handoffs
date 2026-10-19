@@ -365,6 +365,15 @@ def test_watson_mode_selector_says_what_it_controls():
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
 
 
+def test_refresh_buttons_say_what_they_refresh():
+    # Competition round 15, ada's team (672875a2): Gallery's Refresh had the bare name "Refresh"; the relay extended it to all five views.
+    # Each accessible name starts with the visible word, so speech users can still say "click Refresh".
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    names = dict(re.findall(r'<button id="([a-z]+)-refresh"[^>]*aria-label="([^"]+)">Refresh</button>', html))
+    assert names == {'signoffs': 'Refresh human decisions', 'hub': 'Refresh community', 'gallery': 'Refresh gallery',
+                     'bobsue': 'Refresh Bob, Sue and Ada', 'agents': 'Refresh agent runs'}
+
+
 def test_agent_runs_table_caption_names_its_purpose():
     # Competition round 14, sue's team (78d531e1): table navigation announced only "ASTRA · READ ONLY"; the h2 sits ~1480px above.
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
