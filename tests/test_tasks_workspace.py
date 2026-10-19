@@ -365,6 +365,13 @@ def test_watson_mode_selector_says_what_it_controls():
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
 
 
+def test_saboteur_option_says_it_injects_a_test_discrepancy():
+    # Competition round 11, sue's team (b8eefda3): "Saboteur" alone sounded like an attack; the value the code sends stays "saboteur".
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert '<option value="saboteur">Saboteur · inject a test discrepancy</option>' in html
+    assert "$('gremlins-breed').value" in (STATIC / 'app.js').read_text(encoding='utf-8')
+
+
 def test_agents_entry_says_runs_not_live_agents():
     # Bob team free play #19 (b996e5f3): the page lists finished runs too, so "Agents" overstated what is running.
     for page in ('index.html', 'dashboard.html'):
