@@ -295,3 +295,10 @@ def test_post_form_marks_optional_fields():
 def test_task_detail_lineage_buttons_are_thumb_sized():
     # Bob team free play #7 (ef98fe3a): a one-line related-task button measured 39.6px.
     assert '#detail .lineage button { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def test_header_wraps_instead_of_overflowing():
+    # Bob team free play #8 (aef14fef): at 671px the sign-in form stuck out 9px (scrollWidth 680 vs 671).
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    assert 'header { min-height: 72px; display: flex; flex-wrap: wrap;' in css
+    assert css.count('#signin-form { min-width: 0; max-width: 100%; }') == 1

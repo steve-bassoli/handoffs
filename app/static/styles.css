@@ -14,7 +14,8 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
-header { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 32px; background: #fff; border-top: 3px solid var(--brand-red); border-bottom: 1px solid var(--line); box-shadow: 0 2px 5px #0000000d; }
+header { min-height: 72px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 32px; background: #fff; border-top: 3px solid var(--brand-red); border-bottom: 1px solid var(--line); box-shadow: 0 2px 5px #0000000d; }
+#signin-form { min-width: 0; max-width: 100%; } /* Header wraps instead of overflowing (bob free play #8, aef14fef). */
 .brand { display: flex; align-items: center; gap: 24px; color: #222; text-decoration: none; }
 .brand:hover { color: #222; }
 .brand-logo { display: block; width: 160px; height: auto; flex-shrink: 0; }
@@ -165,7 +166,6 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
 @media (max-width: 640px) {
     .workspace-nav .workspace-disclosure[open] { flex-basis: 100%; }
     .workspace-nav > button, .workspace-nav summary { padding: 12px; }
-    #signin-form { min-width: 0; max-width: 100%; }
 }
 
 @media (max-width: 640px) {
