@@ -128,6 +128,24 @@ def build_digest(service, user):
         tasks = [dict(r) for r in c.exec_driver_sql(
             'SELECT id,title,creator,parent_id FROM tasks ORDER BY id').mappings()]
         proposals = rule_proposals.pending(c)
+        from app.manual_steps import pending
+        manual_steps = pending(c)
+    for step in manual_steps:
+        # Record-only metadata: no new executable effect or recommendation.
+        items[('manual_step', step['id'])] = {
+            'kind': 'manual_step', 'id': step['id'], 'title': step['title'],
+            'why_waiting': step['why'], 'action': 'Record manual outcome',
+            'revision': step['revision'], 'state': step['state'],
+            'verbs': ['done', 'could_not'], 'batch_approvable': False,
+            'effect': {'reversibility': 'irreversible',
+                       'gate': 'Signed-in human outcome only',
+                       'reason': 'Records an outcome only. Runs nothing; does not publish, spend, change mode, or close tasks.'},
+            'recommendation': {'status': 'unavailable'},
+            'provenance': {'construction': construction,
+                           'requested_by': step['created_by'],
+                           'requested_principal': 'human-or-relay'},
+            'details': {key: step[key] for key in ('what', 'where', 'why', 'success', 'state')}
+        }
     for proposal in proposals:
         # A person who already decided is no longer waited on; the card stays for the others.
         if any(d['decided_by'] == user['user_id'] for d in proposal['decisions']):
@@ -183,10 +201,10 @@ def build_digest(service, user):
                 'close_human', revision, taken['actor'], taken['data'].get('principal'))
     ordered = [items[key] for key in sorted(items)]
     _mark_ready(service, ordered, construction)
-    coverage = {'signoff': 'complete', 'intake_veto': 'complete',
+    coverage = {'manual_step': 'complete', 'signoff': 'complete', 'intake_veto': 'complete',
                 'human_close': 'complete', 'rule_texts': 'complete', 'policy_decision': 'unsupported'}
     counts = {kind: sum(item['kind'] == kind for item in ordered)
-              for kind in ('signoff', 'intake_veto', 'human_close', 'rule_texts')}
+              for kind in ('signoff', 'intake_veto', 'human_close', 'rule_texts', 'manual_step')}
     # Unknown source cardinality is null, never an asserted zero.
     counts['policy_decision'] = None
     return {'items': ordered, 'coverage': coverage,

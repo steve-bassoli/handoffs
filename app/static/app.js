@@ -675,6 +675,57 @@ function renderSignoffs(items) {
     card.append(element('small', `Requested by ${provenance.requested_by || 'unknown'} · ${provenance.requested_principal || 'unknown'}${provenance.construction ? ' · Construction: ' + String(provenance.construction) : ''}`));
     card.dataset.search = [item.title, item.id, item.kind, item.why_waiting, item.action].join(' ').toLowerCase();
     const entry = {item, choice: null, card}; digestEntries.push(entry);
+    if (item.kind === 'manual_step') {
+      // ASE records the person's outcome; it never performs the outside step.
+      const details = item.details || {};
+      const addField = (labelText, value) => {
+        const valueNode = element('p', String(value || 'Not provided.'));
+        valueNode.style.whiteSpace = 'pre-wrap';
+        valueNode.style.overflowWrap = 'anywhere';
+        card.append(element('h4', labelText), valueNode);
+      };
+      addField('What you need to do', details.what);
+      addField('Where to do it', details.where);
+      addField('Why this is needed', details.why || item.why_waiting);
+      addField('Success looks like', details.success);
+      card.dataset.search = [item.title, item.id, item.kind, item.why_waiting, item.action,
+        details.what, details.where, details.why, details.success, details.state]
+        .filter(value => typeof value === 'string').join(' ').toLowerCase();
+      card.append(element('p', 'Perform the step yourself, outside ASE. Do not enter passwords, tokens, certificates or other credentials in the note. Recording an outcome runs nothing and does not publish, spend, change mode, or close a task.', 'meta'));
+      const validVersion = typeof item.id === 'string' && !!item.id &&
+        typeof item.revision === 'string' && /^[0-9a-f]{64}$/.test(item.revision);
+      if (validVersion) {
+        const {label, note} = digestNote('Outcome note (required; no credentials)');
+        note.required = true;
+        const controls = element('div', undefined, 'actions');
+        controls.style.display = 'flex'; controls.style.flexWrap = 'wrap'; controls.style.gap = '8px';
+        for (const [text, outcome] of [['Done', 'done'], ["Couldn't do it", 'could_not']]) {
+          const button = element('button', session ? `${text} as ${session.user_id}` : text);
+          button.type = 'button'; button.dataset.digestControl = 'true';
+          button.onclick = () => run(async () => {
+            if (!session || session !== auth || actor !== user) {
+              message('Session or identity changed. Refresh Decisions before recording an outcome.', true);
+              return;
+            }
+            if (digestBusy || digestUncertain) {
+              message(digestUncertain ? 'An earlier outcome is unknown. Reconcile it before deciding again.' : 'A decision is being recorded. Please wait.', true);
+              return;
+            }
+            if (!note.value.trim()) {
+              message('Add a nonblank outcome note; do not include credentials.', true);
+              note.value = ''; note.reportValidity(); note.focus(); return;
+            }
+            await submitDigest(`/manual-steps/${encodeURIComponent(item.id)}/outcome`,
+              {outcome, note: note.value.trim(), revision: item.revision}, auth, actor);
+          });
+          controls.append(button);
+        }
+        card.append(label, controls);
+      } else card.append(element('p', 'Decision unavailable: missing or unsupported item version. Refresh to review it.', 'error'));
+      if (!session) card.append(element('p', 'Waiting for you to sign in as a person before an outcome can be recorded.', 'meta'));
+      list.append(card);
+      continue;
+    }
     if (digestEligible(item)) {
       if (item.kind !== 'rule_texts') {  // Rule texts are always decided one at a time.
         const selectLabel = element('label', 'Include in Accept selected');

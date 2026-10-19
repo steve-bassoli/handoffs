@@ -17,6 +17,7 @@ def source(tmp_path, monkeypatch):
         c.exec_driver_sql('CREATE TABLE tasks(id TEXT, title TEXT, creator TEXT, parent_id TEXT)')
         c.exec_driver_sql('CREATE TABLE events(seq INTEGER PRIMARY KEY, task_id TEXT, kind TEXT, actor TEXT, state TEXT, data TEXT)')
         c.exec_driver_sql('CREATE TABLE recommendations(id TEXT, item_kind TEXT, item_id TEXT, item_revision TEXT, superseded_by TEXT)')
+        c.exec_driver_sql('CREATE TABLE manual_steps(id TEXT, title TEXT, what TEXT, where_text TEXT, why TEXT, success TEXT, state TEXT, created_by TEXT, created_utc TEXT, outcome TEXT, note TEXT, decided_by TEXT, decided_utc TEXT, revision TEXT)')
         c.exec_driver_sql('INSERT INTO signoffs VALUES (?,?,?,?,?,?,?,?)',
                           ('s', 'publish', 'Publish draft', 'a' * 64, 'bot', 'agent', None, 1))
         for task_id in ('v', 'c'):
@@ -36,7 +37,7 @@ def test_sources_counts_and_unknown_policy(source):
     result = digest.build_digest(source, WHO)
     assert {item['kind'] for item in result['items']} == {'signoff', 'intake_veto', 'human_close'}
     assert result['counts']['total'] == len(result['items']) == 3
-    assert result['counts']['by_kind'] == {'signoff': 1, 'intake_veto': 1, 'human_close': 1, 'rule_texts': 0, 'policy_decision': None}
+    assert result['counts']['by_kind'] == {'signoff': 1, 'intake_veto': 1, 'human_close': 1, 'rule_texts': 0, 'manual_step': 0, 'policy_decision': None}
     assert result['coverage']['policy_decision'] == 'unsupported'
     assert result['complete'] is False
     assert len({(i['kind'], i['id']) for i in result['items']}) == 3

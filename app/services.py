@@ -232,6 +232,9 @@ class Service:
         # Authorization must precede the actor-scoped idempotency cache.
         if action == 'intake_override':
             self.require_intake_human(actor)
+        if action in ('ai_manual_step_create', 'ai_manual_step_outcome'):
+            from app.manual_steps import authorize
+            authorize(event_identity.get() or {}, actor, action == 'ai_manual_step_outcome')
         token = None
         if action in ('ai_proof_human', 'close_human') and self.require_human_acceptance(actor):
             token = auto_signoff.set(True)
@@ -624,6 +627,14 @@ class Service:
         if auto_signoff_active():
             return True
         raise RuleError('Human acceptance requires a signed-in person', 403)
+
+    def do_ai_manual_step_create(self, c, actor, payload):
+        from app.manual_steps import create
+        return create(c, actor, payload, event_identity.get() or {})
+
+    def do_ai_manual_step_outcome(self, c, actor, payload):
+        from app.manual_steps import record_outcome
+        return record_outcome(c, actor, payload, event_identity.get() or {})
 
     def do_ai_digest_decide(self, c, actor, payload):
         from app.digest_decide import decide
