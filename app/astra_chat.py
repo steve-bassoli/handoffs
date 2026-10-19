@@ -23,12 +23,12 @@ def checked_text(value):
     return value
 
 
-def talk(prompt_file, run, previous_run=None, transport=None):
+def talk(prompt_file, run, previous_run=None, transport=None, persona=None):
     with agent_lease(run, transport=transport) as agent:
-        return _talk(prompt_file, run, previous_run, transport, agent)
+        return _talk(prompt_file, run, previous_run, transport, agent, persona)
 
 
-def _talk(prompt_file, run, previous_run=None, transport=None, agent=None):
+def _talk(prompt_file, run, previous_run=None, transport=None, agent=None, persona=None):
     prompt = checked_text(Path(prompt_file).read_text(encoding='utf-8-sig'))
     messages = []
     if previous_run:
@@ -43,8 +43,15 @@ def _talk(prompt_file, run, previous_run=None, transport=None, agent=None):
     key = os.environ.get('OPENAI_API_KEY')
     if not key:
         raise ValueError('No API key; no request dispatched')
+    instructions = MISSION
+    if persona is not None:
+        if persona not in ('bob-the-architect', 'sue-the-architect', 'ada-the-architect'):
+            raise ValueError('Unknown architect')
+        instructions += ('\nYou are ' + persona + '. Answer and propose only. '
+                         'Do not start work, create tasks, publish or infer human acceptance. '
+                         'Never export personal health details.')
     payload = {'model': 'gpt-6-astra', 'reasoning': {'effort': 'max'}, 'service_tier': 'default',
-        'store': False, 'stream': True, 'instructions': MISSION, 'input': messages}
+        'store': False, 'stream': True, 'instructions': instructions, 'input': messages}
     if len(json.dumps(payload, ensure_ascii=False).encode('utf-8')) > 240000:
         raise ValueError('Selected conversation exceeds request byte limit; no request dispatched')
     run = Path(run)
@@ -52,7 +59,7 @@ def _talk(prompt_file, run, previous_run=None, transport=None, agent=None):
     if agent:
         save(run / 'agent.json', agent)
     save(run / 'prompt.json', {'at_utc': stamp(), 'messages': messages,
-        'previous_run': str(previous_run) if previous_run else None, 'instructions': MISSION})
+        'previous_run': str(previous_run) if previous_run else None, 'instructions': instructions})
     with httpx.Client(headers={'Authorization': 'Bearer ' + key}, transport=transport,
                       timeout=httpx.Timeout(600, connect=15)) as client:
         result, receipt = request(client, payload, run, 1, transport)

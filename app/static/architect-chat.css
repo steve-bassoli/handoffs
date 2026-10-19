@@ -1,0 +1,10 @@
+.architect-chat { max-width:700px; margin:24px 0; padding:16px; border:1px solid var(--line); background:var(--surface); box-sizing:border-box; }
+.architect-chat-thread { display:grid; gap:10px; max-height:360px; margin:16px 0; overflow:auto; }
+.architect-chat-turn { padding:12px; border:1px solid var(--line); overflow-wrap:anywhere; min-width:0; }
+.architect-chat-turn p { white-space:pre-wrap; margin:4px 0; }
+.architect-chat-turn small { color:var(--muted); }
+.architect-chat textarea, .architect-chat select { width:100%; box-sizing:border-box; min-height:44px; }
+.architect-chat textarea { min-height:100px; }
+.architect-chat button { min-height:44px; }
+.architect-chat :focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+@media(max-width:640px) { .architect-chat textarea, .architect-chat select { font-size:16px; } }

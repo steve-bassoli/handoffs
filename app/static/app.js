@@ -68,6 +68,7 @@ function renderAuth() {
     if (![...$('user').options].some(option => option.value === user)) $('user').append(new Option(user, user));
   }
   if (typeof syncPostDraftOwner === 'function') syncPostDraftOwner();
+  if (typeof syncArchitectChat === 'function') syncArchitectChat();
   $('user').value = user;
   $('user').disabled = !!session || (typeof postPending !== 'undefined' && postPending);
   const people = session ? [session.user_id, ...(typeof cosigners !== 'undefined' ? cosigners.map(person => person.user_id) : [])] : [];
@@ -283,6 +284,56 @@ async function transactions() {
   else $('transactions').prepend(element('p', `Page ${requestedOffset / pageSize + 1} · ${rows.length} transaction${rows.length === 1 ? '' : 's'} shown, newest first`, 'meta'));
   $('tx-previous').disabled = requestedOffset === 0; $('tx-next').disabled = rows.length < pageSize;
   $('tx-page').textContent = `Page ${requestedOffset / pageSize + 1}`;
+}
+let architectChatOwner = null, architectChatEpoch = 0, architectChatPending = false, architectChatBlocked = false;
+function syncArchitectChat() {
+  const owner = session?.access_token || null;
+  if (owner !== architectChatOwner) {
+    architectChatOwner = owner; architectChatEpoch++;
+    $('architect-chat-form').reset(); $('architect-chat-thread').replaceChildren();
+    $('architect-chat-saved').replaceChildren(new Option('New conversation', ''));
+    $('architect-chat-error').hidden = true; architectChatBlocked = false;
+  }
+  $('architect-chat-form').hidden = !session;
+  if (!session) $('architect-chat-note').textContent = 'Sign in to send a message.';
+  return !!session;
+}
+function architectChatError(text) {
+  $('architect-chat-error').textContent = text; $('architect-chat-error').hidden = false;
+}
+function renderArchitectChat(data) {
+  const log = $('architect-chat-thread'); log.replaceChildren();
+  for (const item of data.messages || []) {
+    const turn = element('article', undefined, 'architect-chat-turn');
+    turn.append(element('strong', item.who), element('p', item.content));
+    const cost = item.role !== 'assistant' ? '' : item.cost ? ` · Cost: at most ${item.cost.amount} ${item.cost.unit}` : ' · Cost: unknown';
+    turn.append(element('small', new Date(item.at_utc).toLocaleString() + cost)); log.append(turn);
+  }
+  architectChatBlocked = data.state !== 'ready';
+  $('architect-chat-send').disabled = architectChatPending || architectChatBlocked;
+  $('architect-chat-note').textContent = data.state === 'pending' ? 'Reply running or interrupted. Refresh; do not resend.' : data.state === 'blocked' ? 'Reply stopped. No automatic retry; accounting review may be needed.' : 'Saved conversation.';
+}
+async function loadArchitectChat() {
+  if (!syncArchitectChat() || architectChatPending) return;
+  const owner = session.access_token, epoch = ++architectChatEpoch;
+  const picker = $('architect-chat-saved'), selected = picker.value;
+  $('architect-chat-error').hidden = true;
+  try {
+    const list = await api('/architect-chat');
+    if (owner !== session?.access_token || epoch !== architectChatEpoch) return;
+    picker.replaceChildren(new Option('New conversation', ''));
+    for (const item of list.items.filter(item => item.architect === $('architect-chat-agent').value)) picker.append(new Option(`${new Date(item.updated_utc).toLocaleString()} · ${item.thread_id.slice(0, 8)}`, item.thread_id));
+    picker.value = selected;
+    if (!picker.value) {
+      $('architect-chat-thread').replaceChildren(); architectChatBlocked = false;
+      $('architect-chat-send').disabled = false;
+      $('architect-chat-note').textContent = 'New conversation.'; return;
+    }
+    const data = await api('/architect-chat/' + encodeURIComponent(picker.value));
+    if (owner === session?.access_token && epoch === architectChatEpoch) renderArchitectChat(data);
+  } catch (error) {
+    if (owner === session?.access_token && epoch === architectChatEpoch) architectChatError('Could not load conversation: ' + error.message);
+  }
 }
 async function agentRoster() {
   $('agents-refresh').disabled = true;
@@ -760,7 +811,7 @@ async function navigate(nextView) {
   if (epoch !== null && epoch !== treeEpoch) return;
   if (view === 'post') $('post').hidden = false;
   else if (view === 'gremlins') $('gremlins').hidden = false;
-  else if (view === 'agents') { $('agents').hidden = false; await agentRoster(); }
+  else if (view === 'agents') { $('agents').hidden = false; await agentRoster(); if (typeof loadArchitectChat === 'function') void loadArchitectChat(); }
   else if (view === 'signoffs') { $('signoffs').hidden = false; await signoffs(); }
   else if (view === 'bobsue') { $('bobsue').hidden = false; await bobSue(); }
   else if (view === 'gallery') { $('gallery').hidden = false; await galleryView(); }
@@ -1539,6 +1590,44 @@ $('gremlins-form').onsubmit = event => { event.preventDefault(); run(async () =>
   $('gremlins-download').hidden = false; $('gremlins-download').onclick = () => { const url = URL.createObjectURL(new Blob([text], {type: 'application/json'})); const link = element('a'); link.href = url; link.download = 'gremlins-sim-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
 }); };
 $('agents-refresh').onclick = () => run(agentRoster);
+$('architect-chat-agent').onchange = () => {
+  $('architect-chat-saved').value = ''; $('architect-chat-message').value = ''; run(loadArchitectChat);
+};
+$('architect-chat-saved').onchange = () => run(loadArchitectChat);
+$('architect-chat-form').onsubmit = event => {
+  event.preventDefault();
+  if (!syncArchitectChat() || architectChatPending || architectChatBlocked) return;
+  const owner = session.access_token, epoch = ++architectChatEpoch;
+  const picker = $('architect-chat-saved');
+  // Allocate an ID before dispatch so a lost HTTP response remains discoverable.
+  const id = picker.value || crypto.randomUUID().replaceAll('-', '');
+  const body = {architect: $('architect-chat-agent').value, message: $('architect-chat-message').value, thread_id: id};
+  if (!picker.value) { picker.append(new Option('Current conversation', id)); picker.value = id; }
+  const controls = [...event.currentTarget.elements];
+  architectChatPending = true; controls.forEach(control => control.disabled = true);
+  $('architect-chat-form').setAttribute('aria-busy', 'true');
+  $('architect-chat-error').hidden = true; $('architect-chat-note').textContent = 'Waiting for one reply…';
+  run(async () => {
+    try {
+      const response = await authenticatedFetch('/api/v1/architect-chat', {method: 'POST', headers: {...identityHeaders(), 'Content-Type': 'application/json', 'X-Action-Intent': 'user-directed'}, body: JSON.stringify(body)});
+      const data = await response.json();
+      if (owner !== session?.access_token || epoch !== architectChatEpoch) return;
+      if (data.messages) renderArchitectChat(data);
+      if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Message refused.');
+      $('architect-chat-message').value = '';
+    } catch (error) {
+      if (owner === session?.access_token && epoch === architectChatEpoch) {
+        architectChatBlocked = true;
+        architectChatError(error.message + ' Refresh saved conversations before sending again. Nothing is retried automatically.');
+        $('architect-chat-note').textContent = 'Reply not confirmed; it may still be running.';
+      }
+    } finally {
+      architectChatPending = false; controls.forEach(control => control.disabled = false);
+      $('architect-chat-send').disabled = architectChatBlocked;
+      $('architect-chat-form').removeAttribute('aria-busy');
+    }
+  });
+};
 if ($('bobsue-refresh')) $('bobsue-refresh').onclick = () => run(bobSue);
 if ($('gallery-refresh')) $('gallery-refresh').onclick = () => run(galleryView);
 if ($('hub-refresh')) $('hub-refresh').onclick = () => run(hubView);

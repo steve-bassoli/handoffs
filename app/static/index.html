@@ -6,6 +6,7 @@
   <title>ASE · Ask freely. Share freely. Build together.</title>
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/flow.css">
+  <link rel="stylesheet" href="/static/architect-chat.css">
   <script src="/static/flow.js" defer></script>
   <script src="/static/history-drilldown.js" defer></script>
   <script src="/static/history.js" defer></script>
@@ -137,6 +138,19 @@
       <p>? = not reported. Viewing this page never starts agents or paid calls.</p>
       <p id="agents-mode" class="eyebrow"></p>
       <p id="agents-summary" role="status"></p>
+      <section id="architect-chat" class="architect-chat" aria-labelledby="architect-chat-title">
+        <h3 id="architect-chat-title">Ask an architect</h3>
+        <p>Sending requests one paid reply within the existing budget. Architects answer and propose only: no work, tasks, publishing or acceptance. Do not send secrets or personal health details.</p>
+        <p id="architect-chat-note" role="status">Sign in to send a message.</p>
+        <form id="architect-chat-form" hidden>
+          <label for="architect-chat-agent">Architect<select id="architect-chat-agent"><option value="bob-the-architect" selected>Bob the Architect</option><option value="sue-the-architect">Sue the Architect</option><option value="ada-the-architect">Ada the Architect</option></select></label>
+          <label for="architect-chat-saved">Saved conversation<select id="architect-chat-saved"><option value="">New conversation</option></select></label>
+          <div id="architect-chat-thread" class="architect-chat-thread" role="log" aria-live="polite" aria-label="Architect conversation" tabindex="0"></div>
+          <label for="architect-chat-message">Message<textarea id="architect-chat-message" maxlength="100000" required></textarea></label>
+          <p id="architect-chat-error" class="error" role="alert" hidden></p>
+          <button id="architect-chat-send" class="primary" type="submit">Send message</button>
+        </form>
+      </section>
       <div class="agent-table-wrap" tabindex="0" role="region" aria-label="Registered agent runs"><table class="agent-table"><caption class="eyebrow">Registered agent runs · ASTRA · READ ONLY</caption><thead><tr><th scope="col">Agent</th><th scope="col">Status</th><th scope="col">Working on</th><th scope="col">Resting</th></tr></thead><tbody id="agent-rows"></tbody></table></div>
     </section>
     <section id="gremlins" hidden>

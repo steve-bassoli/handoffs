@@ -270,6 +270,9 @@ def create_app(database=None, clock=None, grant=None, verifier=None, ai_model=No
     def actor(request: Request):
         return request.state.identity['user_id']
 
+    from app.architect_chat import install as install_architect_chat
+    install_architect_chat(app)
+
     @app.post('/api/v1/auth/login')
     def login(payload: Login, request: Request):
         result = request.app.state.credentials.login(payload.username, payload.password)
