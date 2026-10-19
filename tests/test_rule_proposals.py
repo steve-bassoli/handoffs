@@ -12,7 +12,7 @@ from app.main import create_app
 from app.rules import load_rules
 
 ROOT = Path(__file__).resolve().parents[1]
-PROPOSAL = ROOT / 'docs' / 'proposals' / 'remove-pressure'
+CHANGED = {'SHARED', 'WORKER_PREFIX'}
 
 
 @pytest.fixture
@@ -21,9 +21,14 @@ def board(tmp_path, monkeypatch):
     rules.mkdir()
     for name in ('agent-rules.json', 'APPROVALS.json'):
         shutil.copyfile(ROOT / 'rules' / name, rules / name)
-    shutil.copytree(PROPOSAL, proposals / 'remove-pressure')
-    if (rules / 'agent-rules.json').read_bytes() == (proposals / 'remove-pressure' / 'agent-rules.json').read_bytes():
-        pytest.skip('The remove-pressure proposal is already live; the fixture needs a pending proposal.')
+    # A synthetic proposal built from whatever rules are live, so these checks never depend on a real proposal.
+    folder = proposals / 'synthetic'
+    folder.mkdir(parents=True)
+    data = json.loads((rules / 'agent-rules.json').read_bytes())
+    for name in CHANGED:
+        data['texts'][name] += ' (synthetic proposal)'
+    (folder / 'agent-rules.json').write_text(json.dumps(data, indent=2), encoding='utf-8')
+    (folder / 'README.md').write_text('# Proposal: synthetic fixture\n\nAuthor: test fixture.\n', encoding='utf-8')
     monkeypatch.setenv('ASE_RULES_DIR', str(rules))
     monkeypatch.setenv('ASE_PROPOSALS_DIR', str(proposals))
     monkeypatch.setattr(prototype, 'RELEASE_MARKER', tmp_path / 'RELEASED')
@@ -35,7 +40,7 @@ def board(tmp_path, monkeypatch):
             token = client.post('/api/v1/auth/login', json={'username': person, 'password': 'synthetic test password only'}).json()['access_token']
             client.people[person] = {'Authorization': 'Bearer ' + token}
         client.relay = {'Authorization': 'Bearer ' + client.app.state.credentials.issue('steve', 'relay')['access_token']}
-        client.rules, client.proposal = rules, proposals / 'remove-pressure'
+        client.rules, client.proposal = rules, folder
         yield client
 
 
@@ -52,7 +57,7 @@ def decide(client, person, item, choice, headers=None):
 def test_card_shows_every_changed_text_and_the_digest(board):
     item = card(board, 'steve')
     assert item['revision'] == __import__('hashlib').sha256((board.proposal / 'agent-rules.json').read_bytes()).hexdigest()
-    assert {c['name'] for c in item['details']['changed']} == {'COMMONS_RULES', 'PRESSURE_RULES', 'SHARED', 'COORDINATOR_PREFIX', 'LEAD_PREFIX', 'WORKER_PREFIX'}
+    assert {c['name'] for c in item['details']['changed']} == CHANGED and item['title'] == 'Proposal: synthetic fixture'
     assert item['why_waiting'].startswith('0 of 2 approvals') and item['effect']['reversibility'] == 'irreversible'
     assert item['recommendation'] == {'status': 'unavailable'}
 
@@ -72,7 +77,7 @@ def test_two_people_accept_and_the_server_writes_both_files(board):
     assert (board.rules / 'agent-rules.json').read_bytes() == (board.proposal / 'agent-rules.json').read_bytes()
     entry = json.loads((board.rules / 'APPROVALS.json').read_bytes())[-1]
     assert entry['approved_by'] == ['steve', 'nate'] and entry['sha256'] == waiting['revision'] and 'bootstrap' not in entry
-    assert 'energy, rest' in load_rules(board.rules / 'agent-rules.json', board.rules / 'APPROVALS.json')['WORKER_PREFIX']
+    assert '(synthetic proposal)' in load_rules(board.rules / 'agent-rules.json', board.rules / 'APPROVALS.json')['WORKER_PREFIX']
     assert card(board, 'steve') is None and card(board, 'nate') is None
 
 
