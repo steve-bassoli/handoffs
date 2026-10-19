@@ -240,7 +240,7 @@ details.bobsue-architect > summary { cursor: pointer; padding: 12px 0; min-heigh
 /* Header Refresh buttons are thumb-sized (competition round 4, bob's team, 17acf8b5; they found Gallery's, all four measured 39.6px). */
 .section-title > button { min-height: 44px; }
 /* Gallery: pictures the agents made, one column on phones. */
-.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 24px; } /* Shrinks below 280px only when it must (competition round 6, ada's team, 2e5cb50f). */
 .gallery-item { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
 .gallery-item img { display: block; width: 100%; height: auto; background: var(--surface); }
 .gallery-item figcaption { padding: 12px 16px; overflow-wrap: anywhere; }

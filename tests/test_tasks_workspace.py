@@ -447,3 +447,8 @@ def test_shelf_files_pass_the_secret_check():
     root = STATIC.parents[1]
     for path in (STATIC / 'index.html', STATIC / 'styles.css', STATIC / 'workspace-navigation.js', root / 'README.md', root / 'docs' / 'HUMAN_GATES.md', root / 'AGENTS.md'):
         assert not pattern.search(path.read_text(encoding='utf-8')), path
+
+
+def test_gallery_columns_shrink_on_very_narrow_screens():
+    # Competition round 6 (ada's team, 2e5cb50f): at 300px each 280px card overflowed a 264px gallery by 16px.
+    assert 'grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr))' in (STATIC / 'styles.css').read_text(encoding='utf-8')
