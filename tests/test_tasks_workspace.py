@@ -413,3 +413,13 @@ def test_header_refresh_buttons_are_thumb_sized():
 def test_posted_by_select_is_16px_on_phones():
     # Competition round 5 (sue's team, d0269d47): My tasks > Posted by computed 14px at 375px.
     assert '#board #assigned-by { font-size: 16px; }' in phone_css((STATIC / 'styles.css').read_text(encoding='utf-8'))
+
+
+def test_task_orientation_brief_shows_only_declared_data():
+    # BSA build (ada's team, 5e798738): five labelled entries; only goal and materials map to fields ASE tasks have.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    template = re.search(r'<template id="task-orientation-template">(.*?)</template>', html, re.S).group(1)
+    assert template.count('<dt>') == 5 and 'Not stated in the available task data' in template and '<button' not in template
+    script = (STATIC / 'app.js').read_text(encoding='utf-8')
+    assert "fill('goal', text(data.goal));" in script and 'data.context_links' in script
+    assert "const brief = orientationBrief(data); if (brief) detail.append(brief);" in script

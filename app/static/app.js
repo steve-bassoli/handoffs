@@ -854,6 +854,19 @@ function intakeSection(data, detail) {
   }
   detail.append(box);
 }
+// Task orientation brief (BSA build, ada's team, 5e798738): five read-only excerpts from data the task already has.
+// Only goal and materials (repository, context links) exist in ASE task data; the other entries keep their honest fallback.
+function orientationBrief(data) {
+  const template = typeof document !== 'undefined' && typeof document.getElementById === 'function' ? document.getElementById('task-orientation-template') : null;
+  if (!template || !template.content) return null;
+  const brief = template.content.cloneNode(true);
+  const fill = (key, value) => { const cell = brief.querySelector(`[data-orientation="${key}"]`); if (cell && value) cell.textContent = value; };
+  const text = value => typeof value === 'string' && value.trim() ? value.trim() : null;
+  fill('goal', text(data.goal));
+  const materials = [text(data.repository), ...(Array.isArray(data.context_links) ? data.context_links.map(text) : [])].filter(Boolean);
+  fill('materials', materials.length ? materials.join('\n') : null);
+  return brief;
+}
 async function show(id) {
   // Late work from a page the user already left must not change history, sections or focus.
   const epoch = typeof treeEpoch !== 'undefined' ? ++treeEpoch : null, stale = () => epoch !== null && epoch !== treeEpoch;
@@ -883,7 +896,9 @@ async function show(id) {
   const header = element('div', undefined, 'detail-head'); header.append(element('span', data.phase, 'pill'), element('span', data.complexity, 'pill'), element('span', `Target: ${data.profile?.validation_scope || 'Unclassified'}`, 'pill'));
   if (data.funded) header.append(element('span', `${data.gold} GOLD`, 'pill task-gold'));
   header.append(element('h2', data.title), element('code', data.id));
-  detail.append(back, dashboard, header, element('h3', 'Goal'), element('p', data.goal, 'content'), element('h3', 'Completion criteria'));
+  detail.append(back, dashboard, header);
+  const brief = orientationBrief(data); if (brief) detail.append(brief);
+  detail.append(element('h3', 'Goal'), element('p', data.goal, 'content'), element('h3', 'Completion criteria'));
   const rail = element('ol', undefined, 'phase-rail'); rail.setAttribute('aria-label', 'Task lifecycle');
   for (const phase of ['Posted', 'Claimed', 'Closed']) { const item = element('li', phase); if (phase === data.phase) item.setAttribute('aria-current', 'step'); rail.append(item); }
   header.append(rail, element('small', `${data.disposition || data.status.replaceAll('_', ' ')} · Target is declared, not evidence of execution.`));

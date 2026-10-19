@@ -123,6 +123,13 @@ button.loading:disabled { opacity: 1; cursor: progress; }
 .history-event details > summary { cursor: pointer; padding: 12px 16px; min-height: 44px; }
 .history-event details > :not(summary) { margin-left: 16px; margin-right: 16px; }
 .detail-head { margin-top: 24px; }
+/* Task orientation: read-only excerpts, not a readiness verdict. */
+#detail .task-orientation { min-width: 0; max-width: 100%; margin: 16px 0 24px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 3px; overflow-wrap: anywhere; }
+#detail .task-orientation h3 { margin: 0 0 8px; }
+#detail .task-orientation-note { margin: 0 0 12px; }
+#detail .task-orientation dl { margin: 0; }
+#detail .task-orientation dt { margin: 12px 0 4px; font-weight: 600; }
+#detail .task-orientation dd { min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; color: var(--muted); }
 code { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .evidence { padding: 24px; background: #fff; border: 1px solid var(--line); border-radius: 3px; margin: 12px 0; }
 .package-readiness { padding: 16px; border-left: 3px solid var(--accent); background: var(--surface); margin-bottom: 20px; }

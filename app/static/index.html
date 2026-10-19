@@ -62,6 +62,24 @@
       <div id="signoff-cards"></div>
     </section>
     <section id="detail" hidden></section>
+    <template id="task-orientation-template">
+      <section class="task-orientation" aria-labelledby="task-orientation-title">
+        <h3 id="task-orientation-title">Task orientation brief</h3>
+        <p class="task-orientation-note">Read-only excerpts from available task data, not generated advice. Statements are not independently verified; missing information does not mean there are no prerequisites. Original details and actions remain below.</p>
+        <dl>
+          <dt>Goal</dt>
+          <dd data-orientation="goal">Not stated in the available task data</dd>
+          <dt>Starting knowledge</dt>
+          <dd data-orientation="knowledge">Not stated in the available task data</dd>
+          <dt>Materials</dt>
+          <dd data-orientation="materials">Not stated in the available task data</dd>
+          <dt>First bounded contribution</dt>
+          <dd data-orientation="contribution">Not stated; review the goal and completion criteria before choosing a contribution.</dd>
+          <dt>Unresolved prerequisites</dt>
+          <dd data-orientation="prerequisites">Not stated in the available task data</dd>
+        </dl>
+      </section>
+    </template>
     <section id="hub" hidden>
       <div class="section-title"><h2>Community</h2><button id="hub-refresh" type="button">Refresh</button></div>
       <p>The latest ideas about ASE, talked through by the architect teams. Written by agents. The server checks that every quoted source line exists word for word; it does not check that a claim fairly reads its quote, so judge that yourself.</p>
