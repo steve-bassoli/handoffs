@@ -264,3 +264,8 @@ def test_long_titles_wrap_inside_task_cards():
     # Bob team free play (caaaa25b): one unbroken 160-character title widened a 375px page to 2148px.
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
     assert '#board #cards > .card { min-width: 0; overflow-wrap: anywhere; }' in css
+
+
+def test_task_board_paging_buttons_are_thumb_sized():
+    # Bob team free play #2 (e0250fcb): Previous and Next measured 36.8px tall at 375px.
+    assert '#board .paging button { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
