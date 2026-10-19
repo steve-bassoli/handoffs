@@ -375,6 +375,16 @@ def test_watson_mode_selector_says_what_it_controls():
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
 
 
+def test_task_page_survives_a_failed_artifacts_or_constellation_read():
+    # Competition round 22, bob's team (67f9be35): one failed read in artifactsSection blanked the whole task page;
+    # the relay found the same gap in workflowSection's constellation read.
+    js = (STATIC / 'app.js').read_text(encoding='utf-8')
+    assert "try { data = await api(`/tasks/${encodeURIComponent(id)}/artifacts`); }" in js
+    assert "'Could not load artifacts. Reopen this task to try again.'" in js
+    assert "try { graph = await api(`/tasks/${data.id}/constellation`); }" in js
+    assert "'Could not load the constellation. Reopen this task to try again.'" in js
+
+
 def test_undecodable_pictures_show_the_fallback():
     # Competition round 21, ada's team (d15786b7): a 200 response with bytes the browser cannot decode showed a broken image;
     # the relay extended the gallery fix to Community hub art, which loads the same way.

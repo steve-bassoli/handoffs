@@ -1142,7 +1142,15 @@ async function downloadArtifact(url, filename) {
 
 async function artifactsSection(task, detail) {
   const id = task.id;
-  const data = await api(`/tasks/${encodeURIComponent(id)}/artifacts`);
+  // Competition round 22 (bob's team, 67f9be35): one failed read here used to leave the whole task page blank.
+  let data;
+  try { data = await api(`/tasks/${encodeURIComponent(id)}/artifacts`); }
+  catch {
+    const section = element('section', undefined, 'evidence');
+    section.append(element('h3', 'Artifacts'), element('p', 'Could not load artifacts. Reopen this task to try again.', 'error'));
+    detail.append(section);
+    return;
+  }
   const section = element('section', undefined, 'evidence');
   section.append(element('h3', 'Artifacts · available before acceptance'),
     element('p', 'Preview and download everything currently stored with this task. Downloads do not volunteer you or start AI work.'));
@@ -1266,7 +1274,9 @@ async function workflowSection(data, detail) {
   const dependencies = element('form'); const ids = labeled(dependencies, 'Shared prerequisites · existing task IDs, one per line', data.depends_on.join('\n'), 'textarea'); ids.disabled = !editable;
   if (editable) { dependencies.append(element('button', 'Link prerequisites')); dependencies.onsubmit = event => { event.preventDefault(); run(() => mutate(`/tasks/${data.id}/dependencies`, {depends_on: nonemptyLines(ids.value)})); }; }
   box.append(dependencies);
-  const graph = await api(`/tasks/${data.id}/constellation`);
+  let graph;
+  try { graph = await api(`/tasks/${data.id}/constellation`); }
+  catch { box.append(element('h3', 'Constellation'), element('p', 'Could not load the constellation. Reopen this task to try again.', 'error')); detail.append(box); return; }
   box.append(element('h3', 'Constellation'), element('p', 'Each task appears once. Arrows point from an outcome to required child work or a shared prerequisite.'));
   const nodes = element('div', undefined, 'constellation');
   for (const node of graph.nodes) { const button = element('button', `${node.title} · ${node.phase}`); button.className = node.id === data.id ? 'current-task' : ''; button.onclick = () => run(() => show(node.id)); nodes.append(button); }
