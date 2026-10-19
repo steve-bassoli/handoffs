@@ -149,3 +149,13 @@ def test_unsafe_pictures_are_refused(tmp_path):
 def test_every_allowed_source_exists():
     from app.hub import SOURCES
     assert all(path.is_file() for path in SOURCES.values()) and 'docs/research/latest-ai-2026-10-19.md' in SOURCES
+
+
+def test_community_reading_guide_states_what_is_and_is_not_checked():
+    # BSA build (sue's team, df326617): the old intro said every fact "was checked against its source"; only the quote is checked.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    section = re.search(r'<section id="hub" hidden>(.*?)</section>', html, re.S).group(1)
+    assert 'every fact listed under a conversation was checked against its source' not in section
+    assert 'it does not check that a claim fairly reads its quote' in section
+    assert '<details class="hub-claim-guide">' in section and section.count('<dt>') == 4
+    assert re.findall(r'<button[^>]*>([^<]*)</button>', section) == ['Refresh']

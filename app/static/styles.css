@@ -240,6 +240,11 @@ details.bobsue-architect > summary { cursor: pointer; padding: 12px 0; min-heigh
 .hub-facts summary { cursor: pointer; padding: 10px 0; min-height: 44px; box-sizing: border-box; }
 .hub-facts li { margin: 8px 0; }
 .hub-facts small { display: block; color: var(--muted); margin-top: 2px; }
+/* Static Community reading guide; not a verification result. */
+#hub .hub-claim-guide { margin: 16px 0; padding: 0 16px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); overflow-wrap: anywhere; }
+#hub .hub-claim-guide > summary { min-height: 44px; padding: 12px 0; cursor: pointer; line-height: 1.5; }
+#hub .hub-claim-guide dt { margin-top: 12px; font-weight: 600; }
+#hub .hub-claim-guide dd { margin: 4px 0 12px; color: var(--muted); line-height: 1.5; }
 .hub-question { font-weight: 600; color: #222; margin: 12px 0 4px; }
 .hub-answer { color: #222; line-height: 1.6; margin: 0 0 8px; white-space: pre-line; }
 .hub-art { margin: 12px 0; }
