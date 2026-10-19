@@ -1477,7 +1477,7 @@ $('gremlins-example').onclick = () => {
 };
 $('gremlins-form').onsubmit = event => { event.preventDefault(); run(async () => {
   const result = await api(`/gremlins/${$('gremlins-breed').value}`, JSON.parse($('gremlins-input').value));
-  const text = JSON.stringify(result, null, 2); $('gremlins-output').textContent = text;
+  const text = JSON.stringify(result, null, 2); $('gremlins-output').textContent = text; $('gremlins-output').tabIndex = 0;
   $('gremlins-download').hidden = false; $('gremlins-download').onclick = () => { const url = URL.createObjectURL(new Blob([text], {type: 'application/json'})); const link = element('a'); link.href = url; link.download = 'gremlins-sim-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
 }); };
 $('agents-refresh').onclick = () => run(agentRoster);

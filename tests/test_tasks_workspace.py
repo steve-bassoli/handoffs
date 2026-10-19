@@ -280,8 +280,18 @@ def test_task_search_is_16px_on_phones():
 def test_watson_report_is_a_named_keyboard_region():
     # Bob team free play #5 (6e08fc7b): the scrollable comparison report gets a tab stop, a name and a focus ring.
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
-    assert '<pre id="gremlins-output" class="proof-text" tabindex="0" role="region" aria-label="Offline comparison report"' in html
+    # Round 17 (sue's team, b906d9ca): the tab stop arrives with the first report, so Tab never lands on a blank box.
+    assert '<pre id="gremlins-output" class="proof-text" role="region" aria-label="Offline comparison report" aria-live="polite">' in html
+    assert "$('gremlins-output').textContent = text; $('gremlins-output').tabIndex = 0;" in (STATIC / 'app.js').read_text(encoding='utf-8')
     assert '#gremlins-output:focus-visible' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def test_empty_watson_report_collapses_but_stays_a_live_region():
+    # Competition round 17, sue's team (b906d9ca): a blank 34px report box sat under the form before any run.
+    # display:none would drop the aria-live region from the accessibility tree, so the empty box only loses padding and border.
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    assert '#gremlins-output:empty { padding: 0; border: 0; }' in css
+    assert '#gremlins-output:empty { display: none' not in css
 
 
 def test_post_form_marks_optional_fields():
