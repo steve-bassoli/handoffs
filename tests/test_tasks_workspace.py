@@ -269,3 +269,9 @@ def test_long_titles_wrap_inside_task_cards():
 def test_task_board_paging_buttons_are_thumb_sized():
     # Bob team free play #2 (e0250fcb): Previous and Next measured 36.8px tall at 375px.
     assert '#board .paging button { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def test_task_search_is_16px_on_phones():
+    # Bob team free play #3 (ac5f481e): phone browsers zoom into inputs under 16px on focus.
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    assert '#board #search { font-size: 16px; }' in css.split('@media (max-width: 640px)')[-1]
