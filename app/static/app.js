@@ -271,14 +271,24 @@ let digestBusy = false;
 let digestUncertain = false;
 let digestEntries = [];
 let digestBatchButton = null;
+let digestPickers = [];
+function applyDigestSearch() {
+  // Hidden cards are unselected so a batch never includes something you cannot see.
+  const query = (typeof document !== 'undefined' && $('digest-search')?.value || '').trim().toLowerCase();
+  for (const node of document.querySelectorAll('#signoff-cards [data-search]')) node.hidden = !!query && !node.dataset.search.includes(query);
+  for (const entry of digestEntries) if (entry.choice && entry.card.hidden) entry.choice.checked = false;
+  for (const [button, text, chosen] of digestPickers) button.textContent = `${text} (${chosen().length})`;
+  syncSignoffAuth();
+}
 function digestCount(data) {
   if (typeof document === 'undefined') return;
   const entry = $('human-decisions-entry');
   if (!entry) return;
-  const total = data?.counts?.total;
+  // Only what a click can complete now (Steve, 2026-10-18: "it's too complicated").
+  const total = Number.isInteger(data?.counts?.ready) ? data.counts.ready : data?.counts?.total;
   const known = Number.isInteger(total) && total >= 0;
-  entry.textContent = known ? `Decisions · ${total}${data.complete === false ? '+' : ''}` : 'Decisions · ?';
-  entry.setAttribute('aria-label', known ? `Human decisions; ${total}${data.complete === false ? ' or more' : ''} waiting` : 'Human decisions; waiting count unavailable');
+  entry.textContent = known ? `Decisions · ${total}` : 'Decisions · ?';
+  entry.setAttribute('aria-label', known ? `Human decisions; ${total} ready for you` : 'Human decisions; waiting count unavailable');
 }
 async function refreshDigestCount() {
   const ticket = ++digestCountRequest, auth = session, actor = user;
@@ -380,9 +390,11 @@ function renderSignoffs(items) {
     human_close: 'Accept accepts the proof and completes the task. Decline rejects the proof; the task stays open. Change asks for more work.',
     rule_texts: 'Accept records your own approval of these exact texts; they apply when a second person accepts too. Decline blocks them. Change asks for a revised proposal.'};
   const list = $('signoff-cards'); list.replaceChildren();
-  digestEntries = []; digestBatchButton = null;
+  digestEntries = []; digestBatchButton = null; digestPickers = [];
   const auth = session, actor = user;
-  if (!items.length) list.append(element('p', 'No decisions waiting.'));
+  const waiting = items.filter(item => item.ready === false);
+  items = items.filter(item => item.ready !== false);
+  if (!items.length) list.append(element('p', 'Nothing needs you right now.'));
   for (const item of items) {
     const card = element('article', undefined, 'card');
     card.style.minWidth = '0'; card.style.overflowWrap = 'anywhere';
@@ -411,7 +423,8 @@ function renderSignoffs(items) {
       `Recommended: ${advised} · ${recommendation.rationale}`));
     const provenance = item.provenance || {};
     card.append(element('small', `Requested by ${provenance.requested_by || 'unknown'} · ${provenance.requested_principal || 'unknown'}${provenance.construction ? ' · Construction: ' + String(provenance.construction) : ''}`));
-    const entry = {item, choice: null}; digestEntries.push(entry);
+    card.dataset.search = [item.title, item.id, item.kind, item.why_waiting, item.action].join(' ').toLowerCase();
+    const entry = {item, choice: null, card}; digestEntries.push(entry);
     if (digestEligible(item)) {
       if (item.kind !== 'rule_texts') {  // Rule texts are always decided one at a time.
         const selectLabel = element('label', 'Include in Accept selected');
@@ -438,6 +451,17 @@ function renderSignoffs(items) {
     if (!session) card.append(element('p', 'Sign in to decide', 'meta'));
     list.append(card);
   }
+  if (waiting.length) {
+    // One folded line for everything a click cannot complete yet, each with what it waits on.
+    const fold = element('details', undefined, 'card');
+    fold.append(element('summary', `${waiting.length} waiting on others`));
+    for (const item of waiting) {
+      const line = element('p', `${item.title || item.id} — ${item.waiting_on || 'not ready'}`, 'meta');
+      line.dataset.search = [item.title, item.id, item.kind, item.waiting_on].join(' ').toLowerCase();
+      fold.append(line);
+    }
+    list.append(fold);
+  }
   if (digestEntries.some(entry => entry.choice)) {
     const bar = element('div', undefined, 'card');
     const {label, note} = digestNote('Note for selected decisions (required)');
@@ -452,18 +476,22 @@ function renderSignoffs(items) {
       await submitDigest('/digest/decide-batch', {items: selected.map(entry => digestReference(entry.item)), note: note.value.trim()}, auth, actor);
     });
     // Steve, 2026-10-18: "add accept all, it's a lot". Selecting stays explicit; Accept selected still needs a note.
-    const choices = digestEntries.filter(entry => entry.choice);
-    const advised = choices.filter(entry => entry.item.recommendation?.disposition === 'yes');
+    // Selection follows the search box: only cards that are showing can be selected.
+    const shown = () => digestEntries.filter(entry => entry.choice && !entry.card.hidden);
+    const advised = () => shown().filter(entry => entry.item.recommendation?.disposition === 'yes');
     const pick = element('div', undefined, 'actions');
     pick.style.display = 'flex'; pick.style.flexWrap = 'wrap'; pick.style.gap = '8px';
-    for (const [text, chosen] of [[`Select recommended (${advised.length})`, advised], [`Select all (${choices.length})`, choices], ['Clear', []]]) {
+    digestPickers = [];
+    for (const [text, chosen] of [['Select recommended', advised], ['Select all', shown], ['Clear', () => []]]) {
       const button = element('button', text); button.type = 'button'; button.dataset.digestControl = 'true';
-      button.onclick = () => { for (const entry of choices) entry.choice.checked = chosen.includes(entry); syncSignoffAuth(); };
+      button.onclick = () => { const picked = chosen(); for (const entry of digestEntries) if (entry.choice) entry.choice.checked = picked.includes(entry); syncSignoffAuth(); };
+      if (text !== 'Clear') digestPickers.push([button, text, chosen]);
       pick.append(button);
     }
     bar.append(pick, label, digestBatchButton); list.prepend(bar);
   }
-  syncSignoffAuth();
+  if ($('digest-search')) { $('digest-search').oninput = applyDigestSearch; applyDigestSearch(); }
+  else syncSignoffAuth();
 }
 function coverageGaps(coverage) {
   if (typeof coverage === 'string') return ` · ${coverage}`;
@@ -475,7 +503,7 @@ async function signoffs() {
   const epoch = treeEpoch, auth = session, actor = user;
   digestCount(null);
   $('signoff-cards').replaceChildren(element('p', 'Loading decisions…'));
-  digestEntries = []; digestBatchButton = null;
+  digestEntries = []; digestBatchButton = null; digestPickers = [];
   syncSignoffAuth();
   let data;
   try { data = await api('/digest'); }
@@ -488,7 +516,8 @@ async function signoffs() {
   }
   if (ticket !== signoffRequest || epoch !== treeEpoch || auth !== session || actor !== user || view !== 'signoffs') return;
   if (countTicket === digestCountRequest) digestCount(data);
-  $('human-decisions-scope').textContent = `${data.counts.total}${data.complete === false ? '+' : ''} waiting · ${data.complete === false ? 'Partial coverage' : 'Complete coverage'}${coverageGaps(data.coverage)}`;
+  const ready = Number.isInteger(data.counts.ready) ? data.counts.ready : data.counts.total;
+  $('human-decisions-scope').textContent = `${ready} ready for you · ${data.counts.total - ready} waiting on others`;
   // An unknown write remains locked even after a read: reconcile its audit first.
   renderSignoffs(data.items);
 }

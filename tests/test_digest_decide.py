@@ -187,3 +187,28 @@ def test_batch_yes_reports_each_item_and_is_safe_to_retry(board):
     assert [r.get('result') for r in again['results'][:2]] == [r['result'] for r in first['results'][:2]]
     refused = board.post('/api/v1/digest/decide-batch', json=body, headers={**board.relay, 'Idempotency-Key': 'batch-2'})
     assert refused.status_code == 403
+
+
+def test_only_items_a_click_can_complete_are_ready(board):
+    bare, proofed = proofed_task(board, proof=False), proofed_task(board)
+    data = board.get('/api/v1/digest', headers=board.human).json()
+    items = {i['id']: i for i in data['items'] if i['kind'] == 'human_close'}
+    assert items[bare]['ready'] is False and items[bare]['waiting_on'] == 'needs proof first'
+    assert items[proofed]['ready'] is True and items[proofed]['waiting_on'] is None
+    assert data['counts']['ready'] == sum(i['ready'] for i in data['items'])
+
+
+def test_a_veto_on_claimed_work_waits_instead_of_offering_a_click(tmp_path, monkeypatch):
+    monkeypatch.setattr(prototype, 'RELEASE_MARKER', tmp_path / 'RELEASED')
+    monkeypatch.setenv('HANDOFFS_INTAKE_SCREEN', 'observe')
+    with TestClient(create_app(tmp_path / 'veto2.sqlite', intake_screen=VetoScreen())) as client:
+        client.app.state.credentials.set_password('steve', 'synthetic test password only')
+        token = client.post('/api/v1/auth/login', json={'username': 'steve', 'password': 'synthetic test password only'}).json()['access_token']
+        client.human = {'Authorization': 'Bearer ' + token}
+        open_id, taken_id = post_task(client).json()['id'], post_task(client).json()['id']
+        client.headers.update(client.human)
+        assert write(client, f'/tasks/{taken_id}/take').status_code == 200
+        client.headers.pop('Authorization')
+        assert item(client, 'intake_veto', open_id)['ready'] is True
+        waiting = item(client, 'intake_veto', taken_id)
+        assert waiting['ready'] is False and 'already being worked on' in waiting['waiting_on']

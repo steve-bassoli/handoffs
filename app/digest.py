@@ -70,6 +70,24 @@ def _receipts(history, histories):
     return receipts
 
 
+def _mark_ready(service, ordered):
+    """Steve, 2026-10-18: show only what a click can complete now; everything else says what it waits on."""
+    detail = getattr(service, 'detail', None)
+    for item in ordered:
+        item['ready'], item['waiting_on'] = True, None
+    if detail is None:
+        return
+    with service.db.engine.connect() as c:
+        for item in ordered:
+            if item['kind'] == 'human_close':
+                if not ((detail(c, item['id']).get('proof') or {}).get('fresh')):
+                    item['ready'], item['waiting_on'] = False, 'needs proof first'
+            elif item['kind'] == 'intake_veto':
+                task = detail(c, item['id'])
+                if task['status'] not in ('open', 'blocked') or task['claimant'] is not None:
+                    item['ready'], item['waiting_on'] = False, 'already being worked on, so the veto cannot be decided here'
+
+
 def build_digest(service, user):
     _identity(service, user)
     construction = door_off()
@@ -156,6 +174,7 @@ def build_digest(service, user):
                 'Claimed work eligible for human closure; proof and claimant gates still apply.',
                 'close_human', revision, taken['actor'], taken['data'].get('principal'))
     ordered = [items[key] for key in sorted(items)]
+    _mark_ready(service, ordered)
     coverage = {'signoff': 'complete', 'intake_veto': 'complete',
                 'human_close': 'complete', 'rule_texts': 'complete', 'policy_decision': 'unsupported'}
     counts = {kind: sum(item['kind'] == kind for item in ordered)
@@ -163,7 +182,7 @@ def build_digest(service, user):
     # Unknown source cardinality is null, never an asserted zero.
     counts['policy_decision'] = None
     return {'items': ordered, 'coverage': coverage,
-            'counts': {'total': len(ordered), 'by_kind': counts},
+            'counts': {'total': len(ordered), 'ready': sum(item['ready'] for item in ordered), 'by_kind': counts},
             'complete': all(value == 'complete' for value in coverage.values()),
             'checked_at': datetime.now(timezone.utc).isoformat()}
 

@@ -77,7 +77,8 @@ vm.runInNewContext(source.slice(start, source.indexOf('let signoffRequest', star
 
 def test_digest_count_and_navigation_wiring():
     script = (STATIC / 'app.js').read_text(encoding='utf-8')
-    assert "entry.textContent = known ? `Decisions · ${total}${data.complete === false ? '+' : ''}` : 'Decisions · ?'" in script
+    assert "entry.textContent = known ? `Decisions · ${total}` : 'Decisions · ?'" in script
+    assert 'data.counts.ready' in script
     assert "nextView !== 'signoffs') void refreshDigestCount()" in script
     assert 'await refreshDigestCount();' in script
     assert "const ticket = ++digestCountRequest, auth = session, actor = user" in script
@@ -115,3 +116,12 @@ def test_digest_revision_batch_and_error_contract():
     assert 'session !== auth || actor !== user' in script
     assert 'digestBusy || digestUncertain' in script
     assert 'id="digest-outcomes" role="status" aria-live="polite"' in html
+
+
+def test_decisions_search_and_ready_fold():
+    script = (STATIC / 'app.js').read_text(encoding='utf-8')
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert 'id="digest-search" type="search"' in html
+    assert "$('digest-search').oninput = applyDigestSearch" in script
+    assert 'if (entry.choice && entry.card.hidden) entry.choice.checked = false' in script  # Never batch what you cannot see.
+    assert "items.filter(item => item.ready === false)" in script and '`${waiting.length} waiting on others`' in script
