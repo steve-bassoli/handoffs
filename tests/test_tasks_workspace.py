@@ -332,3 +332,10 @@ def test_menus_show_an_open_closed_chevron():
 def test_show_closed_toggle_is_thumb_sized():
     # Bob team free play #13 (275ce9c9): the Show closed label measured 16px tall at 375px.
     assert '#mine-filters label:has(> #show-closed) { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def test_watson_page_says_how_to_start():
+    # Bob team free play #14 (5db13aee): the Watson simulation page opened on a blank form with no starting step.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    start = html.index('<p id="gremlins-start">')
+    assert start < html.index('<button id="gremlins-example">') and 'Then choose Run offline comparison.' in html[start:start + 200]

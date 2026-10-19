@@ -71,6 +71,7 @@
       <h2>Gremlins · Watson simulation</h2>
       <p>Compare supplied synthetic Legacy, REST and MCP observations of Watson against one explicit behavior contract. SIM only: this does not connect to or execute Watson. No health data.</p>
       <div class="three-columns"><article><h3>Mimic</h3><p>Compare result, state and effects without normalizing away legacy quirks.</p></article><article><h3>Saboteur</h3><p>Inject one in-memory discrepancy to check that the comparator catches it.</p></article><article><h3>Witness</h3><p>Retain the reproducer, source, preservation rule and comparison in one portable report.</p></article></div>
+      <p id="gremlins-start">Choose Load synthetic example, or paste approved synthetic comparison JSON below. Then choose Run offline comparison.</p>
       <button id="gremlins-example">Load synthetic example</button>
       <form id="gremlins-form"><label>Comparison JSON · approved synthetic inputs only<textarea id="gremlins-input" required spellcheck="false"></textarea></label><label>Gremlin<select id="gremlins-breed"><option value="mimic">Mimic</option><option value="saboteur">Saboteur</option><option value="witness">Witness</option></select></label><button class="primary">Run offline comparison</button></form>
       <pre id="gremlins-output" class="proof-text" tabindex="0" role="region" aria-label="Offline comparison report" aria-live="polite"></pre><button id="gremlins-download" hidden>Download report</button>
