@@ -92,7 +92,9 @@ def test_browser_session_authorization_static():
     assert 'const headers = identityHeaders();' in source
     # Every raw fetch that sends identity is counted; the fourth is the Gallery's picture load, which goes through
     # authenticatedFetch (same-origin only) to the existing proof route.
-    assert source.count('{headers: identityHeaders()}') == 4
+    # The fifth loads a Community post's picture the same way.
+    assert source.count('{headers: identityHeaders()}') == 5
+    assert source.count('authenticatedFetch(post.art.url, {headers: identityHeaders()})') == 1
     assert source.count('authenticatedFetch(item.download_url, {headers: identityHeaders()})') == 1
     assert "sessionStorage.setItem(SESSION_KEY," in source
     assert "sessionStorage.removeItem(SESSION_KEY)" in source

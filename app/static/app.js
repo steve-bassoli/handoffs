@@ -298,6 +298,15 @@ async function hubView() {
       const article = element('article', undefined, 'hub-post');
       article.append(element('h3', post.title));
       if (post.summary) article.append(element('p', post.summary, 'hub-summary'));
+      if (post.art) {
+        const figure = element('figure', undefined, 'hub-art'); const image = element('img'); image.alt = post.art.statement || post.art.title;
+        figure.append(image, element('figcaption', post.art.title)); article.append(figure);
+        authenticatedFetch(post.art.url, {headers: identityHeaders()}).then(async response => {
+          if (!response.ok) throw new Error(); const url = URL.createObjectURL(await response.blob()); image.src = url; image.onload = () => URL.revokeObjectURL(url);
+        }).catch(() => image.replaceWith(element('p', 'Picture unavailable.', 'meta')));
+      }
+      if (post.question) article.append(element('p', post.question, 'hub-question'));
+      if (post.answer) article.append(element('p', post.answer, 'hub-answer'));
       article.append(element('p', [post.written_by && `Written by ${post.written_by}`, post.date].filter(Boolean).join(' · '), 'meta'));
       const talk = element('div', undefined, 'hub-talk');
       for (const turn of post.conversation) {

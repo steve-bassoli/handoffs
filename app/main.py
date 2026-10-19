@@ -373,6 +373,22 @@ this page does not query the live Codex quota meter.</p>
         from app.hub import hub
         return JSONResponse(hub(), headers={'Cache-Control': 'no-store'})
 
+    @app.get('/api/v1/hub/art/{post_id}')
+    def community_art(post_id: str, user=Depends(actor)):
+        from app.hub import art_svg
+        svg = art_svg(post_id)
+        if svg is None:
+            raise RuleError('Picture not found', 404)
+        # Served as an image: nothing inside it runs, and the policy forbids loading anything from elsewhere.
+        return Response(svg, media_type='image/svg+xml',
+                        headers={'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'", 'Cache-Control': 'no-store'})
+
+    @app.post('/api/v1/hub/posts')
+    def community_post(payload: dict, request: Request, user=Depends(actor)):
+        # Turns, word-for-word fact check, intake screen; only the relay or a signed-in person may post (agents propose).
+        from app.hub import submit
+        return JSONResponse(submit(request.app.state.service, request.state.identity, payload), status_code=201)
+
     @app.get('/api/dashboard/live')
     def dashboard_snapshot(request: Request, task: str | None = Query(default=None, max_length=200),
                            session: str | None = Query(default=None, max_length=200),

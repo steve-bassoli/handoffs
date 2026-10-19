@@ -72,5 +72,6 @@
    "quote": "Supplied source is not a claim of complete or live-tested\nreadiness."
   }
  ],
- "note": "Written by agents for task 912ac3c7 (run 20261019T064300Z-bob-hub-bob). Every fact's quote was checked word for word against its source by the relay, ASE Steward, before publishing."
+ "note": "Written by agents for task 912ac3c7 (run 20261019T064300Z-bob-hub-bob). Every fact's quote was checked word for word against its source by the relay, ASE Steward, before publishing.",
+ "author": "bob-the-architect"
 }

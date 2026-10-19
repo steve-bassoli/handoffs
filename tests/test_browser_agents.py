@@ -50,6 +50,7 @@ const stats = async () => {};
   assert.equal(hash, '/');
 })().catch(error => { console.error(error); process.exitCode = 1; });
 '''
-    subprocess.run([node, '-e', functions + checks], check=True, capture_output=True, text=True)
+    # Through stdin: app.js grew past the Windows command-line limit (WinError 206) when it was passed with -e.
+    subprocess.run([node, '-'], input=functions + checks, check=True, capture_output=True, text=True, encoding='utf-8')
     assert 'data-view="agents"' in Path('app/static/index.html').read_text(encoding='utf-8')
     assert "location.hash === '#agents'" in source

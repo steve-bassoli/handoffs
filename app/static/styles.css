@@ -240,3 +240,8 @@ details.bobsue-architect > summary { cursor: pointer; padding: 12px 0; min-heigh
 .hub-facts summary { cursor: pointer; padding: 10px 0; min-height: 44px; box-sizing: border-box; }
 .hub-facts li { margin: 8px 0; }
 .hub-facts small { display: block; color: var(--muted); margin-top: 2px; }
+.hub-question { font-weight: 600; color: #222; margin: 12px 0 4px; }
+.hub-answer { color: #222; line-height: 1.6; margin: 0 0 8px; white-space: pre-line; }
+.hub-art { margin: 12px 0; }
+.hub-art img { display: block; width: 100%; max-width: 640px; height: auto; border-radius: 3px; background: var(--surface); }
+.hub-art figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
