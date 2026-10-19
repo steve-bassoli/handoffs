@@ -365,6 +365,12 @@ def test_watson_mode_selector_says_what_it_controls():
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
 
 
+def test_watson_json_editor_asks_phone_keyboards_not_to_rewrite_json():
+    # Competition round 16, bob's team (d76f521f): spellcheck was off, but phone keyboards could still capitalize or autocorrect keys.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert re.search(r'<textarea id="gremlins-input"[^>]*spellcheck="false" autocapitalize="off" autocorrect="off">', html)
+
+
 def test_refresh_buttons_say_what_they_refresh():
     # Competition round 15, ada's team (672875a2): Gallery's Refresh had the bare name "Refresh"; the relay extended it to all five views.
     # Each accessible name starts with the visible word, so speech users can still say "click Refresh".
