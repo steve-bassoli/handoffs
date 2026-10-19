@@ -39,11 +39,10 @@ def build_snapshot(*, roster=None, mode=None, session=None, observed_at):
                     if identity is None or identity in seen:
                         raise ValueError('invalid or duplicate identifier')
                     seen.add(identity)
-                    pressure = row.get('pressure')
                     agents.append({'id': identity, 'reported_activity': text(row.get('state'), 80),
                                    'live_confirmed': _boolean(row.get('live_confirmed')),
                                    'interrupted_occupied_lease': _boolean(row.get('interrupted_occupied_lease')),
-                                   'pressure': pressure if type(pressure) is int and pressure in (1, 2, 3) else None,
+                                   'resting': _boolean(row.get('resting')),
                                    'source': 'roster', 'event_at': text(row.get('event_at'))})
                 agents.sort(key=lambda row: row['id'])
                 source('roster', 'available', roster.get('event_at'))

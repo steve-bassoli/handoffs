@@ -43,7 +43,7 @@ def test_complete_envelope(modules, canonical, tmp_path):
     selected.mkdir()
     (selected / 'plan.json').write_text(json.dumps(canonical['session']['plan']), encoding='utf-8')
     session = reader.read_session_metadata(selected.name, base_dir=tmp_path)
-    items = [{**{k: a[k] for k in ('id', 'pressure', 'event_at', 'live_confirmed',
+    items = [{**{k: a[k] for k in ('id', 'resting', 'event_at', 'live_confirmed',
               'interrupted_occupied_lease')}, 'state': a['reported_activity']} for a in canonical['agents']]
     actual = builder.build_snapshot(roster={'available': True, 'items': items},
                                    session=session, observed_at=canonical['observed_at'])
@@ -146,7 +146,7 @@ function harness(endpoint,boot=false){
  h.reply();await settle();assert.equal(h.calls[0].opts.headers['X-Test-Identity'],'authorized');
  assert.equal(h.calls[0].opts.headers['X-Demo-User'],undefined);assert.equal(h.calls[0].opts.redirect,'error');assert.equal(h.calls[0].opts.credentials,'same-origin');
  assert(h.slots.live.textContent.includes(good.agents[0].id));assert(h.slots.live.textContent.includes(good.agents[0].reported_activity));
- assert(h.slots.live.textContent.includes('STOP NOW'));assert(!h.status.textContent.includes('Renderer unavailable'));
+ assert(h.slots.live.textContent.includes('Asked to rest: yes'));assert(!h.status.textContent.includes('Renderer unavailable'));
  const seen=[];h.api.register('live',(_,data,state)=>seen.push({data,state}));assert.deepStrictEqual(plain(seen.at(-1).data),good);
  assert.equal(h.tick(),2500);h.api.resume();assert.equal(h.calls.length,2);
  const bad=plain(good);bad.session=[];h.reply(bad);await settle();

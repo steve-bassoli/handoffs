@@ -9,7 +9,7 @@ from conftest import post_task
 @pytest.fixture
 def registered(monkeypatch):
     data = {'available': True, 'items': [{'id': 'agent-1', 'name': 'bob', 'level': 1,
-        'state': 'active', 'pressure': 1, 'session': 'session-1', 'run': 'PRIVATE PATH',
+        'state': 'active', 'resting': False, 'session': 'session-1', 'run': 'PRIVATE PATH',
         'directive': 'PRIVATE PROMPT'}]}
     monkeypatch.setattr('app.main.roster', lambda: data)
     return data

@@ -17,7 +17,7 @@ const nodes = new Map();
 const element = (tag, text) => ({tag, textContent: text, children: [], append(...items) { this.children.push(...items); }, replaceChildren() { this.children = []; }});
 const $ = id => { if (!nodes.has(id)) nodes.set(id, element('div')); return nodes.get(id); };
 let view, selected, aiPoll, proofPoll, hash, calls = []; const user = 'steve';
-let result = {available: true, items: [{id: 'abc12345extra', role: 'worker', level: 1, state: 'active', pressure: 1, credits: null, admiration: null, growth: null}]};
+let result = {available: true, items: [{id: 'abc12345extra', role: 'worker', level: 1, state: 'active', resting: false, credits: null, admiration: null, growth: null}]};
 const api = async (...args) => { calls.push(args); return result; };
 const location = {pathname: '/', search: ''};
 const history = {replaceState(_a, _b, url) { hash = url; }};
@@ -32,8 +32,8 @@ const stats = async () => {};
   assert.deepEqual(calls, [['/agents'], ['/automation-mode']], 'Roster must only GET, with no paid start');
   const row = $('agent-rows').children[0];
   assert.equal(row.children[0].title, 'abc12345extra');
-  assert.deepEqual(row.children.slice(1).map(cell => cell.textContent), ['Working?', '—', 1, '?', '?', '?']);
-  result = {available: true, items: [{id: 'def67890', role: 'worker', level: 3, state: 'active', pressure: 2, credits: null,
+  assert.deepEqual(row.children.slice(1).map(cell => cell.textContent), ['Working?', '—', '—', '?', '?', '?']);
+  result = {available: true, items: [{id: 'def67890', role: 'worker', level: 3, state: 'active', resting: true, credits: null,
     admiration: null, growth: null, name: 'fe_study', session: 'it1', task: 'LOW · crawler', directive: 'Crawl forms', task_id: 'task-123456789'}]};
   await agentRoster();
   const work = $('agent-rows').children[0].children[2];

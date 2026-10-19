@@ -16,7 +16,7 @@ def fixture_app():
     from app import main
     root = Path(os.environ['DASHBOARD_TEST_ROOT'])
     main.roster = lambda: {'available': True, 'items': [{'id': 'fixture-agent', 'name': 'bob',
-        'state': 'active', 'pressure': 1, 'level': 1, 'session': 'session-test'}]}
+        'state': 'active', 'resting': False, 'level': 1, 'session': 'session-test'}]}
     return main.create_app(root / 'tasks.sqlite')
 
 

@@ -139,3 +139,13 @@ def test_second_acceptance_commits_exactly_the_two_rules_files(board):
     message = git('log', '-1', '--format=%B')
     assert 'Approved by steve and nate' in message and 'second signed-in approval' in message
     assert 'unrelated.txt' in git('diff', '--cached', '--name-only')
+
+
+def test_an_already_approved_digest_never_reappears(board):
+    # Approve the synthetic proposal, then change the live rules again: the approved digest must stay history.
+    assert decide(board, 'steve', card(board, 'steve'), 'yes').status_code == 200
+    assert decide(board, 'nate', card(board, 'nate'), 'yes').json()['applied'] is True
+    data = json.loads((board.rules / 'agent-rules.json').read_bytes())
+    data['texts']['SHARED'] += ' later change'
+    (board.rules / 'agent-rules.json').write_text(json.dumps(data), encoding='utf-8')
+    assert card(board, 'steve') is None and card(board, 'nate') is None

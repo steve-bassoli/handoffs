@@ -51,6 +51,9 @@ def pending(c):
     """Proposals that differ from the live rules file, with their changed texts and decisions so far."""
     live_raw = (rules_dir() / 'agent-rules.json').read_bytes()
     live = json.loads(live_raw)
+    # A digest two people already approved is history, even after a later change replaces it (task bb4bcf2c).
+    approved = {entry.get('sha256') for entry in json.loads((rules_dir() / 'APPROVALS.json').read_bytes())
+                if isinstance(entry, dict) and len(set(entry.get('approved_by') or [])) >= 2}
     found = []
     for path in sorted(proposals_dir().glob('*/agent-rules.json')):
         raw = path.read_bytes()
@@ -63,6 +66,8 @@ def pending(c):
         except ValueError:
             continue
         sha = hashlib.sha256(raw).hexdigest()
+        if sha in approved:
+            continue
         changed = [{'name': name, 'old': live['texts'][name], 'new': value}
                    for name, value in data['texts'].items() if live['texts'][name] != value]
         if data['compositions'] != live['compositions']:

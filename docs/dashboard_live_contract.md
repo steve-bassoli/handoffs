@@ -19,11 +19,10 @@ Browser received_at is local receipt time, neither source observation nor freshn
 
 Agent keys: id (unique nonempty string <=200), reported_activity (string <=80|null),
 live_confirmed (boolean|null), interrupted_occupied_lease (boolean|null),
-pressure (integer 1|2|3|null), source ('roster'), event_at (string|null).
+resting (boolean|null: the agent's last turn asked to rest), source ('roster'), event_at (string|null).
 Sort lexically by id; duplicate IDs invalidate the roster.
 Reported activity does not establish live confirmation or an interrupted lease.
 Only explicit authorized evidence may supply those booleans.
-PRESSURE describes operational reliability, not personal health; 3 means STOP NOW.
 mode: {value: manual|light|heavy|team|max|null, agents: nonnegative integer|null,
 automated_writes: boolean|null, source: 'mode'}.
 session: {id: string|null, plan: object|null, board: object|null, summary: object|null}.
@@ -34,7 +33,7 @@ PRESSURE 3, unconfirmed activity, explicit interrupted-lease evidence and hostil
 
 ## Python and confined reading
 build_snapshot(*, roster=None, mode=None, session=None, observed_at)
-Roster input: {available:true,items:[{id,state,pressure,event_at?,live_confirmed?,
+Roster input: {available:true,items:[{id,state,resting,event_at?,live_confirmed?,
 interrupted_occupied_lease?}]}; state supplies reported_activity only.
 Raw mode supplies mode, agents, automated_writes. Unsupported values remain unknown.
 Missing inputs are unavailable; malformed supplied structures are invalid.

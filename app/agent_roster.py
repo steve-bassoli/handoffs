@@ -18,26 +18,14 @@ def _json(path, limit=262144):
         return None
 
 
-def _pressure(run):
-    for filename in ('answer.json', 'candidate.json'):
-        try:
-            report = _json(Path(run) / filename)
-            if report is None:
-                continue
-            if filename == 'answer.json':
-                if report.get('state') != 'completed':
-                    continue
-                report = json.loads(report['text'])
-            value = report.get('pressure_level')
-            if type(value) is int and 1 <= value <= 3:
-                return value
-        except (ValueError, TypeError, KeyError, AttributeError):
-            continue
-    for path in sorted(Path(run).glob('round-*.json'), reverse=True):  # Tree turns report 'pressure'.
-        value = (_json(path) or {}).get('pressure')
-        if type(value) is int and 1 <= value <= 3:
-            return value
-    return None
+def _resting(run):
+    """Pressure and energy are retired (tasks 9e5678ac, bb4bcf2c): the only self-report is a tree turn's rest: true.
+    True when the latest turn asked to rest, False when it did not, None when there is no tree turn to read."""
+    rounds = sorted(Path(run).glob('round-*.json'), reverse=True)
+    if not rounds:
+        return None
+    report = _json(rounds[0])
+    return None if not isinstance(report, dict) else report.get('rest') is True
 
 
 def _work(run):
@@ -76,7 +64,7 @@ def roster(path=None):
         items = []
         for row in rows:
             item = {key: row[key] for key in ('id', 'role', 'level', 'state', 'started', 'ended')}
-            item.update(pressure=_pressure(row['run']), credits=None, admiration=None, growth=None, **_work(row['run']))
+            item.update(resting=_resting(row['run']), credits=None, admiration=None, growth=None, **_work(row['run']))
             items.append(item)
         return {'available': True, 'items': items}
     except (sqlite3.Error, OSError, ValueError):

@@ -29,8 +29,7 @@
         line(el, known(a.name || a.id) + ' · Reported activity: ' + known(a.reported_activity));
         line(el, 'Explicit live confirmation: ' + yes(a.live_confirmed) +
           ' · Interrupted occupied lease: ' + yes(a.interrupted_occupied_lease));
-        line(el, 'Operational PRESSURE: ' + known(a.pressure) +
-          (a.pressure === 3 ? ' — STOP NOW' : a.pressure === 2 ? ' — reduce load / checkpoint' : ''));
+        line(el, 'Asked to rest: ' + yes(a.resting));
       });
       if (s.session.plan && Array.isArray(s.session.plan.agents)) {
         line(el, 'Selected session hierarchy (plan evidence):');
@@ -95,7 +94,7 @@
         if (!object(a) || typeof a.id !== 'string' || !a.id.trim() || ids.has(a.id) ||
             !text(a.reported_activity) || !evidence(a.live_confirmed) ||
             !evidence(a.interrupted_occupied_lease) ||
-            !(a.pressure === null || a.pressure === 1 || a.pressure === 2 || a.pressure === 3)) return false;
+            !evidence(a.resting)) return false;
         ids.add(a.id); return true;
       })) return false;
       return ['roster', 'mode', 'plan', 'board', 'summary'].every(k => {
