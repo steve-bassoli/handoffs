@@ -117,8 +117,11 @@ button.loading:disabled { opacity: 1; cursor: progress; }
 .history-detail, .history-actor, .history-time { color: var(--muted); }
 .history-actor, .history-time { font-size: 12px; }
 .history-via { justify-self: start; padding: 4px 8px; border-radius: 3px; color: var(--accent); background: var(--accent-tint); }
-.history-event details { padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 3px; }
-.history-event summary { cursor: pointer; }
+/* The whole shaded header toggles, not only its text (bob free play #16, 4ffe2bc3). */
+.history-event details { padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 3px; }
+.history-event details[open] { padding-bottom: 12px; }
+.history-event details > summary { cursor: pointer; padding: 12px 16px; min-height: 44px; }
+.history-event details > :not(summary) { margin-left: 16px; margin-right: 16px; }
 .detail-head { margin-top: 24px; }
 code { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .evidence { padding: 24px; background: #fff; border: 1px solid var(--line); border-radius: 3px; margin: 12px 0; }

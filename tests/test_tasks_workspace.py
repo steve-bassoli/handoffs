@@ -345,3 +345,9 @@ def test_task_search_has_a_visible_label():
     # Bob team free play #15 (f2b87f1e): the placeholder was the only visible label and vanished while typing.
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
     assert '<label class="task-search" for="search">Find a task<input id="search"' in html
+
+
+def test_history_evidence_headers_toggle_from_the_whole_shaded_area():
+    # Bob team free play #16 (4ffe2bc3): the summary was 16px tall inside a 42px shaded box, so taps on the padding did nothing.
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    assert '.history-event details > summary { cursor: pointer; padding: 12px 16px; min-height: 44px; }' in css
