@@ -385,6 +385,14 @@ def test_task_page_survives_a_failed_artifacts_or_constellation_read():
     assert "'Could not load the constellation. Reopen this task to try again.'" in js
 
 
+def test_task_page_survives_a_failed_lineage_read():
+    # Competition round 23, sue's team (4c59a225): the last unguarded read in the task page's render chain (aiSection's lineage).
+    js = (STATIC / 'app.js').read_text(encoding='utf-8')
+    assert "try { lineage = await api(`/tasks/${id}/lineage`); }" in js
+    assert "'Could not load task history and follow-ups. Reopen this task to try again.'" in js
+    assert "const lineage = await api(`/tasks/${id}/lineage`);" not in js
+
+
 def test_undecodable_pictures_show_the_fallback():
     # Competition round 21, ada's team (d15786b7): a 200 response with bytes the browser cannot decode showed a broken image;
     # the relay extended the gallery fix to Community hub art, which loads the same way.

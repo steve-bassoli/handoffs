@@ -1463,7 +1463,16 @@ async function aiSection(data, detail) {
     }
   }
   if (box.childElementCount > 1) detail.append(box);
-  const lineage = await api(`/tasks/${id}/lineage`);
+  // Competition round 23 (sue's team, 4c59a225): a failed lineage read used to leave the whole task page blank.
+  let lineage;
+  try { lineage = await api(`/tasks/${id}/lineage`); }
+  catch {
+    const tree = element('details', undefined, 'lineage'); tree.open = true;
+    tree.append(element('summary', 'Task history & follow-ups'),
+      element('p', 'Could not load task history and follow-ups. Reopen this task to try again.', 'error'));
+    detail.append(tree);
+    return;
+  }
   if (window.renderTicketFlow && lineage.items.length > 1) {
     try {
       const detailsById = {};
