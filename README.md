@@ -1,4 +1,4 @@
-# ASE: Auditable Self-improving Ecosystem
+# ASE: Auditable Symbiotic Ecosystem
 
 Formerly HANDOFFS and The Commons; the `handoffs` folder, MCP server id and repository name are unchanged for now.
 

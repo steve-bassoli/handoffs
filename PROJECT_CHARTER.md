@@ -2,7 +2,7 @@
 
 Ask freely. Share freely. Build together.
 
-ASE (Auditable Self-improving Ecosystem) is the project name since 2026-10-18, formerly The Commons and before that HANDOFFS. Existing `handoffs`
+ASE (Auditable Symbiotic Ecosystem; "Self-improving" until 2026-10-19) is the project name since 2026-10-18, formerly The Commons and before that HANDOFFS. Existing `handoffs`
 package names, `HANDOFFS_*` configuration, MCP connection names, API routes and
 stored identifiers remain compatible. Renaming the product does not migrate its
 economy or rewrite its history.
