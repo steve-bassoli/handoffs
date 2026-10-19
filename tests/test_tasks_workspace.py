@@ -308,3 +308,9 @@ def test_agent_roster_is_a_named_keyboard_region():
     # Bob team free play #9 (50c8cbbf): the roster scrolls sideways on phones; give keyboard users a handle.
     assert '<div class="agent-table-wrap" tabindex="0" role="region" aria-label="Astra roster">' in (STATIC / 'index.html').read_text(encoding='utf-8')
     assert '#agents .agent-table-wrap:focus-visible' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def test_roster_working_on_column_wraps_with_a_readable_floor():
+    # Bob team free play #10 (126b1cb5): Working on rendered 1947px wide at 375px; a first try without a floor collapsed it to 32px.
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    assert '#agents .agent-table td:nth-child(3) { min-width: 20rem; width: 28rem; max-width: 28rem; white-space: normal; overflow-wrap: anywhere; }' in css

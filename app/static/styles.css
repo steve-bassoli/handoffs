@@ -60,6 +60,9 @@ nav a.selected { color: var(--accent); border-bottom: 3px solid var(--accent); m
 .agent-table caption { text-align: left; padding: 12px 0; }
 .agent-table th, .agent-table td { text-align: left; padding: 16px 12px; border-bottom: 1px solid var(--line); }
 .agent-table th { background: var(--surface); font-size: 12px; text-transform: uppercase; }
+/* Working on wraps with a readable floor, so long prose stops setting the roster width (bob free play #10, 126b1cb5). */
+#agents .agent-table th:nth-child(3),
+#agents .agent-table td:nth-child(3) { min-width: 20rem; width: 28rem; max-width: 28rem; white-space: normal; overflow-wrap: anywhere; }
 .agent-table small { display: block; color: var(--muted); margin-top: 6px; }
 #cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
 /* Long titles and links wrap inside their card (bob team free play, caaaa25b). */
