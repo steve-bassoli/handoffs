@@ -282,3 +282,11 @@ def test_watson_report_is_a_named_keyboard_region():
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
     assert '<pre id="gremlins-output" class="proof-text" tabindex="0" role="region" aria-label="Offline comparison report"' in html
     assert '#gremlins-output:focus-visible' in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def test_post_form_marks_optional_fields():
+    # Bob team free play #6 (74bcc7d0): the server defaults repository and context_links to empty.
+    html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert 'Source repository (optional)<input name="repository"' in html and 'Context links (optional) · one per line' in html
+    from app.main import PostTask
+    assert PostTask(title='t', goal='g', criteria=['c'], gold=1).repository == '' and PostTask(title='t', goal='g', criteria=['c'], gold=1).context_links == []
