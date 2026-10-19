@@ -375,6 +375,14 @@ def test_watson_mode_selector_says_what_it_controls():
     assert '<label>Comparison mode<select id="gremlins-breed">' in html and '<label>Gremlin<select' not in html
 
 
+def test_form_field_borders_meet_non_text_contrast():
+    # Competition round 18, ada's team (19ad4248): #ccc field borders on white were 1.6:1; the relay extended the search fix to every field.
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    base = re.search(r'^input, textarea, select \{[^}]*\}', css, re.M).group(0)
+    assert 'border: 1px solid #767676;' in base and '#ccc' not in base
+    assert css.index(base) < css.index('input:focus, textarea:focus, select:focus { border-color: var(--accent);')
+
+
 def test_watson_json_editor_asks_phone_keyboards_not_to_rewrite_json():
     # Competition round 16, bob's team (d76f521f): spellcheck was off, but phone keyboards could still capitalize or autocorrect keys.
     html = (STATIC / 'index.html').read_text(encoding='utf-8')

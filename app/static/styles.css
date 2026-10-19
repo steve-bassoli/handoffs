@@ -86,7 +86,8 @@ nav a.selected { color: var(--accent); border-bottom: 3px solid var(--accent); m
 #board .paging button { min-height: 44px; }
 label { display: block; color: var(--muted); margin: 16px 0; }
 #mine-filters label:has(> #show-closed) { min-height: 44px; } /* Thumb-sized Show closed (bob free play #13, 275ce9c9). */
-input, textarea, select { display: block; width: 100%; font: inherit; color: #212529; background: #fff; border: 1px solid #ccc; border-radius: 3px; padding: 9px 12px; margin-top: 7px; }
+input, textarea, select { display: block; width: 100%; font: inherit; color: #212529; background: #fff; border: 1px solid #767676; border-radius: 3px; padding: 9px 12px; margin-top: 7px; }
+/* Field borders at 4.5:1 on white (WCAG 1.4.11 needs 3:1); #ccc was 1.6:1 (competition round 18, ada's team, 19ad4248; the relay extended search to every field). */
 input:focus, textarea:focus, select:focus { border-color: var(--accent); outline: 1px solid var(--accent); }
 textarea { min-height: 100px; resize: vertical; }
 form { max-width: 700px; }
