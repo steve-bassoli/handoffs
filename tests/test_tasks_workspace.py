@@ -321,3 +321,9 @@ def test_skip_link_moves_focus_without_changing_the_route():
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
     assert html.index('class="skip-link" href="#main-content"') < html.index('<header>') and '<main id="main-content" tabindex="-1">' in html
     assert "event.preventDefault(); $('main-content').focus();" in (STATIC / 'app.js').read_text(encoding='utf-8')
+
+
+def test_menus_show_an_open_closed_chevron():
+    # Bob team free play #12 (d3760307): the native disclosure marker is hidden, so Gremlins and More had no open cue.
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    assert '.workspace-nav .workspace-disclosure > summary::before' in css and '.workspace-nav .workspace-disclosure[open] > summary::before { transform: rotate(45deg); }' in css

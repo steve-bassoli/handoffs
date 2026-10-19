@@ -157,6 +157,9 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
 .workspace-nav .nav-icon { width: 18px; height: 18px; flex: 0 0 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
 .workspace-nav summary { cursor: pointer; padding: 12px 20px; color: var(--muted); line-height: 1.4; border-bottom: 3px solid transparent; margin-bottom: -1px; list-style: none; }
 .workspace-nav summary::-webkit-details-marker { display: none; }
+/* A chevron shows the menus open (bob free play #12, d3760307); the native marker is hidden above. */
+.workspace-nav .workspace-disclosure > summary::before { content: ''; display: inline-block; width: .5em; height: .5em; margin-right: .65em; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; vertical-align: .1em; transform: rotate(-45deg); }
+.workspace-nav .workspace-disclosure[open] > summary::before { transform: rotate(45deg); }
 .workspace-nav summary:hover { color: var(--accent); }
 .workspace-nav summary .nav-icon { margin-right: 6px; }
 .workspace-nav .workspace-disclosure[open] { flex: 1 1 240px; }
