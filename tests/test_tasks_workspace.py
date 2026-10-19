@@ -7,12 +7,17 @@ STATIC = Path(__file__).resolve().parents[1] / 'app' / 'static'
 
 def test_one_tasks_entry_and_local_row_replace_three_tabs():
     for page in ('index.html', 'dashboard.html'):
-        nav = re.search(r'<nav aria-label="Workspace">(.*?)</nav>', (STATIC / page).read_text(encoding='utf-8')).group(1)
-        # Decisions (the human-decision digest, task acbeeff0) sits right after Tasks on the main page.
-        expected = ['open', 'signoffs', 'gremlins', 'agents', 'wallet'] if page == 'index.html' else ['open', 'gremlins', 'agents', 'wallet']
-        assert re.findall(r'data-view="(\w+)"', nav) == expected, page
+        nav = re.search(r'<nav aria-label="Workspace"[^>]*>(.*?)</nav>', (STATIC / page).read_text(encoding='utf-8'), re.S).group(1)
+        # Focused navigation (task 5b86fe29): Decisions first, Tasks second, Gremlins > Watson, then More.
+        assert re.findall(r'data-view="(\w+)"', nav) == ['signoffs', 'open', 'gremlins', 'agents', 'wallet'], page
+        more = re.search(r'<details class="workspace-disclosure workspace-more">(.*?)</details>', nav, re.S).group(1)
+        assert 'id="dashboard-link"' in more and 'data-view="agents"' in more and 'data-view="wallet"' in more, page
+        assert 'Watson · simulation' in re.search(r'workspace-gremlins">(.*?)</details>', nav, re.S).group(1), page
         assert 'My Tasks' not in nav and 'Post Task' not in nav
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
+    # Gold lives under More with its ids intact; the Decisions count says what it counts.
+    assert html.count('id="gold"') == 1 and 'id="gold"' in re.search(r'workspace-more">(.*?)</details>', html, re.S).group(1)
+    assert 'Zero is not blanket approval.' in html and 'aria-describedby="decisions-count-note"' in html
     row = re.search(r'<div id="tasks-toolbar".*?</div>', html).group(0)
     assert re.findall(r'data-task-view="(\w+)"', row) == ['open', 'mine', 'post']
 

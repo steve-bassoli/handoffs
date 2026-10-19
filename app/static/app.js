@@ -304,7 +304,8 @@ function digestCount(data) {
   // Only what a click can complete now (Steve, 2026-10-18: "it's too complicated").
   const total = Number.isInteger(data?.counts?.ready) ? data.counts.ready : data?.counts?.total;
   const known = Number.isInteger(total) && total >= 0;
-  entry.textContent = known ? `Decisions · ${total}` : 'Decisions · ?';
+  // The label span keeps the icon (task 5b86fe29).
+  (entry.querySelector('.nav-label') || entry).textContent = known ? `Decisions · ${total}` : 'Decisions · ?';
   entry.setAttribute('aria-label', known ? `Human decisions; ${total} ready for you` : 'Human decisions; waiting count unavailable');
 }
 async function refreshDigestCount() {
@@ -1312,7 +1313,7 @@ $('gremlins-form').onsubmit = event => { event.preventDefault(); run(async () =>
 }); };
 $('agents-refresh').onclick = () => run(agentRoster);
 $('signoffs-refresh').onclick = () => run(signoffs);
-for (const button of document.querySelectorAll(WORKSPACE_BUTTONS + ', [data-task-view]')) button.onclick = () => run(async () => { offset = 0; message(''); await navigate(button.dataset.view || button.dataset.taskView); });
+for (const button of document.querySelectorAll(WORKSPACE_BUTTONS + ', [data-task-view]')) button.onclick = () => run(async () => { button.closest('details')?.removeAttribute('open'); offset = 0; message(''); await navigate(button.dataset.view || button.dataset.taskView); });
 $('user').onchange = () => run(async () => { if (session) { renderAuth(); return; } user = $('user').value; localStorage.setItem('handoffs-user', user); offset = txOffset = 0; message(''); await navigate('open'); });
 $('signin-form').onsubmit = event => {
   event.preventDefault();

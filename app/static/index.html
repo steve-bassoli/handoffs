@@ -26,8 +26,13 @@
   <div class="demo">Prototype · Demo identity and PR verification · Gold is application credit</div>
   <main>
     <section class="intro"><div><p class="eyebrow" title="Auditable Symbiotic Ecosystem">ASE · AUDITABLE SYMBIOTIC ECOSYSTEM</p><h1>Ask freely. Share freely. Build together.</h1><p>Share what you know. Choose useful work. Create software with human guidance and AI.</p></div>
-      <div class="balance"><span>Available Gold</span><strong id="gold">—</strong><small id="reserved">Loading wallet…</small></div></section>
-    <nav aria-label="Workspace"><button data-view="open" class="selected">Tasks</button><button id="human-decisions-entry" data-view="signoffs" type="button" aria-controls="signoffs" aria-label="Human decisions; waiting count unavailable">Decisions · ?</button><a id="dashboard-link" href="/dashboard">Dashboard</a><button data-view="gremlins">Gremlins</button><button data-view="agents">Agents</button><button data-view="wallet">Wallet & Stats</button></nav>
+    </section>
+    <nav aria-label="Workspace" class="workspace-nav">
+      <button id="human-decisions-entry" data-view="signoffs" type="button" aria-controls="signoffs" aria-label="Human decisions; waiting count unavailable" aria-describedby="decisions-count-note" title="Counts rule texts that need two people and vetoes on relay-authored work. ? means unavailable, not zero. Zero is not blanket approval."><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg><span class="nav-label">Decisions · ?</span></button><span id="decisions-count-note" class="visually-hidden">Counts rule texts that need two people and vetoes on relay-authored work. ? means unavailable, not zero. Zero is not blanket approval.</span>
+      <button data-view="open" class="selected" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>Tasks</button>
+      <details class="workspace-disclosure workspace-gremlins"><summary><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 3h6M10 3v6l-6 10a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2L14 9V3M8 15h8"></path></svg>Gremlins</summary><div class="workspace-disclosure-content"><button data-view="gremlins" type="button" aria-describedby="watson-module-note">Watson · simulation</button><p id="watson-module-note">The offline comparison only. No live Watson. No health data.</p></div></details>
+      <details class="workspace-disclosure workspace-more"><summary><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></svg>More</summary><div class="workspace-disclosure-content"><a id="dashboard-link" href="/dashboard">Dashboard</a><button data-view="agents" type="button">Agents</button><button data-view="wallet" type="button">Wallet &amp; Stats</button><div class="balance"><span>Available Gold</span><strong id="gold">—</strong><small id="reserved">Loading wallet…</small></div></div></details>
+    </nav>
     <div id="tasks-toolbar" class="tasks-toolbar" role="navigation" aria-label="Tasks"><button type="button" data-task-view="open">Browse</button><button type="button" data-task-view="mine">My tasks</button><button type="button" data-task-view="post" class="primary">+ Post task</button></div>
     <p id="door-banner" role="status" hidden style="background:#fff4e5;border-left:4px solid #b45309;color:#7c2d12;padding:10px 14px;margin:12px 0"></p>
     <p id="notice" role="status"></p>
@@ -40,6 +45,7 @@
     <section id="signoffs" data-view="signoffs" hidden>
       <div class="section-title"><h2>Human decisions</h2><button id="signoffs-refresh" type="button">Refresh</button></div>
       <p id="human-decisions-scope" role="status">Waiting count unavailable.</p>
+      <p class="meta">Counts rule texts that need two people and vetoes on relay-authored work. ? means unavailable, not zero. Zero is not blanket approval.</p>
       <p id="signoffs-hint" hidden>Sign in to decide; demo identities cannot decide.</p>
       <div id="cosign" hidden><p id="cosign-list" class="meta"></p>
         <form id="cosign-form" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
@@ -61,8 +67,8 @@
       <div class="agent-table-wrap"><table class="agent-table"><caption class="eyebrow">ASTRA · READ ONLY</caption><thead><tr><th scope="col">Agent</th><th scope="col">Status</th><th scope="col">Working on</th><th scope="col">Resting</th></tr></thead><tbody id="agent-rows"></tbody></table></div>
     </section>
     <section id="gremlins" hidden>
-      <h2>Gremlins · three mirrors</h2>
-      <p>Compare supplied Legacy, REST and MCP observations against one explicit behavior contract. SIM only: this does not connect to or execute Watson.</p>
+      <h2>Gremlins · Watson simulation</h2>
+      <p>Compare supplied synthetic Legacy, REST and MCP observations of Watson against one explicit behavior contract. SIM only: this does not connect to or execute Watson. No health data.</p>
       <div class="three-columns"><article><h3>Mimic</h3><p>Compare result, state and effects without normalizing away legacy quirks.</p></article><article><h3>Saboteur</h3><p>Inject one in-memory discrepancy to check that the comparator catches it.</p></article><article><h3>Witness</h3><p>Retain the reproducer, source, preservation rule and comparison in one portable report.</p></article></div>
       <button id="gremlins-example">Load synthetic example</button>
       <form id="gremlins-form"><label>Comparison JSON · approved synthetic inputs only<textarea id="gremlins-input" required spellcheck="false"></textarea></label><label>Gremlin<select id="gremlins-breed"><option value="mimic">Mimic</option><option value="saboteur">Saboteur</option><option value="witness">Witness</option></select></label><button class="primary">Run offline comparison</button></form>

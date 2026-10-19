@@ -10,7 +10,7 @@ STATIC = Path(__file__).resolve().parents[1] / 'app' / 'static'
 def test_signoffs_workspace_wiring():
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
     script = (STATIC / 'app.js').read_text(encoding='utf-8')
-    assert 'id="human-decisions-entry" data-view="signoffs"' in html and '>Decisions · ?</button>' in html
+    assert 'id="human-decisions-entry" data-view="signoffs"' in html and '<span class="nav-label">Decisions · ?</span></button>' in html
     assert '<section id="signoffs" data-view="signoffs" hidden>' in html
     assert 'Sign in to decide; demo identities cannot decide.' in html
     assert "await api('/digest')" in script
@@ -77,7 +77,7 @@ vm.runInNewContext(source.slice(start, source.indexOf('let signoffRequest', star
 
 def test_digest_count_and_navigation_wiring():
     script = (STATIC / 'app.js').read_text(encoding='utf-8')
-    assert "entry.textContent = known ? `Decisions · ${total}` : 'Decisions · ?'" in script
+    assert "(entry.querySelector('.nav-label') || entry).textContent = known ? `Decisions · ${total}` : 'Decisions · ?'" in script
     assert 'data.counts.ready' in script
     assert "nextView !== 'signoffs') void refreshDigestCount()" in script
     assert 'await refreshDigestCount();' in script

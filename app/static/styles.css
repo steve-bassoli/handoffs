@@ -132,6 +132,34 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
 #gremlins-input { min-height: 280px; font-family: monospace; }
 .evidence summary { cursor: pointer; font-weight: 600; }
 .evidence small { display: block; margin-top: 10px; }
+/* Focused navigation (task 5b86fe29, bob team): Decisions, Tasks, Gremlins > Watson, More; Feather-style outline icons, labels kept. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.workspace-nav { align-items: flex-start; }
+.workspace-nav > button, .workspace-nav .workspace-disclosure { min-width: 0; max-width: 100%; }
+.workspace-nav > button { display: inline-flex; align-items: center; gap: 6px; }
+.workspace-nav .nav-icon { width: 18px; height: 18px; flex: 0 0 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
+.workspace-nav summary { cursor: pointer; padding: 12px 20px; color: var(--muted); line-height: 1.4; border-bottom: 3px solid transparent; margin-bottom: -1px; list-style: none; }
+.workspace-nav summary::-webkit-details-marker { display: none; }
+.workspace-nav summary:hover { color: var(--accent); }
+.workspace-nav summary .nav-icon { margin-right: 6px; }
+.workspace-nav .workspace-disclosure[open] { flex: 1 1 240px; }
+.workspace-nav .workspace-disclosure-content { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 8px; border: 1px solid var(--line); background: var(--surface); overflow-wrap: anywhere; }
+.workspace-nav .workspace-disclosure-content button, .workspace-nav .workspace-disclosure-content a { text-align: left; white-space: normal; padding: 10px 12px; margin: 0; }
+.workspace-nav .workspace-disclosure-content p { margin: 4px 12px; font-size: 12px; }
+.workspace-nav .balance { min-width: 0; max-width: 100%; padding: 12px; }
+.workspace-nav .balance strong { font-size: 20px; margin: 4px 0; }
+/* A closed menu still shows which page inside it is open. */
+.workspace-nav .workspace-disclosure:has(.selected) > summary { color: var(--accent); border-bottom-color: var(--accent); }
+.workspace-nav .workspace-gremlins:not([open]):has([data-view="gremlins"].selected) > summary::after { content: ' · Watson'; }
+.workspace-nav .workspace-more:not([open]):has(#dashboard-link.selected) > summary::after { content: ' · Dashboard'; }
+.workspace-nav .workspace-more:not([open]):has([data-view="agents"].selected) > summary::after { content: ' · Agents'; }
+.workspace-nav .workspace-more:not([open]):has([data-view="wallet"].selected) > summary::after { content: ' · Wallet & Stats'; }
+@media (max-width: 640px) {
+    .workspace-nav .workspace-disclosure[open] { flex-basis: 100%; }
+    .workspace-nav > button, .workspace-nav summary { padding: 12px; }
+    #signin-form { min-width: 0; max-width: 100%; }
+}
+
 @media (max-width: 640px) {
     header { padding: 12px 18px; gap: 12px; flex-wrap: wrap; }
     .brand { gap: 12px; }
