@@ -29,7 +29,7 @@ const button = label => { const find = n => n.tag === 'button' && n.text === lab
 async function finish(promise, items = []) { pending.at(-1).resolve({items, creators: []}); await promise; }
 (async () => {
   await finish(context.board(), [card]);
-  assert.match(nodes['board-note'].textContent, /Browse · 1 open shown · closed hidden · this page/);
+  assert.match(nodes['board-note'].textContent, /Browse · 1 open shown · closed hidden · page 1/);
   nodes.search.value = 'missing';
   await finish(context.board());
   assert.match(nodes['board-note'].textContent, /search: missing/);

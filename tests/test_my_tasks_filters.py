@@ -70,7 +70,7 @@ vm.runInNewContext(board + '\nthis.board = board;', context);
   pending[0].resolve({items: [card('old-a'), card('old-b')], creators: ['nate']});
   await first;
   assert.equal(nodes.cards.children.length, 1, 'stale response must not replace the latest cards');
-  assert.match(nodes['board-note'].textContent, /· 1 open shown · this page$/, 'the note describes the latest result, not the stale one');
+  assert.match(nodes['board-note'].textContent, /· 1 open shown · page 1$/, 'the note describes the latest result, not the stale one');
 })().catch(error => { console.error(error); process.exitCode = 1; });
 '''
     result = subprocess.run([node, '-e', checks], capture_output=True, text=True)

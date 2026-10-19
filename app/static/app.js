@@ -225,7 +225,8 @@ async function board() {
   }
   if (note) {
     if (!mine) note.textContent = `${result.items.length} open shown · closed hidden`;
-    note.textContent = `${mine ? 'My tasks' : 'Browse'} · ${note.textContent} · this page${$('search').value ? ' · search: ' + $('search').value : ''}`;
+    // The page number rides on this status line, so a page change is announced once (bob free play #4, 6f7b5f7e).
+    note.textContent = `${mine ? 'My tasks' : 'Browse'} · ${note.textContent} · page ${offset / pageSize + 1}${$('search').value ? ' · search: ' + $('search').value : ''}`;
   }
   $('previous').disabled = offset === 0; $('next').disabled = result.items.length < pageSize;
   $('page-label').textContent = `Page ${offset / pageSize + 1}`;
