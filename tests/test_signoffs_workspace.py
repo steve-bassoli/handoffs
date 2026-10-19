@@ -139,3 +139,8 @@ def test_two_people_one_screen_and_accept_without_a_note():
     assert "if (decision !== 'yes' && !note.value.trim())" in script and "note.value.trim() || 'Accepted'" in script
     assert 'document.title = people.length ?' in script
     assert 'cosigners = []; sessionStorage.removeItem(COSIGN_KEY);' in script
+
+
+def test_every_decision_button_names_who_it_acts_as():
+    script = (STATIC / 'app.js').read_text(encoding='utf-8')
+    assert "element('button', session || person ? `${text} as ${name}` : text)" in script

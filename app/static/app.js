@@ -476,7 +476,8 @@ function renderSignoffs(items) {
         const people = decision === 'yes' ? deciders : [deciders.includes(null) ? null : deciders[0]];
         for (const person of people) {
           const name = person ? person.user_id : session?.user_id || user;
-          const button = element('button', decision === 'yes' && deciders.length > 1 || person ? `${text} as ${name}` : text); button.type = 'button';
+          // Always name who a click acts as (2026-10-19: Steve clicked in Nate's session without noticing).
+          const button = element('button', session || person ? `${text} as ${name}` : text); button.type = 'button';
           button.dataset.digestControl = 'true'; button.dataset.decision = decision;
           button.onclick = () => run(async () => {
             if (!session || session !== auth || actor !== user || digestBusy || digestUncertain) return;

@@ -76,7 +76,7 @@ CONSTRUCTION_CLOSE = 'construction mode: the relay closes proven work itself (la
 def _mark_ready(service, ordered, construction=False):
     """Steve, 2026-10-18: show only what a click can complete now; everything else says what it waits on.
 
-    Task 33a5d860 (veto overridden by Nate, 2026-10-19): while construction mode is on, task closes are the relay's to make
+    Task 33a5d860 (veto overridden 2026-10-19 02:13 in Nate's session, clicked by Steve with Nate in the room): while construction mode is on, task closes are the relay's to make
     under the first door, so they fold away; rule texts, vetoes and sign-offs stay with people. Deciding is unchanged."""
     detail = getattr(service, 'detail', None)
     for item in ordered:
