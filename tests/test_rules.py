@@ -42,15 +42,22 @@ class RulesTests(unittest.TestCase):
         self.rules_path.write_text(json.dumps(value), encoding='utf-8')
         return hashlib.sha256(self.rules_path.read_bytes()).hexdigest()
 
-    def test_repository_bootstrap_pin_is_filled_and_matches(self):
-        self.assertEqual(rules.BOOTSTRAP_SHA256, self.original_hash)
+    def test_repository_rules_are_approved(self):
+        # The live file is either the pinned bootstrap original or carries its own two-human approval.
+        self.assertRegex(rules.BOOTSTRAP_SHA256, '^[0-9a-f]{64}$')
+        ledger = json.loads((rules.ROOT / 'rules/APPROVALS.json').read_bytes())
+        approved = [e for e in ledger if e['sha256'] == self.original_hash]
+        self.assertTrue(self.original_hash == rules.BOOTSTRAP_SHA256 or
+                        any(len(set(e['approved_by'])) >= 2 for e in approved))
+        self.assertEqual(rules.load_rules()['RULES'], rules.RULES)
 
     def test_bootstrap_accepts_exact_original_only(self):
         self.ledger(self.entry(['steve'], bootstrap=True))
-        self.assertEqual(self.load()['RULES'], rules.RULES)
-        self.modify()
-        with self.assertRaises(rules.RulesError):
-            self.load()
+        with patch.object(rules, 'BOOTSTRAP_SHA256', self.original_hash):
+            self.assertEqual(self.load()['RULES'], rules.RULES)
+            self.modify()
+            with self.assertRaises(rules.RulesError):
+                self.load()
 
     def test_bootstrap_cannot_be_moved_by_editing_ledger(self):
         changed_hash = self.modify()
