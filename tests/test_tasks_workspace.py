@@ -302,3 +302,9 @@ def test_header_wraps_instead_of_overflowing():
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
     assert 'header { min-height: 72px; display: flex; flex-wrap: wrap;' in css
     assert css.count('#signin-form { min-width: 0; max-width: 100%; }') == 1
+
+
+def test_agent_roster_is_a_named_keyboard_region():
+    # Bob team free play #9 (50c8cbbf): the roster scrolls sideways on phones; give keyboard users a handle.
+    assert '<div class="agent-table-wrap" tabindex="0" role="region" aria-label="Astra roster">' in (STATIC / 'index.html').read_text(encoding='utf-8')
+    assert '#agents .agent-table-wrap:focus-visible' in (STATIC / 'styles.css').read_text(encoding='utf-8')

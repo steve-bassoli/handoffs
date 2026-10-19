@@ -55,6 +55,7 @@ nav a.selected { color: var(--accent); border-bottom: 3px solid var(--accent); m
 .section-title h2 { flex: 1; }
 .section-title input { max-width: 240px; }
 .agent-table-wrap { overflow-x: auto; }
+#agents .agent-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; } /* Keyboard handle on the wide roster (bob free play #9, 50c8cbbf). */
 .agent-table { width: 100%; border-collapse: collapse; font-family: Consolas, monospace; white-space: nowrap; }
 .agent-table caption { text-align: left; padding: 12px 0; }
 .agent-table th, .agent-table td { text-align: left; padding: 16px 12px; border-bottom: 1px solid var(--line); }
