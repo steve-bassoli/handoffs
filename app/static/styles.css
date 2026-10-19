@@ -203,7 +203,6 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
     #board .task-search { flex: none; width: 100%; }
     #board #search { font-size: 16px; } /* No focus zoom on phones (bob free play #3, ac5f481e). */
     #gremlins-input { font-size: 16px; } /* Same safeguard for the Watson JSON editor (bob free play #17, 409326d7). */
-    .bobsue-run dl { grid-template-columns: 1fr; } .bobsue-run dd { margin-bottom: 6px; }
     nav button { padding: 12px; }
     .event { flex-direction: column; gap: 6px; }
 }
@@ -214,6 +213,11 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
 .bobsue-run dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
 .bobsue-run dt { color: var(--muted); font-size: 12px; }
 .bobsue-run dd { margin: 0; }
+/* Keep run-card phone overrides after their base declarations (competition round 1, bob's team, d5258f2b). */
+@media (max-width: 640px) {
+    .bobsue-run dl { grid-template-columns: 1fr; }
+    .bobsue-run dd { margin-bottom: 6px; }
+}
 .bobsue-run details summary { cursor: pointer; padding: 10px 0; min-height: 44px; box-sizing: border-box; }
 details.bobsue-architect > summary { cursor: pointer; padding: 12px 0; min-height: 44px; box-sizing: border-box; color: var(--muted); }
 /* Gallery: pictures the agents made, one column on phones. */

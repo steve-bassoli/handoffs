@@ -274,7 +274,7 @@ def test_task_board_paging_buttons_are_thumb_sized():
 def test_task_search_is_16px_on_phones():
     # Bob team free play #3 (ac5f481e): phone browsers zoom into inputs under 16px on focus.
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
-    assert '#board #search { font-size: 16px; }' in css.split('@media (max-width: 640px)')[-1]
+    assert '#board #search { font-size: 16px; }' in phone_css(css)
 
 
 def test_watson_report_is_a_named_keyboard_region():
@@ -356,7 +356,7 @@ def test_history_evidence_headers_toggle_from_the_whole_shaded_area():
 def test_watson_json_editor_is_16px_on_phones():
     # Bob team free play #17 (409326d7): the Watson simulation JSON editor inherited 14px on phones.
     css = (STATIC / 'styles.css').read_text(encoding='utf-8')
-    assert '#gremlins-input { font-size: 16px; }' in css.split('@media (max-width: 640px)')[-1]
+    assert '#gremlins-input { font-size: 16px; }' in phone_css(css)
 
 
 def test_watson_mode_selector_says_what_it_controls():
@@ -372,3 +372,22 @@ def test_agents_entry_says_runs_not_live_agents():
         assert '<button data-view="agents" type="button">Agent runs</button>' in html and '>Agents</button>' not in html, page
     assert '<h2>Registered agent runs</h2>' in (STATIC / 'index.html').read_text(encoding='utf-8')
     assert "content: ' · Agent runs';" in (STATIC / 'styles.css').read_text(encoding='utf-8')
+
+
+def phone_css(css):
+    """Text of every @media (max-width: 640px) block, so a rule counts wherever its phone block sits."""
+    blocks, start = [], 0
+    while (i := css.find('@media (max-width: 640px)', start)) != -1:
+        j = css.index('{', i) + 1; depth = 1; k = j
+        while depth:
+            depth += {'{': 1, '}': -1}.get(css[k], 0); k += 1
+        blocks.append(css[j:k - 1]); start = k
+    return '\n'.join(blocks)
+
+
+def test_bob_and_sue_cards_stack_on_phones():
+    # Competition round 1 (bob's team, d5258f2b): the phone rules sat before the base rules and lost; at 375px the
+    # run-card fields stayed two columns (157px and 132px).
+    css = (STATIC / 'styles.css').read_text(encoding='utf-8')
+    assert '.bobsue-run dl { grid-template-columns: 1fr; }' in phone_css(css)
+    assert css.rindex('.bobsue-run dl { grid-template-columns: 1fr; }') > css.index('.bobsue-run dl { display: grid;')
