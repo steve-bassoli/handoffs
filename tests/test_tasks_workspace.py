@@ -290,3 +290,8 @@ def test_post_form_marks_optional_fields():
     assert 'Source repository (optional)<input name="repository"' in html and 'Context links (optional) · one per line' in html
     from app.main import PostTask
     assert PostTask(title='t', goal='g', criteria=['c'], gold=1).repository == '' and PostTask(title='t', goal='g', criteria=['c'], gold=1).context_links == []
+
+
+def test_task_detail_lineage_buttons_are_thumb_sized():
+    # Bob team free play #7 (ef98fe3a): a one-line related-task button measured 39.6px.
+    assert '#detail .lineage button { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')
