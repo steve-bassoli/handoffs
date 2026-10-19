@@ -403,3 +403,8 @@ def test_task_search_name_matches_its_visible_label():
     html = (STATIC / 'index.html').read_text(encoding='utf-8')
     assert '<label class="task-search" for="search">Find a task<input id="search" type="search" placeholder="Find a task">' in html
     assert 'aria-label="Search tasks"' not in html
+
+
+def test_header_refresh_buttons_are_thumb_sized():
+    # Competition round 4 (bob's team, 17acf8b5): the Gallery Refresh measured 39.6px; so did the other three header Refresh buttons.
+    assert '.section-title > button { min-height: 44px; }' in (STATIC / 'styles.css').read_text(encoding='utf-8')

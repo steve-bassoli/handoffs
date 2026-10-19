@@ -221,6 +221,8 @@ footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px
 }
 .bobsue-run details summary { cursor: pointer; padding: 10px 0; min-height: 44px; box-sizing: border-box; }
 details.bobsue-architect > summary { cursor: pointer; padding: 12px 0; min-height: 44px; box-sizing: border-box; color: var(--muted); }
+/* Header Refresh buttons are thumb-sized (competition round 4, bob's team, 17acf8b5; they found Gallery's, all four measured 39.6px). */
+.section-title > button { min-height: 44px; }
 /* Gallery: pictures the agents made, one column on phones. */
 .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
 .gallery-item { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
