@@ -158,13 +158,17 @@ async function stats() {
   }
 }
 let boardRequest = 0;
+// Browse lists open work only; a search that matches only closed tasks offers them in one click (Steve, 2026-10-19).
+const CLOSED_STATUSES = 'settled,completed,cancelled,superseded,decomposed';
+let browseClosed = false;
 async function board() {
   // Only the latest request may publish; a slower earlier response is dropped, errors included.
   const ticket = ++boardRequest;
   const mine = view === 'mine', picker = $('assigned-by');
   if ($('mine-filters')) $('mine-filters').hidden = !mine;
   // My Tasks hides closed work unless asked; the picker narrows to one poster.
-  const filters = !mine || !picker ? '' : (($('show-closed').checked ? '' : '&status=open,pending,working,blocked,delivered,awaiting_approval') +
+  const closedSearch = !mine && browseClosed && !!$('search').value;
+  const filters = closedSearch ? '&status=' + CLOSED_STATUSES : !mine || !picker ? '' : (($('show-closed').checked ? '' : '&status=open,pending,working,blocked,delivered,awaiting_approval') +
     (picker.value ? '&creator=' + encodeURIComponent(picker.value) : ''));
   const note = $('board-note');
   $('cards').replaceChildren(element('p', 'Loading tasks…'));
@@ -172,7 +176,7 @@ async function board() {
   $('previous').disabled = true; $('next').disabled = true;
   $('page-label').textContent = `Page ${offset / pageSize + 1}`;
   let result;
-  try { result = await api(`/tasks?view=${view}&limit=${pageSize}&offset=${offset}&q=${encodeURIComponent($('search').value)}${filters}`); }
+  try { result = await api(`/tasks?view=${closedSearch ? 'all' : view}&limit=${pageSize}&offset=${offset}&q=${encodeURIComponent($('search').value)}${filters}`); }
   catch (error) {
     if (ticket !== boardRequest) return;
     const box = element('div', undefined, 'error');
@@ -189,6 +193,22 @@ async function board() {
     picker.value = chosen;
   }
   $('cards').replaceChildren();
+  if (closedSearch) {
+    const back = element('button', 'Back to open tasks');
+    back.onclick = () => run(async () => { browseClosed = false; offset = 0; await board(); });
+    const intro = element('div', undefined, 'closed-matches');
+    intro.append(element('p', 'Showing closed tasks that match your search.'), back);
+    $('cards').append(intro);
+  }
+  let closedMatches = 0;
+  if (!result.items.length && !mine && !closedSearch && offset === 0 && $('search').value) {
+    // Nothing open matches: count closed matches (up to one page) before saying nothing was found.
+    try {
+      const closed = await api(`/tasks?view=all&limit=${pageSize}&offset=0&q=${encodeURIComponent($('search').value)}&status=${CLOSED_STATUSES}`);
+      closedMatches = closed.items.length;
+    } catch { closedMatches = 0; }
+    if (ticket !== boardRequest) return;
+  }
   if (!result.items.length) {
     const filtered = !!$('search').value || (mine && (picker?.value || !$('show-closed').checked));
     const box = element('div', undefined, 'empty');
@@ -196,10 +216,16 @@ async function board() {
       const previous = element('button', 'Previous');
       previous.onclick = () => run(async () => { offset = Math.max(0, offset - pageSize); await board(); });
       box.append(element('p', 'No tasks on this page. Try the previous page.'), previous);
+    } else if (closedMatches) {
+      const count = closedMatches === pageSize ? `${pageSize}+` : String(closedMatches);
+      const plural = closedMatches === 1 ? 'task matches' : 'tasks match';
+      const show = element('button', `Show closed ${closedMatches === 1 ? 'match' : 'matches'}`, 'primary');
+      show.onclick = () => run(async () => { browseClosed = true; offset = 0; await board(); });
+      box.append(element('p', `No open tasks match. ${count} closed ${plural} your search.`), show);
     } else if (filtered) {
       const clear = element('button', 'Clear filters');
       clear.onclick = () => run(async () => {
-        $('search').value = ''; offset = 0;
+        $('search').value = ''; offset = 0; browseClosed = false;
         if (mine) { $('show-closed').checked = false; if (picker) picker.value = ''; }
         await board();
       });
@@ -224,7 +250,8 @@ async function board() {
       closed ? `${result.items.length} shown${who} · ${closed} closed` : `No closed tasks${who} on this page · ${result.items.length} open shown`;
   }
   if (note) {
-    if (!mine) note.textContent = `${result.items.length} open shown · closed hidden`;
+    if (!mine) note.textContent = closedSearch ? `${result.items.length} closed shown` :
+      closedMatches ? `0 open shown · ${closedMatches === pageSize ? pageSize + '+' : closedMatches} closed ${closedMatches === 1 ? 'match' : 'matches'}` : `${result.items.length} open shown · closed hidden`;
     // The page number rides on this status line, so a page change is announced once (bob free play #4, 6f7b5f7e).
     note.textContent = `${mine ? 'My tasks' : 'Browse'} · ${note.textContent} · page ${offset / pageSize + 1}${$('search').value ? ' · search: ' + $('search').value : ''}`;
   }
@@ -716,7 +743,7 @@ async function navigate(nextView) {
   const epoch = typeof treeEpoch !== 'undefined' ? ++treeEpoch : null;
   clearTimeout(aiPoll);
   clearTimeout(proofPoll);
-  view = nextView; selected = null;
+  view = nextView; selected = null; if (typeof browseClosed !== 'undefined') browseClosed = false;
   if (typeof refreshDigestCount === 'function' && typeof session !== 'undefined' && nextView !== 'signoffs') void refreshDigestCount();
   if (typeof boardRequest !== 'undefined') boardRequest++;
   if (typeof window !== 'undefined' && window.commonsNavigation) window.commonsNavigation.update(view, user);
@@ -1593,7 +1620,7 @@ $('signout').onclick = () => run(async () => {
 renderAuth();
 const signoutWarning = sessionStorage.getItem('handoffs-signout-warning');
 if (signoutWarning) { sessionStorage.removeItem('handoffs-signout-warning'); message(signoutWarning, true); }
-$('search').oninput = () => run(async () => { offset = 0; await board(); });
+$('search').oninput = () => run(async () => { offset = 0; browseClosed = false; await board(); });
 for (const id of ['show-closed', 'assigned-by']) if ($(id)) $(id).onchange = () => run(async () => { offset = 0; await board(); });
 $('previous').onclick = () => run(async () => { offset = Math.max(0, offset - pageSize); await board(); });
 $('next').onclick = () => run(async () => { offset += pageSize; await board(); });

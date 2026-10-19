@@ -385,6 +385,21 @@ def test_task_page_survives_a_failed_artifacts_or_constellation_read():
     assert "'Could not load the constellation. Reopen this task to try again.'" in js
 
 
+def test_browse_search_offers_closed_matches():
+    # Steve, 2026-10-19: closed tasks were invisible to a Browse search; say so and show them in one click.
+    js = (STATIC / 'app.js').read_text(encoding='utf-8')
+    body = js[js.index('async function board()'):js.index('async function transactions()')]
+    assert "const CLOSED_STATUSES = 'settled,completed,cancelled,superseded,decomposed';" in js
+    assert "view=all&limit=${pageSize}&offset=0&q=${encodeURIComponent($('search').value)}&status=${CLOSED_STATUSES}" in body
+    assert 'No open tasks match. ${count} closed ${plural} your search.' in body
+    assert "element('button', 'Back to open tasks')" in body
+    assert "$('search').oninput = () => run(async () => { offset = 0; browseClosed = false; await board(); });" in js
+    # The probe only runs for an empty first page of a Browse search, and stale responses are dropped.
+    assert "!result.items.length && !mine && !closedSearch && offset === 0 && $('search').value" in body
+    probe = body[body.index('let closedMatches = 0;'):body.index('if (!result.items.length) {', body.index('let closedMatches = 0;'))]
+    assert 'if (ticket !== boardRequest) return;' in probe
+
+
 def test_wallet_transactions_latest_request_wins():
     # Competition round 24, ada's team (f55f4540): two quick Next clicks let a slow older page render under the newer page label.
     js = (STATIC / 'app.js').read_text(encoding='utf-8')
